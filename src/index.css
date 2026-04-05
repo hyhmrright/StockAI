@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 这里的 bg-background 和 text-white 必须与 tailwind.config.js 匹配 */
+body {
+  @apply bg-background text-white antialiased overflow-hidden m-0 p-0;
+  min-height: 100vh;
+}
