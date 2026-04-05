@@ -1,23 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PriceChart from './PriceChart';
 import SentimentBar from './SentimentBar';
+import { Settings as SettingsIcon } from 'lucide-react';
+import { SettingsModal } from './SettingsModal';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
  * 包含顶部的搜索栏和下方的三栏式主内容区
  */
 const Dashboard: React.FC = () => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-background text-white">
+    <div className="flex flex-col h-screen w-screen bg-background text-white relative">
       {/* 顶部搜索栏 */}
-      <header className="h-16 border-b border-white/10 flex items-center px-6 bg-panel">
-        <div className="flex items-center w-full max-w-2xl">
+      <header className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-panel shrink-0">
+        <div className="flex items-center w-full max-w-2xl gap-4">
           <input
             type="text"
             placeholder="搜索股票代码 (例如: AAPL, TSLA)..."
             className="w-full bg-background border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
           />
         </div>
+        
+        {/* 设置按钮 */}
+        <button 
+          onClick={() => setIsSettingsOpen(true)}
+          className="p-2 hover:bg-white/5 rounded-full transition-colors group"
+          title="系统设置"
+        >
+          <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white group-hover:rotate-45 transition-all duration-300" />
+        </button>
       </header>
 
       {/* 下方主体：三栏布局 */}
@@ -116,6 +129,12 @@ const Dashboard: React.FC = () => {
           </div>
         </aside>
       </main>
+
+      {/* 设置模态框 */}
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
     </div>
   );
 };

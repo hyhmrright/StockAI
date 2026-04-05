@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi, AreaSeries } from 'lightweight-charts';
 
 interface PriceChartProps {
   /** 股票代码 */
@@ -47,7 +47,7 @@ const PriceChart: React.FC<PriceChartProps> = ({ symbol }) => {
     });
 
     // 添加面积图系列 (Area Series) 以展现股价走势
-    const areaSeries = chart.addAreaSeries({
+    const areaSeries = chart.addSeries(AreaSeries, {
       lineColor: '#10b981',
       topColor: 'rgba(16, 185, 129, 0.3)',
       bottomColor: 'rgba(16, 185, 129, 0)',
