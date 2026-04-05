@@ -1,0 +1,40 @@
+<h2>关于“全网搜索”的数据获取策略</h2>
+<p class="subtitle">您提到希望“全网搜索所有与这家公司相关的信息”。对于独立的桌面客户端，获取数据的策略直接影响开发成本和用户的配置难度。</p>
+
+<div class="options">
+  <div class="option" data-choice="api" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>纯 API 聚合模式 (推荐，稳定快速)</h3>
+      <p>内置对接各大免费/付费金融 API（如 Yahoo Finance 获取股价）和新闻搜索 API（如 Tavily / Bing Search）。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>极速响应，数据结构化好</li><li>AI 分析最准确，代码维护容易</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>用户可能需要自己配置搜索 API Key (或您为软件承担费用)</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="scrape" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>无头浏览器硬核爬虫模式 (免费，但易断)</h3>
+      <p>利用 Bun 驱动无头浏览器 (如 Playwright)，在后台模拟真人打开 Google Finance、各大财经网站，强行提取页面文本给 AI。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>完全免费，无需任何 Search API Key</li><li>真正意义上的“搜遍全网网页”</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>搜索过程很慢 (可能需要十几秒)</li><li>网站一改版爬虫就容易失效，需要经常更新软件</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>混合模式 (免费 API + RSS 订阅)</h3>
+      <p>不使用复杂的爬虫，也不依赖昂贵的商用搜索 API。而是抓取 Yahoo Finance 的公开接口获取价格，并拉取各大财经媒体的 RSS 源作为新闻分析材料。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>免费且相对稳定，速度较快</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>新闻来源仅限于预设的媒体池，不够“全网”</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

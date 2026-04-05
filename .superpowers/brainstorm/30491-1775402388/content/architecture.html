@@ -1,0 +1,40 @@
+<h2>桌面客户端架构选择 (TypeScript + Bun)</h2>
+<p class="subtitle">Cherry Studio 是一个典型的 Electron 桌面应用。要在我们的项目中最大化利用 Bun 的性能，有以下三种桌面端架构方案：</p>
+
+<div class="options">
+  <div class="option" data-choice="electron" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Electron + Bun (类似 Cherry Studio)</h3>
+      <p><b>最成熟的方案</b>。使用 Electron 包装应用，前端和主进程都用 TypeScript 编写。我们使用 Bun 极速安装依赖和打包代码。注意：Electron 内部仍然使用的是 Node.js 运行时，但你可以享受到 Bun 的开发体验。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>与 Cherry Studio 体验最一致</li><li>极其丰富的桌面 API (系统托盘、快捷键等)</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>打包体积较大 (约 100MB+)</li><li>底层主进程并非真正的 Bun 运行时</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="tauri-sidecar" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tauri + Bun 后台进程 (Sidecar)</h3>
+      <p><b>极致性能与体积</b>。界面部分使用轻量级系统 Webview (Tauri)，而所有“全网搜索”、“文档解析”和“AI 交互”等核心后端逻辑，我们将其编译为一个独立的纯 Bun 应用程序，在后台运行并与前端通信。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>极小的安装包体积</li><li>核心逻辑 100% 运行在 Bun 的超高性能环境中</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>需要少量的 Rust 胶水代码来启动 Tauri</li><li>架构相对复杂</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="local-server" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>纯 Bun 本地服务 + 浏览器 UI</h3>
+      <p><b>最纯粹的 Bun 体验</b>。抛弃笨重的桌面框架，我们编写一个纯粹的 Bun 本地服务器。用户启动应用时，自动在默认浏览器中打开全屏网页界面（类似于 Jupyter Notebook 的体验）。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>开发最快，架构最简单</li><li>100% 纯 TypeScript + Bun，无需任何其他语言或庞大框架</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>不是严格意义上的独立桌面窗口应用</li><li>无法深度控制操作系统级功能 (如系统托盘)</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
