@@ -4,8 +4,8 @@ import SentimentBar from './SentimentBar';
 import { Settings as SettingsIcon, Search, Loader2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { startAnalysis } from '../lib/ipc';
-import { AnalysisPayload } from '../../sidecar/types';
-import { AIAnalysisResult } from '../../sidecar/ai';
+import { AnalysisPayload } from '../../../sidecar/types';
+import { AIAnalysisResult } from '../../../sidecar/ai';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
