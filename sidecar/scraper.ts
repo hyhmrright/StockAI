@@ -13,7 +13,10 @@ export async function scrapeStockNews(symbol: string): Promise<StockNews[]> {
     throw new Error("模拟网络错误: 无法连接至抓取服务。");
   }
 
-  const browser: Browser = await chromium.launch({ headless: true });
+  const browser: Browser = await chromium.launch({ 
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
+  });
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     locale: 'zh-CN'
@@ -120,11 +123,11 @@ async function extractYahooNews(page: Page): Promise<StockNews[]> {
   return news;
 }
 
-// 添加 CLI 入口逻辑
-if (import.meta.main) {
-  const symbol = Bun.argv[2];
+// 修改 CLI 入口逻辑，支持编译后的二进制文件运行
+if (import.meta.main || (typeof process !== 'undefined' && process.argv[1] && (process.argv[1].endsWith('stockai-backend') || process.argv[1].endsWith('stockai-backend.exe')))) {
+  const symbol = process.argv[2];
   if (!symbol) {
-    console.error("使用方法: bun sidecar/scraper.ts <SYMBOL>");
+    console.error("使用方法: stockai-backend <SYMBOL>");
     process.exit(1);
   }
 
