@@ -1,5 +1,4 @@
 import { chromium, Browser, Page } from 'playwright-core';
-import { NodeHtmlMarkdown } from 'node-html-markdown';
 import { StockNews } from './types';
 
 /**

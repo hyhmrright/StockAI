@@ -4,8 +4,8 @@ import SentimentBar from './SentimentBar';
 import { Settings as SettingsIcon, Search, Loader2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { startAnalysis } from '../lib/ipc';
-import { AnalysisPayload } from '../../../sidecar/types';
-import { AIAnalysisResult } from '../../../sidecar/ai';
+import { AnalysisPayload } from '@sidecar/types';
+import { AIAnalysisResult } from '@sidecar/ai';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
@@ -172,7 +172,7 @@ const Dashboard: React.FC = () => {
             <div className="mt-10">
               <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">最新相关新闻</h2>
               <div className="space-y-4">
-                {analysisData.news.map((n, i) => (
+                {analysisData.news.map((n: any, i: number) => (
                   <a 
                     key={i} 
                     href={n.url} 
@@ -231,7 +231,7 @@ const Dashboard: React.FC = () => {
             <div className="space-y-4">
               {aiResult ? (
                 <>
-                  {aiResult.pros.map((pro, i) => (
+                  {aiResult.pros.map((pro: string, i: number) => (
                     <div key={`pro-${i}`} className="p-5 border-l-4 border-emerald-500 bg-emerald-500/5 rounded-r-xl">
                       <div className="text-xs text-emerald-500 mb-2 font-bold flex items-center gap-1.5">
                         <TrendingUp className="w-3 h-3" />
@@ -240,7 +240,7 @@ const Dashboard: React.FC = () => {
                       <div className="text-sm leading-snug">{pro}</div>
                     </div>
                   ))}
-                  {aiResult.cons.map((con, i) => (
+                  {aiResult.cons.map((con: string, i: number) => (
                     <div key={`con-${i}`} className="p-5 border-l-4 border-rose-500 bg-rose-500/5 rounded-r-xl">
                       <div className="text-xs text-rose-500 mb-2 font-bold flex items-center gap-1.5">
                         <TrendingDown className="w-3 h-3" />
