@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { startAnalysis as startAnalysisIpc } from '../lib/ipc';
 import { FullAnalysisResponse } from '../lib/api-types';
 
+export type AnalysisStep = 'idle' | 'scraping' | 'extracting' | 'analyzing' | 'completed' | 'error';
+
 /**
  * 股票分析 Hook
- * 封装分析流程、状态管理和错误处理
+ * 封装分析流程、状态管理和细分进度
  */
 export function useAnalysis() {
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<AnalysisStep>('idle');
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FullAnalysisResponse | null>(null);
 
@@ -18,24 +20,34 @@ export function useAnalysis() {
   const performAnalysis = async (symbol: string) => {
     if (!symbol) return;
     
-    setLoading(true);
+    setStep('scraping');
     setError(null);
     setResult(null);
 
     try {
+      // 在当前的 Sidecar 实现中，步骤是内部流转的，
+      // 但我们可以通过模拟延时或未来增加 IPC 事件流来实现真正的实时同步。
+      // 目前我们通过逻辑分段模拟进度。
+      
       const responseStr = await startAnalysisIpc(symbol);
+      
+      // 模拟步骤流转 (因为目前的 IPC 是阻塞式的)
+      setStep('analyzing');
+      
       const parsed: FullAnalysisResponse = JSON.parse(responseStr);
+      
       setResult(parsed);
+      setStep('completed');
     } catch (err: any) {
       console.error('分析执行失败:', err);
       setError(err.message || '分析过程中发生错误，请重试。');
-    } finally {
-      setLoading(false);
+      setStep('error');
     }
   };
 
   return {
-    loading,
+    step,
+    loading: step !== 'idle' && step !== 'completed' && step !== 'error',
     error,
     result,
     performAnalysis

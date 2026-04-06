@@ -15,7 +15,17 @@ const Dashboard: React.FC = () => {
   const [currentSymbol, setCurrentSymbol] = useState('AAPL');
   
   // 使用封装好的分析 Hook
-  const { loading, error, result, performAnalysis } = useAnalysis();
+  const { step, loading, error, result, performAnalysis } = useAnalysis();
+
+  // 获取当前步骤的描述文字
+  const getStepLabel = () => {
+    switch (step) {
+      case 'scraping': return '正在抓取实时新闻...';
+      case 'extracting': return '正在提取新闻正文...';
+      case 'analyzing': return 'AI 正在深度分析市场情绪...';
+      default: return '正在实时分析数据...';
+    }
+  };
 
   // 处理搜索
   const handleSearch = async (e?: React.FormEvent) => {
@@ -117,9 +127,9 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">分析详情 ({currentSymbol})</h2>
             {loading && (
-              <div className="flex items-center gap-2 text-xs text-emerald-500 font-medium">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                正在实时抓取数据...
+              <div className="flex items-center gap-3 text-xs text-emerald-500 font-medium bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/20 animate-pulse">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {getStepLabel()}
               </div>
             )}
           </div>
