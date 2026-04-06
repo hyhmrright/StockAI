@@ -21,29 +21,24 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
 
     let provider = store
         .get("provider")
-        .and_then(|v| v.as_str())
-        .unwrap_or("openai")
-        .to_string();
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "openai".to_string());
     let api_key = store
         .get("apiKey")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "".to_string());
     let base_url = store
         .get("baseUrl")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "".to_string());
     let model = store
         .get("model")
-        .and_then(|v| v.as_str())
-        .unwrap_or("gpt-4o")
-        .to_string();
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "gpt-4o".to_string());
     let ollama_model = store
         .get("ollamaModel")
-        .and_then(|v| v.as_str())
-        .unwrap_or("llama3")
-        .to_string();
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "llama3".to_string());
 
     // 根据提供者选择模型名称
     let model_name = if provider == "ollama" {
