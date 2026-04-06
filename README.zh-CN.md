@@ -19,6 +19,36 @@ StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程
 2.  **核心调度 (Tauri Core)**: Rust。负责管理本地持久化存储、系统集成以及 Sidecar 进程调度。
 3.  **分析引擎 (Sidecar)**: 基于 Bun 运行时。使用 Playwright 进行网页采集，集成 AI 模型进行文本处理。
 
+## 📦 安装
+
+预构建的安装包可在 [Releases](https://github.com/hyhmrright/StockAI/releases/latest) 页面下载。
+
+### macOS — 提示"已损坏，无法打开"
+
+这是 macOS Gatekeeper 拦截了未经 Apple 公证的 app，并非真正损坏。在终端运行以下命令解除隔离属性即可：
+
+```bash
+xattr -cr /Applications/StockAI.app
+```
+
+之后正常打开 app 即可。这是安全的——app 不含任何后门，完整源代码在本仓库可审计。
+
+> **原因说明**：从互联网下载的 app 会被 macOS 打上隔离标记（quarantine）。没有 Apple 开发者证书时，系统会显示"已损坏"而不是通常的"来自未知开发者"弹窗。
+
+### Windows — SmartScreen 警告
+
+点击 **更多信息 → 仍要运行** 即可。所有未签名的可执行文件都会触发此提示。
+
+### Linux (.deb)
+
+```bash
+sudo dpkg -i StockAI_*_amd64.deb
+```
+
+需要 WebKitGTK 运行时（大多数基于 GNOME 的发行版已预装）。
+
+---
+
 ## 🚀 快速开始
 
 ### 前置要求

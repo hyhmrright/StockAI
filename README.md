@@ -19,6 +19,36 @@ StockAI is a modern cross-platform desktop application built with **Tauri 2.0**.
 2.  **Core Orchestration (Tauri Core)**: Rust. Manages local persistence, system integration, and Sidecar process scheduling.
 3.  **Analysis Engine (Sidecar)**: Based on the Bun runtime. Uses Playwright for web scraping and integrates AI models for text processing.
 
+## 📦 Installation
+
+Pre-built binaries are available on the [Releases](https://github.com/hyhmrright/StockAI/releases/latest) page.
+
+### macOS — "StockAI is damaged" error
+
+macOS Gatekeeper blocks apps that aren't notarized by an Apple Developer certificate. Run this command in Terminal to remove the quarantine flag:
+
+```bash
+xattr -cr /Applications/StockAI.app
+```
+
+Then open the app normally. This is safe — the app contains no network backdoors and the full source code is auditable in this repository.
+
+> **Why this happens:** Apps downloaded from the internet receive a quarantine attribute. Without an Apple code-signing certificate, macOS shows "damaged" instead of the usual "unknown developer" prompt.
+
+### Windows — SmartScreen warning
+
+Click **More info → Run anyway**. This appears for any unsigned executable.
+
+### Linux (.deb)
+
+```bash
+sudo dpkg -i StockAI_*_amd64.deb
+```
+
+Requires WebKitGTK (pre-installed on most GNOME-based distros).
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
