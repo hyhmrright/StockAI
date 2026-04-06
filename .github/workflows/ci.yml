@@ -17,42 +17,46 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: setup bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
 
-      - name: install Rust stable
+      - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: install dependencies (ubuntu only)
+      - name: Install Linux system dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: install frontend dependencies
+      - name: Install dependencies
         run: bun install
 
-      - name: build sidecar (unix)
+      - name: Run frontend tests
+        run: bunx vitest run
+
+      - name: Run sidecar unit tests
+        run: cd sidecar && bun test ai.test.ts strategies/parsers.test.ts
+
+      - name: Build sidecar (unix)
         if: matrix.platform != 'windows-latest'
         shell: bash
         run: |
-          mkdir -p sidecar
           TARGET_TRIPLE=$(rustc -Vv | grep host | cut -d ' ' -f 2)
           bun build ./sidecar/index.ts --compile --outfile "./sidecar/stockai-backend-$TARGET_TRIPLE"
 
-      - name: build sidecar (windows)
+      - name: Build sidecar (windows)
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
-          if (!(Test-Path sidecar)) { New-Item -ItemType Directory -Path sidecar }
-          $hostInfo = rustc -Vv | Select-String "host:"
-          $triple = $hostInfo.ToString().Split(" ")[1]
+          $triple = (rustc -Vv | Select-String "host:").ToString().Split(" ")[1]
           bun build ./sidecar/index.ts --compile --outfile "sidecar/stockai-backend-$triple.exe"
 
-      - name: build frontend and check rust
+      - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
           args: --no-bundle

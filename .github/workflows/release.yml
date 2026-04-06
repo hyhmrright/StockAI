@@ -36,10 +36,10 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@v2.2.0
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -47,7 +47,7 @@ jobs:
           targets: ${{ matrix.rust-targets }}
 
       - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@v2.9.1
         with:
           workspaces: src-tauri
 
