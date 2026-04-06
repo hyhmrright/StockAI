@@ -21,7 +21,7 @@ export class OpenAIProvider implements AIProvider {
    * 分析股票
    */
   async analyze(symbol: string, news: any[]): Promise<AIAnalysisResult> {
-    const prompt = this.buildPrompt(symbol, news);
+    const prompt = OpenAIProvider.buildPrompt(symbol, news);
 
     try {
       const response = await this.client.chat.completions.create({
@@ -44,7 +44,7 @@ export class OpenAIProvider implements AIProvider {
   /**
    * 构建 Prompt
    */
-  private buildPrompt(symbol: string, news: any[]): string {
+  public static buildPrompt(symbol: string, news: any[]): string {
     const newsList = news.map((n, i) => {
       let item = `${i + 1}. 【标题】: ${n.title} (来源: ${n.source})`;
       if (n.content && n.content.length > 50) {

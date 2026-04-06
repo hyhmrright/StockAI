@@ -17,7 +17,7 @@ export class OllamaProvider implements AIProvider {
    * 分析股票 (本地模型)
    */
   async analyze(symbol: string, news: any[]): Promise<AIAnalysisResult> {
-    const prompt = this.buildPrompt(symbol, news);
+    const prompt = OllamaProvider.buildPrompt(symbol, news);
 
     try {
       const response = await this.client.chat({
@@ -40,7 +40,7 @@ export class OllamaProvider implements AIProvider {
   /**
    * 构建 Prompt
    */
-  private buildPrompt(symbol: string, news: any[]): string {
+  public static buildPrompt(symbol: string, news: any[]): string {
     const newsList = news.map((n, i) => {
       let item = `${i + 1}. 【标题】: ${n.title}`;
       if (n.content && n.content.length > 50) {
