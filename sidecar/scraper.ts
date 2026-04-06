@@ -8,6 +8,11 @@ import { StockNews } from './types';
  * @returns 抓取到的新闻列表
  */
 export async function scrapeStockNews(symbol: string): Promise<StockNews[]> {
+  // 模拟错误降级测试
+  if (symbol === "FAIL") {
+    throw new Error("模拟网络错误: 无法连接至抓取服务。");
+  }
+
   const browser: Browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -19,7 +24,7 @@ export async function scrapeStockNews(symbol: string): Promise<StockNews[]> {
 
   try {
     // 策略 1: Google Finance
-    console.log(`尝试通过 Google Finance 抓取 ${symbol}...`);
+    console.error(`尝试通过 Google Finance 抓取 ${symbol}...`);
     const googleUrl = `https://www.google.com/finance/quote/${symbol}:NASDAQ`;
     await page.goto(googleUrl, { waitUntil: 'networkidle', timeout: 15000 }).catch(() => {});
     
@@ -31,7 +36,7 @@ export async function scrapeStockNews(symbol: string): Promise<StockNews[]> {
       news = googleNews;
     } else {
       // 策略 2: Yahoo Finance (回退方案)
-      console.log(`Google Finance 未发现结果，尝试 Yahoo Finance...`);
+      console.error(`Google Finance 未发现结果，尝试 Yahoo Finance...`);
       const yahooUrl = `https://finance.yahoo.com/quote/${symbol}`;
       await page.goto(yahooUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(1000);
@@ -113,4 +118,22 @@ async function extractYahooNews(page: Page): Promise<StockNews[]> {
     }
   } catch (e) {}
   return news;
+}
+
+// 添加 CLI 入口逻辑
+if (import.meta.main) {
+  const symbol = Bun.argv[2];
+  if (!symbol) {
+    console.error("使用方法: bun sidecar/scraper.ts <SYMBOL>");
+    process.exit(1);
+  }
+
+  try {
+    const news = await scrapeStockNews(symbol);
+    process.stdout.write(JSON.stringify(news));
+    process.exit(0);
+  } catch (error) {
+    console.error("Sidecar 运行出错:", error);
+    process.exit(1);
+  }
 }
