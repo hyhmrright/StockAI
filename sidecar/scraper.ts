@@ -96,18 +96,19 @@ async function extractFullContent(page: Page, url: string): Promise<string> {
       ];
 
       for (const selector of selectors) {
-        const el = document.querySelector(selector);
+        const el = document.querySelector(selector) as HTMLElement | null;
         if (el && el.innerText.length > 300) {
           return el.innerHTML;
         }
       }
 
       // 如果没有匹配的选择器，找包含最多段落的容器
-      const pContainers = Array.from(document.querySelectorAll('div, section'))
+      const pContainers = Array.from(document.querySelectorAll('div, section')) as HTMLElement[];
+      const sortedContainers = pContainers
         .filter(div => div.querySelectorAll('p').length > 3)
         .sort((a, b) => b.innerText.length - a.innerText.length);
       
-      return pContainers[0] ? pContainers[0].innerHTML : document.body.innerHTML;
+      return sortedContainers[0] ? sortedContainers[0].innerHTML : document.body.innerHTML;
     });
 
     if (!content) return "";

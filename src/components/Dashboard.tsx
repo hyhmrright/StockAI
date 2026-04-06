@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import PriceChart from './PriceChart';
 import SentimentBar from './SentimentBar';
-import { Settings as SettingsIcon, Search, Loader2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Loader2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { useAnalysis } from '../hooks/useAnalysis';
+import Watchlist from './Watchlist';
+import SearchHeader from './SearchHeader';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
- * 包含顶部的搜索栏和下方的三栏式主内容区
+ * 它是应用的核心容器，协调子组件并管理分析状态
  */
 const Dashboard: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [searchSymbol, setSearchSymbol] = useState('');
   const [currentSymbol, setCurrentSymbol] = useState('AAPL');
   
   // 使用封装好的分析 Hook
@@ -28,89 +29,28 @@ const Dashboard: React.FC = () => {
   };
 
   // 处理搜索
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!searchSymbol.trim()) return;
-
-    const symbol = searchSymbol.toUpperCase().trim();
+  const handleSearch = (symbol: string) => {
     setCurrentSymbol(symbol);
     performAnalysis(symbol);
   };
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-white relative">
-      {/* 顶部搜索栏 */}
-      <header className="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-panel shrink-0 z-10">
-        <form onSubmit={handleSearch} className="flex items-center w-full max-w-2xl gap-4">
-          <div className="relative w-full group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
-            <input
-              type="text"
-              value={searchSymbol}
-              onChange={(e) => setSearchSymbol(e.target.value)}
-              placeholder="搜索股票代码 (例如: AAPL, NVDA, TSLA)..."
-              className="w-full bg-background border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-            />
-          </div>
-          <button 
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white font-medium rounded-lg transition-all flex items-center gap-2"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {loading ? '分析中...' : '开始分析'}
-          </button>
-        </form>
-        
-        {/* 设置按钮 */}
-        <button 
-          onClick={() => setIsSettingsOpen(true)}
-          className="p-2 hover:bg-white/5 rounded-full transition-colors group"
-          title="系统设置"
-        >
-          <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white group-hover:rotate-45 transition-all duration-300" />
-        </button>
-      </header>
+      {/* 顶部搜索栏组件 */}
+      <SearchHeader 
+        onSearch={handleSearch}
+        loading={loading}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        stepLabel={getStepLabel()}
+      />
 
       {/* 下方主体：三栏布局 */}
       <main className="flex flex-1 overflow-hidden">
-        {/* 左侧栏 (25%) - 关注列表 */}
-        <aside className="w-1/4 border-r border-white/10 bg-panel p-6 overflow-y-auto hidden md:block">
-          <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">关注列表 (Watchlist)</h2>
-          <div className="space-y-3">
-            {[
-              { sym: 'AAPL', name: 'Apple Inc.', price: '160.20', change: '+2.45%' },
-              { sym: 'TSLA', name: 'Tesla, Inc.', price: '185.30', change: '-1.20%' },
-              { sym: 'NVDA', name: 'NVIDIA Corp.', price: '820.45', change: '+4.12%' },
-              { sym: 'MSFT', name: 'Microsoft Corp.', price: '410.15', change: '+0.85%' },
-            ].map(item => (
-              <div 
-                key={item.sym} 
-                onClick={() => {
-                  setSearchSymbol(item.sym);
-                }}
-                className={`p-4 rounded-xl border transition-all group cursor-pointer ${
-                  currentSymbol === item.sym 
-                    ? 'bg-emerald-500/10 border-emerald-500/30' 
-                    : 'bg-white/5 border-white/5 hover:bg-white/10'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <span className={`font-bold text-lg transition-colors ${
-                    currentSymbol === item.sym ? 'text-emerald-400' : 'group-hover:text-emerald-400'
-                  }`}>{item.sym}</span>
-                  <span className={`text-sm font-mono ${item.change.startsWith('+') ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {item.change}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm text-gray-400">
-                  <span>{item.name}</span>
-                  <span className="font-mono text-white">{item.price}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
+        {/* 左侧关注列表组件 */}
+        <Watchlist 
+          currentSymbol={currentSymbol}
+          onSelect={handleSearch}
+        />
 
         {/* 中间主内容 (50%) - 图表与核心详情 */}
         <section className="flex-1 md:w-1/2 p-8 overflow-y-auto bg-background/50 scrollbar-hide relative">

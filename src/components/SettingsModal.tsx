@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Settings as SettingsIcon, Globe, Key, Cpu, Save, Bot, User, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, Settings as SettingsIcon, Globe, Key, Cpu, Save, Bot, User, CheckCircle2 } from "lucide-react";
 import { useSettings, Settings } from "../hooks/useSettings";
 
 interface SettingsModalProps {
