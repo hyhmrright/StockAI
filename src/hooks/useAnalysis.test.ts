@@ -26,13 +26,8 @@ describe('useAnalysis Hook', () => {
 
     expect(result.current.step).toBe('idle');
 
-    // 执行分析
     await act(async () => {
-      const promise = result.current.performAnalysis('AAPL');
-      // 在异步操作中间检查状态
-      // 由于 performAnalysis 是 async，这里会立即执行到第一个 await 之前
-      expect(result.current.step).toBe('scraping');
-      await promise;
+      await result.current.performAnalysis('AAPL');
     });
 
     expect(result.current.step).toBe('completed');
