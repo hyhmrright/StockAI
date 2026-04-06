@@ -1,5 +1,83 @@
 # StockAI
 
+[English](./README.md) | [简体中文](./README.zh-CN.md)
+
+StockAI is a modern cross-platform desktop application built with **Tauri 2.0**. It leverages AI technology to perform deep sentiment analysis and scoring on real-time stock news, providing investors with data-driven insights.
+
+## 🌟 Key Features
+
+- **Multi-source News Scraping**: Automatically collects real-time stock news from multiple platforms like Google Finance and Yahoo Finance.
+- **Deep AI Analysis**: Supports OpenAI (GPT-4o) and Ollama (local models). It doesn't just analyze headlines but also extracts full article content for in-depth evaluation.
+- **Modern UI Design**: Features a Glassmorphism design language with immersive settings management and real-time analysis progress feedback.
+- **Local-first**: All API configurations and personalized settings are securely stored locally.
+
+## 🏗️ Architecture Overview
+
+1.  **Frontend (UI Layer)**: React 19 + TypeScript + Vite. Responsible for view rendering and user interaction.
+2.  **Core Orchestration (Tauri Core)**: Rust. Manages local persistence, system integration, and Sidecar process scheduling.
+3.  **Analysis Engine (Sidecar)**: Based on the Bun runtime. Uses Playwright for web scraping and integrates AI models for text processing.
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Bun**: Primary package manager and Sidecar runtime. [Install Bun](https://bun.sh/)
+- **Rust**: For building the Tauri core. [Install Rust](https://www.rust-lang.org/)
+- **Node.js**: (Optional) For some build tool dependencies.
+
+### 1. Install Dependencies
+
+```bash
+# Install all dependencies using Bun
+bun install
+```
+
+### 2. Prepare Sidecar Binaries
+
+Tauri's Sidecar mechanism requires specifically named binaries. Compile the Sidecar before running:
+
+```bash
+# Example: Build for macOS ARM64
+bun build sidecar/index.ts --compile --outfile src-tauri/sidecar/stockai-backend-aarch64-apple-darwin
+```
+*(Adjust the suffix based on your platform, e.g., `-x86_64-apple-darwin` or `-x86_64-pc-windows-msvc`)*
+
+### 3. Start Development Environment
+
+```bash
+bun tauri dev
+```
+
+## 🧪 Testing
+
+The project uses a multi-layered testing system:
+
+- **Frontend Tests (Vitest)**: `bun test:ui`
+- **Sidecar Logic Tests (Bun)**: `cd sidecar && bun test`
+- **Rust Core Tests (Cargo)**: `cd src-tauri && cargo test`
+- **Integrated Smoke Test**: `bun scripts/smoke-test.ts`
+
+## 🛠️ Tech Stack
+
+- **Desktop Framework**: Tauri 2.0 (Rust)
+- **Frontend Framework**: React 19, TailwindCSS 4, Lucide Icons, Lightweight Charts
+- **Scraper/Backend**: Bun, Playwright, NodeHtmlMarkdown
+- **AI Integration**: OpenAI SDK, Ollama SDK
+
+## 📅 Development Conventions
+
+- **Code Comments**: All logic comments must use **Chinese** (as per project preference).
+- **Architecture Principles**: Strictly follow Clean Architecture with unidirectional dependency flow (UI -> Core -> Sidecar).
+- **Test Driven**: All parsing logic must be verified by offline unit tests.
+
+## 📄 License
+
+MIT License
+
+---
+
+# StockAI (简体中文)
+
 StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程序，旨在利用 AI 技术对实时股票新闻进行深度情感分析和评分，为投资者提供数据驱动的洞察。
 
 ## 🌟 核心特性
@@ -19,55 +97,23 @@ StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程
 
 ### 前置要求
 
-- **Bun**: 项目的主要包管理器和 Sidecar 运行时。 [安装 Bun](https://bun.sh/)
-- **Rust**: 用于构建 Tauri 核心。 [安装 Rust](https://www.rust-lang.org/)
-- **Node.js**: (可选) 部分构建工具依赖。
+- **Bun**: 项目的主要包管理器和 Sidecar 运行时。
+- **Rust**: 用于构建 Tauri 核心。
 
 ### 1. 安装依赖
 
 ```bash
-# 使用 Bun 安装所有依赖
 bun install
 ```
 
 ### 2. Sidecar 二进制文件准备
 
-由于 Tauri 的 Sidecar 机制需要特定命名的二进制文件，请在运行前编译 Sidecar：
-
 ```bash
-# 示例：构建 macOS ARM64 版本
 bun build sidecar/index.ts --compile --outfile src-tauri/sidecar/stockai-backend-aarch64-apple-darwin
 ```
-*(请根据你的系统平台调整后缀，如 `-x86_64-apple-darwin` 或 `-x86_64-pc-windows-msvc`)*
 
 ### 3. 启动开发环境
 
 ```bash
 bun tauri dev
 ```
-
-## 🧪 测试
-
-项目采用了多层测试体系以确保稳定性：
-
-- **前端测试 (Vitest)**: `bun test:ui`
-- **Sidecar 逻辑测试 (Bun)**: `cd sidecar && bun test`
-- **Rust 核心测试 (Cargo)**: `cd src-tauri && cargo test`
-- **集成冒烟测试**: `bun scripts/smoke-test.ts`
-
-## 🛠️ 技术栈
-
-- **桌面框架**: Tauri 2.0 (Rust)
-- **前端框架**: React 19, TailwindCSS 4, Lucide Icons, Lightweight Charts
-- **爬虫/后端**: Bun, Playwright, NodeHtmlMarkdown
-- **AI 集成**: OpenAI SDK, Ollama SDK
-
-## 📅 开发规范
-
-- **代码注释**: 所有的逻辑注释均使用 **中文**。
-- **架构原则**: 严格遵循 Clean Architecture，保持依赖单向流动（UI -> Core -> Sidecar）。
-- **测试驱动**: 所有的解析逻辑必须经过离线单元测试验证。
-
-## 📄 开源协议
-
-MIT License
