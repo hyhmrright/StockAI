@@ -23,7 +23,6 @@ StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程
 
 - **Bun**: 项目的主要包管理器和 Sidecar 运行时。 [安装 Bun](https://bun.sh/)
 - **Rust**: 用于构建 Tauri 核心。 [安装 Rust](https://www.rust-lang.org/)
-- **Node.js**: (可选) 部分构建工具依赖。
 
 ### 1. 安装依赖
 
@@ -37,10 +36,15 @@ bun install
 由于 Tauri 的 Sidecar 机制需要特定命名的二进制文件，请在运行前编译 Sidecar：
 
 ```bash
-# 示例：构建 macOS ARM64 版本
-bun build sidecar/index.ts --compile --outfile src-tauri/sidecar/stockai-backend-aarch64-apple-darwin
+# macOS ARM64 (Apple Silicon)
+bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-aarch64-apple-darwin
+
+# Windows x86_64
+bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-x86_64-pc-windows-msvc.exe
+
+# Linux x86_64
+bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-x86_64-unknown-linux-gnu
 ```
-*(请根据你的系统平台调整后缀，如 `-x86_64-apple-darwin` 或 `-x86_64-pc-windows-msvc`)*
 
 ### 3. 启动开发环境
 
@@ -52,7 +56,7 @@ bun tauri dev
 
 项目采用了多层测试体系以确保稳定性：
 
-- **前端测试 (Vitest)**: `bun test:ui`
+- **前端测试 (Vitest)**: `bunx vitest run`
 - **Sidecar 逻辑测试 (Bun)**: `cd sidecar && bun test`
 - **Rust 核心测试 (Cargo)**: `cd src-tauri && cargo test`
 - **集成冒烟测试**: `bun scripts/smoke-test.ts`

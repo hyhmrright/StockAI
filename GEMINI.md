@@ -25,15 +25,21 @@ bun tauri dev
 ```
 
 ### Testing:
-*   **Frontend (Vitest)**: `bun test:ui`
+*   **Frontend (Vitest)**: `bunx vitest run`
 *   **Sidecar (Bun)**: `cd sidecar && bun test`
 *   **Rust (Cargo)**: `cd src-tauri && cargo test`
 *   **Integrated Smoke Test**: `bun scripts/smoke-test.ts`
 
 ### Sidecar Build:
 ```bash
-# Example: Build for macOS ARM64
-bun build sidecar/index.ts --compile --outfile src-tauri/sidecar/stockai-backend-aarch64-apple-darwin
+# macOS ARM64 (Apple Silicon)
+bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-aarch64-apple-darwin
+
+# Windows x86_64
+bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-x86_64-pc-windows-msvc.exe
+
+# Linux x86_64
+bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-x86_64-unknown-linux-gnu
 ```
 
 ---
@@ -50,7 +56,7 @@ bun build sidecar/index.ts --compile --outfile src-tauri/sidecar/stockai-backend
 *   **Modularity**: Keep components small (< 200 lines). Extract logic to hooks.
 
 ### Testing Strategy:
-*   **Logic Decoupling**: Separation of fetching and parsing. Parser logic must have offline unit tests in `parsers.test.ts`.
+*   **Logic Decoupling**: Separation of fetching and parsing. Parser logic must have offline unit tests in `sidecar/strategies/parsers.test.ts`.
 *   **State Verification**: Test `useAnalysis` hook for state transitions.
 
 ---
@@ -82,7 +88,7 @@ bun tauri dev
 ```
 
 ### 测试指令：
-*   **前端测试 (Vitest)**: `bun test:ui`
+*   **前端测试 (Vitest)**: `bunx vitest run`
 *   **Sidecar 测试 (Bun)**: `cd sidecar && bun test`
 *   **Rust 测试 (Cargo)**: `cd src-tauri && cargo test`
 *   **集成冒烟测试**: `bun scripts/smoke-test.ts`
@@ -101,5 +107,5 @@ bun tauri dev
 *   **组件化**: 保持 UI 组件原子化（文件行数 < 200）。
 
 ### 测试驱动：
-*   **逻辑解耦**: 解析逻辑必须与网络请求分离，在 `parsers.test.ts` 中进行离线单元测试。
+*   **逻辑解耦**: 解析逻辑必须与网络请求分离，在 `sidecar/strategies/parsers.test.ts` 中进行离线单元测试。
 *   **状态验证**: 对核心 Hook (`useAnalysis`) 进行状态流转测试。

@@ -12,11 +12,11 @@ bun tauri dev
 # Build for production
 bun tauri build
 
-# Frontend unit tests (Vitest + jsdom)
-bun test:ui
+# Frontend unit tests (Vitest + happy-dom)
+bunx vitest run
 
 # Run a single frontend test file
-bun test:ui src/hooks/useAnalysis.test.ts
+bunx vitest run src/hooks/useAnalysis.test.ts
 
 # Sidecar tests (Bun native)
 cd sidecar && bun test
@@ -28,7 +28,7 @@ cd sidecar && bun test scraper.test.ts
 cd src-tauri && cargo test
 
 # Build Sidecar binary (macOS ARM64)
-bun build sidecar/index.ts --compile --outfile src-tauri/sidecar/stockai-backend-aarch64-apple-darwin
+bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-aarch64-apple-darwin
 
 # Integration smoke test
 bun scripts/smoke-test.ts
