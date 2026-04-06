@@ -1,14 +1,6 @@
-import React from 'react';
-
-/**
- * WatchlistItem 接口定义了关注列表项的数据结构
- */
-export interface WatchlistItem {
-  sym: string;
-  name: string;
-  price: string;
-  change: string;
-}
+import React, { useState } from 'react';
+import { X, Plus } from 'lucide-react';
+import { useWatchlist } from '../hooks/useWatchlist';
 
 interface WatchlistProps {
   currentSymbol: string;
@@ -16,46 +8,65 @@ interface WatchlistProps {
 }
 
 /**
- * Watchlist 组件显示用户关注的股票列表
- * 
- * @param currentSymbol 当前选中的股票代码
- * @param onSelect 当选择一个股票时的回调函数
+ * 关注列表组件，支持增删并持久化到本地存储
  */
 const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
-  // 模拟的关注列表数据
-  const items: WatchlistItem[] = [
-    { sym: 'AAPL', name: 'Apple Inc.', price: '160.20', change: '+2.45%' },
-    { sym: 'TSLA', name: 'Tesla, Inc.', price: '185.30', change: '-1.20%' },
-    { sym: 'NVDA', name: 'NVIDIA Corp.', price: '820.45', change: '+4.12%' },
-    { sym: 'MSFT', name: 'Microsoft Corp.', price: '410.15', change: '+0.85%' },
-  ];
+  const { items, add, remove } = useWatchlist();
+  const [input, setInput] = useState('');
+
+  function handleAdd() {
+    if (!input.trim()) return;
+    add(input);
+    setInput('');
+  }
 
   return (
-    <aside className="w-1/4 border-r border-white/10 bg-panel p-6 overflow-y-auto hidden md:block">
-      <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">关注列表 (Watchlist)</h2>
-      <div className="space-y-3">
+    <aside className="w-1/4 border-r border-white/10 bg-panel p-6 overflow-y-auto hidden md:flex flex-col gap-4">
+      <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">关注列表</h2>
+
+      {/* 添加输入框 */}
+      <div className="flex gap-2">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          placeholder="输入代码后回车"
+          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-emerald-500/40"
+        />
+        <button
+          onClick={handleAdd}
+          className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* 列表 */}
+      <div className="space-y-2 flex-1">
+        {items.length === 0 && (
+          <p className="text-gray-600 text-xs text-center pt-4">暂无关注，输入代码添加</p>
+        )}
         {items.map(item => (
-          <div 
-            key={item.sym} 
+          <div
+            key={item.sym}
             onClick={() => onSelect(item.sym)}
-            className={`p-4 rounded-xl border transition-all group cursor-pointer ${
-              currentSymbol === item.sym 
-                ? 'bg-emerald-500/10 border-emerald-500/30' 
+            className={`group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+              currentSymbol === item.sym
+                ? 'bg-emerald-500/10 border-emerald-500/30'
                 : 'bg-white/5 border-white/5 hover:bg-white/10'
             }`}
           >
-            <div className="flex justify-between items-start mb-1">
-              <span className={`font-bold text-lg transition-colors ${
-                currentSymbol === item.sym ? 'text-emerald-400' : 'group-hover:text-emerald-400'
-              }`}>{item.sym}</span>
-              <span className={`text-sm font-mono ${item.change.startsWith('+') ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {item.change}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-sm text-gray-400">
-              <span>{item.name}</span>
-              <span className="font-mono text-white">{item.price}</span>
-            </div>
+            <span className={`font-bold text-sm transition-colors ${
+              currentSymbol === item.sym ? 'text-emerald-400' : 'text-gray-200 group-hover:text-emerald-400'
+            }`}>
+              {item.sym}
+            </span>
+            <button
+              onClick={e => { e.stopPropagation(); remove(item.sym); }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-500 hover:text-rose-400 transition-all"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         ))}
       </div>

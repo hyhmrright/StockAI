@@ -17,7 +17,7 @@ export function useAnalysis() {
    * 执行股票分析
    * @param symbol 股票代码
    */
-  const performAnalysis = async (symbol: string) => {
+  async function performAnalysis(symbol: string) {
     if (!symbol) return;
     
     setStep('scraping');
@@ -30,12 +30,21 @@ export function useAnalysis() {
       // 目前我们通过逻辑分段模拟进度。
       
       const responseStr = await startAnalysisIpc(symbol);
-      
+
       // 模拟步骤流转 (因为目前的 IPC 是阻塞式的)
       setStep('analyzing');
-      
-      const parsed: FullAnalysisResponse = JSON.parse(responseStr);
-      
+
+      if (!responseStr || responseStr.trim() === '') {
+        throw new Error('分析服务无响应，请检查 AI 模型配置后重试。');
+      }
+
+      const parsed = JSON.parse(responseStr) as FullAnalysisResponse & { error?: string };
+
+      // Sidecar 遇到错误时会输出 { error: "..." }
+      if (parsed.error) {
+        throw new Error(parsed.error);
+      }
+
       setResult(parsed);
       setStep('completed');
     } catch (err: any) {

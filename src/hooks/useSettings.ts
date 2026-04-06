@@ -9,6 +9,8 @@ export interface Settings {
   model: "openai" | "ollama";
   baseUrl: string;
   aiModel: string;
+  autoAnalyze: boolean;  // 点击关注列表时自动分析
+  deepMode: boolean;     // 保留字段（当前抓取全文已默认开启）
 }
 
 /**
@@ -19,6 +21,8 @@ const DEFAULT_SETTINGS: Settings = {
   model: "openai",
   baseUrl: "https://api.openai.com/v1",
   aiModel: "qwen3.5:27b",
+  autoAnalyze: true,
+  deepMode: true,
 };
 
 const STORE_PATH = "settings.json";

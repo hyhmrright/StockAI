@@ -1,0 +1,20 @@
+- generic [active] [ref=e1]:
+  - link [ref=e3] [cursor=pointer]:
+    - /url: https://www.reddit.com
+    - img [ref=e4]
+  - generic [ref=e5]:
+    - img [ref=e6]
+    - heading "Prove your humanity" [level=1] [ref=e8]
+    - paragraph [ref=e9]: We’re committed to safety and security. But not for bots. Complete the challenge below and let us know you’re a real person.
+  - generic [ref=e10]:
+    - link "Reddit, Inc. © \"2026\". All rights reserved." [ref=e11] [cursor=pointer]:
+      - /url: https://www.redditinc.com/
+    - generic [ref=e12]:
+      - link "User Agreement" [ref=e13] [cursor=pointer]:
+        - /url: https://www.reddit.com/help/useragreement
+      - link "Privacy Policy" [ref=e14] [cursor=pointer]:
+        - /url: https://www.reddit.com/help/privacypolicy
+      - link "Content Policy" [ref=e15] [cursor=pointer]:
+        - /url: https://www.reddit.com/help/contentpolicy
+      - link "Help" [ref=e16] [cursor=pointer]:
+        - /url: https://support.reddithelp.com/hc/en-us

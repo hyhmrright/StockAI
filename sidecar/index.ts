@@ -29,8 +29,11 @@ async function main() {
     process.stdout.write(JSON.stringify(result));
     process.exit(0);
   } catch (error) {
-    console.error("Sidecar 运行出错:", error);
-    process.exit(1);
+    // 将错误以 JSON 形式写入 stdout，确保前端能正确解析（而不是拿到空字符串）
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Sidecar 运行出错:", errorMessage);
+    process.stdout.write(JSON.stringify({ error: errorMessage }));
+    process.exit(0); // 错误已通过 JSON payload 传达，exit(0) 确保 Rust 侧能收到 stdout
   }
 }
 

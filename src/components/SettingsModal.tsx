@@ -89,7 +89,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* 表单内容 */}
           <div className="flex-1 p-8 overflow-y-auto scrollbar-hide space-y-8 animate-slide-in">
             {activeTab === "general" ? (
-              <GeneralForm />
+              <GeneralForm
+                settings={localSettings}
+                onChange={(s) => setLocalSettings({ ...localSettings, ...s })}
+              />
             ) : (
               <div className="space-y-6">
                 <div className="space-y-3">

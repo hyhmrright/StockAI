@@ -4,6 +4,7 @@ import SentimentBar from './SentimentBar';
 import { Loader2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { useAnalysis } from '../hooks/useAnalysis';
+import { useSettings } from '../hooks/useSettings';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 
@@ -17,6 +18,7 @@ const Dashboard: React.FC = () => {
   
   // 使用封装好的分析 Hook
   const { step, loading, error, result, performAnalysis } = useAnalysis();
+  const { settings } = useSettings();
 
   // 获取当前步骤的描述文字
   const getStepLabel = () => {
@@ -28,11 +30,17 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // 处理搜索
-  const handleSearch = (symbol: string) => {
+  // 处理搜索栏提交
+  function handleSearch(symbol: string) {
     setCurrentSymbol(symbol);
     performAnalysis(symbol);
-  };
+  }
+
+  // 处理关注列表点击（受 autoAnalyze 设置控制）
+  function handleWatchlistSelect(sym: string) {
+    setCurrentSymbol(sym);
+    if (settings.autoAnalyze) performAnalysis(sym);
+  }
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-white relative">
@@ -47,9 +55,9 @@ const Dashboard: React.FC = () => {
       {/* 下方主体：三栏布局 */}
       <main className="flex flex-1 overflow-hidden">
         {/* 左侧关注列表组件 */}
-        <Watchlist 
+        <Watchlist
           currentSymbol={currentSymbol}
-          onSelect={handleSearch}
+          onSelect={handleWatchlistSelect}
         />
 
         {/* 中间主内容 (50%) - 图表与核心详情 */}

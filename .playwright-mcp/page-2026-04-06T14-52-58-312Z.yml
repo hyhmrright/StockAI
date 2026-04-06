@@ -1,0 +1,13 @@
+- generic [ref=e2]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - dialog:
+                - group [active] [ref=e3]:
+                  - dialog [ref=e5]:
+                    - progressbar [ref=e8]:
+                      - img [ref=e10]
+      - main [ref=e14]
