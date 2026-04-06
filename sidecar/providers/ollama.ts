@@ -41,20 +41,27 @@ export class OllamaProvider implements AIProvider {
    * 构建 Prompt
    */
   private buildPrompt(symbol: string, news: any[]): string {
-    const newsList = news.map((n, i) => `${i + 1}. ${n.title}`).join("\n");
+    const newsList = news.map((n, i) => {
+      let item = `${i + 1}. 【标题】: ${n.title}`;
+      if (n.content && n.content.length > 50) {
+        item += `\n   【正文摘要】: ${n.content.substring(0, 800)}`;
+      }
+      return item;
+    }).join("\n\n");
     
     return `请分析股票 ${symbol}。
-近期新闻：
+近期抓取的新闻内容：
+
 ${newsList}
 
-请返回以下格式的 JSON：
+请结合以上新闻及其正文细节，返回以下格式的 JSON 评分报告：
 {
-  "rating": 1-100 的评分,
+  "rating": 1-100 的评分数字,
   "sentiment": "bullish" | "bearish" | "neutral",
-  "summary": "分析摘要",
-  "pros": ["正面因素"],
-  "cons": ["负面因素"]
+  "summary": "分析摘要，请包含新闻中的核心观点",
+  "pros": ["利好因素"],
+  "cons": ["利空/风险因素"]
 }
-只需返回 JSON 字符串，不要包含 Markdown。`;
+只需返回 JSON 字符串，不要包含 Markdown 格式标记。`;
   }
 }
