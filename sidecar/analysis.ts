@@ -22,8 +22,13 @@ export async function performFullAnalysis(
   let provider: AIProvider;
   
   if (providerType === 'ollama') {
-    provider = new OllamaProvider(config.model || 'llama3');
+    // 对于 Ollama，使用 config.baseUrl 作为 host，config.model 作为模型名称
+    provider = new OllamaProvider(
+      config.baseUrl || 'http://localhost:11434', 
+      config.model || 'llama3'
+    );
   } else {
+    // 对于 OpenAI/自定义 API，传递 apiKey, baseUrl 和 model
     provider = new OpenAIProvider(
       config.apiKey || process.env.OPENAI_API_KEY || '',
       config.baseUrl || 'https://api.openai.com/v1',
