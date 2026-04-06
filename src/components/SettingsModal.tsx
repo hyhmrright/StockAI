@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { X, Settings as SettingsIcon, Globe, Key, Cpu, Save, Bot, User, CheckCircle2 } from "lucide-react";
+import { X, Settings as SettingsIcon, Save, Bot, User, CheckCircle2 } from "lucide-react";
 import { useSettings, Settings } from "../hooks/useSettings";
+import { OpenAIForm } from "./settings/OpenAIForm";
+import { OllamaForm } from "./settings/OllamaForm";
+import { GeneralForm } from "./settings/GeneralForm";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -86,26 +89,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* 表单内容 */}
           <div className="flex-1 p-8 overflow-y-auto scrollbar-hide space-y-8 animate-slide-in">
             {activeTab === "general" ? (
-              <div className="space-y-6">
-                <div className="setting-row">
-                  <div className="setting-label">
-                    <span className="setting-title">自动分析</span>
-                    <span className="setting-desc">点击关注列表时自动开始分析</span>
-                  </div>
-                  <div className="w-10 h-5 bg-emerald-500/20 rounded-full relative cursor-pointer">
-                    <div className="absolute right-0.5 top-0.5 w-4 h-4 bg-emerald-500 rounded-full shadow-sm" />
-                  </div>
-                </div>
-                <div className="setting-row">
-                  <div className="setting-label">
-                    <span className="setting-title">深度模式</span>
-                    <span className="setting-desc">分析时提取新闻全文，耗时较长但准确度更高</span>
-                  </div>
-                  <div className="w-10 h-5 bg-gray-800 rounded-full relative cursor-pointer">
-                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-gray-500 rounded-full shadow-sm" />
-                  </div>
-                </div>
-              </div>
+              <GeneralForm />
             ) : (
               <div className="space-y-6">
                 <div className="space-y-3">
@@ -128,53 +112,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   </div>
                 </div>
 
-                <div className="space-y-6 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-top-2 duration-300">
-                  {/* API Key (仅 OpenAI) */}
-                  {localSettings.model === "openai" && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                          <Key className="w-3 h-3" /> API Key
-                        </label>
-                        <span className="text-[10px] text-gray-600">Encrypted locally</span>
-                      </div>
-                      <input
-                        type="password"
-                        value={localSettings.apiKey}
-                        onChange={(e) => setLocalSettings({ ...localSettings, apiKey: e.target.value })}
-                        placeholder="sk-..."
-                        className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                      />
-                    </div>
+                <div className="space-y-6 pt-4 border-t border-white/5">
+                  {localSettings.model === "openai" ? (
+                    <OpenAIForm 
+                      settings={localSettings} 
+                      onChange={(s) => setLocalSettings({ ...localSettings, ...s })} 
+                    />
+                  ) : (
+                    <OllamaForm 
+                      settings={localSettings} 
+                      onChange={(s) => setLocalSettings({ ...localSettings, ...s })} 
+                    />
                   )}
-
-                  {/* Base URL */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                      <Globe className="w-3 h-3" /> 接口地址 (Endpoint)
-                    </label>
-                    <input
-                      type="text"
-                      value={localSettings.baseUrl}
-                      onChange={(e) => setLocalSettings({ ...localSettings, baseUrl: e.target.value })}
-                      placeholder={localSettings.model === "openai" ? "https://api.openai.com/v1" : "http://localhost:11434"}
-                      className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
-                    />
-                  </div>
-
-                  {/* Model Name */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                      <Cpu className="w-3 h-3" /> 模型名称
-                    </label>
-                    <input
-                      type="text"
-                      value={localSettings.ollamaModel}
-                      onChange={(e) => setLocalSettings({ ...localSettings, ollamaModel: e.target.value })}
-                      placeholder="gpt-4o, llama3, qwen2..."
-                      className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
-                    />
-                  </div>
                 </div>
               </div>
             )}
