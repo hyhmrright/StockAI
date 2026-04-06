@@ -1,0 +1,8 @@
+pre-push:
+  commands:
+    typecheck:
+      run: bun tsc --noEmit
+      fail_text: "TypeScript type errors found. Fix them before pushing."
+    rust-check:
+      run: cargo check --manifest-path src-tauri/Cargo.toml
+      fail_text: "Rust compilation errors found. Fix them before pushing."
