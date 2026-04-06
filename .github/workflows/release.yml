@@ -19,13 +19,7 @@ jobs:
             bun-target: bun-darwin-arm64
             sidecar-name: stockai-backend-aarch64-apple-darwin
 
-          - platform: macos-13
-            args: "--target x86_64-apple-darwin"
-            rust-targets: x86_64-apple-darwin
-            bun-target: bun-darwin-x64
-            sidecar-name: stockai-backend-x86_64-apple-darwin
-
-          - platform: ubuntu-22.04
+          - platform: ubuntu-24.04
             bun-target: bun-linux-x64
             sidecar-name: stockai-backend-x86_64-unknown-linux-gnu
 
@@ -52,7 +46,7 @@ jobs:
           workspaces: src-tauri
 
       - name: Install Linux system dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -88,7 +82,6 @@ jobs:
             | Platform | File |
             |----------|------|
             | macOS (Apple Silicon) | `.dmg` ending in `aarch64` |
-            | macOS (Intel) | `.dmg` ending in `x86_64` |
             | Windows | `.msi` or `.exe` installer |
             | Linux | `.AppImage` or `.deb` |
 
