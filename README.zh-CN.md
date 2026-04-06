@@ -2,6 +2,8 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
+![StockAI Dashboard](./docs/screenshot-dashboard.png)
+
 StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程序，旨在利用 AI 技术对实时股票新闻进行深度情感分析和评分，为投资者提供数据驱动的洞察。
 
 ## 🌟 核心特性

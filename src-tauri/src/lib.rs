@@ -29,7 +29,7 @@ fn resolve_config(
 ) -> AppConfig {
     let p = provider.unwrap_or("openai");
     // 统一使用 ai_model 字段，如果缺失则根据 provider 提供默认值
-    let default_model = if p == "ollama" { "llama3" } else { "gpt-4o" };
+    let default_model = if p == "ollama" { "qwen3.5:27b" } else { "gpt-4o" };
     let m = ai_model.unwrap_or(default_model);
 
     AppConfig {

@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS: Settings = {
   apiKey: "",
   model: "openai",
   baseUrl: "https://api.openai.com/v1",
-  aiModel: "llama3",
+  aiModel: "qwen3.5:27b",
 };
 
 const STORE_PATH = "settings.json";

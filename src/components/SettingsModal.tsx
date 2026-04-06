@@ -98,7 +98,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     {["openai", "ollama"].map((m) => (
                       <button
                         key={m}
-                        onClick={() => setLocalSettings({ ...localSettings, model: m as "openai" | "ollama" })}
+                        onClick={() => {
+                          const baseUrl = m === "ollama"
+                            ? "http://localhost:11434"
+                            : "https://api.openai.com/v1";
+                          setLocalSettings({ ...localSettings, model: m as "openai" | "ollama", baseUrl });
+                        }}
                         className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
                           localSettings.model === m 
                             ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
