@@ -10,6 +10,26 @@ export interface ExtractedLink {
 }
 
 /**
+ * 助手函数：补全 URL
+ */
+function normalizeUrl(href: string, baseUrl: string): string {
+  if (href.startsWith('http')) return href;
+  const path = href.startsWith('.') ? href.substring(1) : href;
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
+/**
+ * 助手函数：清洗并分行文本
+ */
+function sanitizeText(text: string): string[] {
+  return text.split('\n')
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
+
+/**
  * 通用的 HTML 字符串链接提取助手 (不依赖 Playwright)
  */
 export async function extractLinksFromHtml(
@@ -29,14 +49,7 @@ export async function extractLinksFromHtml(
       const href = element.getAttribute('href');
       if (!href) return;
 
-      // 处理 URL 补全
-      let fullUrl = href;
-      if (!href.startsWith('http')) {
-        const path = href.startsWith('.') ? href.substring(1) : href;
-        const cleanBase = baseUrl.replace(/\/+$/, '');
-        const cleanPath = path.startsWith('/') ? path : `/${path}`;
-        fullUrl = `${cleanBase}${cleanPath}`;
-      }
+      const fullUrl = normalizeUrl(href, baseUrl);
 
       // URL 过滤
       if (urlFilter instanceof RegExp) {
@@ -54,15 +67,11 @@ export async function extractLinksFromHtml(
 
       element.onEndTag(() => {
         if (currentLink) {
-          const rawText = currentLink.text;
-          const lines = rawText.split('\n')
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
-
-          if (lines.length > 0 || rawText.trim().length > 0) {
+          const lines = sanitizeText(currentLink.text);
+          if (lines.length > 0 || currentLink.text.trim().length > 0) {
             results.push({
               url: currentLink.url,
-              text: rawText.trim(),
+              text: currentLink.text.trim(),
               lines
             });
           }

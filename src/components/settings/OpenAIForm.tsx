@@ -51,8 +51,8 @@ export const OpenAIForm: React.FC<OpenAIFormProps> = ({ settings, onChange }) =>
         </label>
         <input
           type="text"
-          value={settings.ollamaModel}
-          onChange={(e) => onChange({ ollamaModel: e.target.value })}
+          value={settings.aiModel}
+          onChange={(e) => onChange({ aiModel: e.target.value })}
           placeholder="gpt-4o..."
           className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
         />

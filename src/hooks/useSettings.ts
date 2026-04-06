@@ -8,7 +8,7 @@ export interface Settings {
   apiKey: string;
   model: "openai" | "ollama";
   baseUrl: string;
-  ollamaModel: string;
+  aiModel: string;
 }
 
 /**
@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS: Settings = {
   apiKey: "",
   model: "openai",
   baseUrl: "https://api.openai.com/v1",
-  ollamaModel: "llama3",
+  aiModel: "llama3",
 };
 
 const STORE_PATH = "settings.json";
