@@ -3,9 +3,7 @@ import PriceChart from './PriceChart';
 import SentimentBar from './SentimentBar';
 import { Settings as SettingsIcon, Search, Loader2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
-import { startAnalysis } from '../lib/ipc';
-import { AnalysisPayload } from '@sidecar/types';
-import { AIAnalysisResult } from '@sidecar/ai';
+import { useAnalysis } from '../hooks/useAnalysis';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
@@ -15,12 +13,9 @@ const Dashboard: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchSymbol, setSearchSymbol] = useState('');
   const [currentSymbol, setCurrentSymbol] = useState('AAPL');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
-  // 分析结果状态
-  const [analysisData, setAnalysisData] = useState<AnalysisPayload | null>(null);
-  const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
+  // 使用封装好的分析 Hook
+  const { loading, error, result, performAnalysis } = useAnalysis();
 
   // 处理搜索
   const handleSearch = async (e?: React.FormEvent) => {
@@ -29,28 +24,7 @@ const Dashboard: React.FC = () => {
 
     const symbol = searchSymbol.toUpperCase().trim();
     setCurrentSymbol(symbol);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // 1. 调用 Sidecar 抓取新闻并执行 AI 分析
-      const resultJson = await startAnalysis(symbol);
-      const data = JSON.parse(resultJson);
-      
-      // 数据结构: { symbol, news, analysis }
-      setAnalysisData({
-        symbol: data.symbol,
-        news: data.news
-      });
-
-      setAiResult(data.analysis);
-      
-    } catch (err: any) {
-      console.error("分析失败:", err);
-      setError(err.message || "抓取数据失败，请检查网络或稍后重试");
-    } finally {
-      setIsLoading(false);
-    }
+    performAnalysis(symbol);
   };
 
   return (
@@ -70,11 +44,11 @@ const Dashboard: React.FC = () => {
           </div>
           <button 
             type="submit"
-            disabled={isLoading}
+            disabled={loading}
             className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white font-medium rounded-lg transition-all flex items-center gap-2"
           >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {isLoading ? '分析中...' : '开始分析'}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {loading ? '分析中...' : '开始分析'}
           </button>
         </form>
         
@@ -142,7 +116,7 @@ const Dashboard: React.FC = () => {
 
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">分析详情 ({currentSymbol})</h2>
-            {isLoading && (
+            {loading && (
               <div className="flex items-center gap-2 text-xs text-emerald-500 font-medium">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 正在实时抓取数据...
@@ -168,11 +142,11 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* 新闻列表 (抓取到的真实数据) */}
-          {analysisData && analysisData.news.length > 0 && (
+          {result && result.news.length > 0 && (
             <div className="mt-10">
               <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">最新相关新闻</h2>
               <div className="space-y-4">
-                {analysisData.news.map((n: any, i: number) => (
+                {result.news.map((n, i) => (
                   <a 
                     key={i} 
                     href={n.url} 
@@ -199,16 +173,16 @@ const Dashboard: React.FC = () => {
             <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">舆情概览 (Sentiment)</h2>
             <div className="p-6 bg-white/5 rounded-2xl border border-white/5 shadow-inner">
               {/* 注入 SentimentBar 组件 */}
-              <SentimentBar bullish={aiResult ? aiResult.rating : 65} />
+              <SentimentBar bullish={result ? result.analysis.rating : 65} />
               
               <div className="mt-6 flex gap-3">
                 <div className={`w-1.5 h-auto rounded-full shrink-0 ${
-                  !aiResult ? 'bg-emerald-500' : 
-                  aiResult.sentiment === 'bullish' ? 'bg-emerald-500' : 
-                  aiResult.sentiment === 'bearish' ? 'bg-rose-500' : 'bg-amber-500'
+                  !result ? 'bg-emerald-500' : 
+                  result.analysis.sentiment === 'bullish' ? 'bg-emerald-500' : 
+                  result.analysis.sentiment === 'bearish' ? 'bg-rose-500' : 'bg-amber-500'
                 }`} />
                 <p className="text-sm text-gray-300 leading-relaxed italic font-light">
-                  "{aiResult ? aiResult.summary : "正在通过 AI 分析市场情绪。请稍候..."}"
+                  "{result ? result.analysis.summary : "正在通过 AI 分析市场情绪。请稍候..."}"
                 </p>
               </div>
             </div>
@@ -218,20 +192,20 @@ const Dashboard: React.FC = () => {
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">AI 实时洞察 (AI Insights)</h2>
-              {aiResult && (
+              {result && (
                 <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                  aiResult.sentiment === 'bullish' ? 'bg-emerald-500/20 text-emerald-500' : 
-                  aiResult.sentiment === 'bearish' ? 'bg-rose-500/20 text-rose-500' : 'bg-amber-500/20 text-amber-500'
+                  result.analysis.sentiment === 'bullish' ? 'bg-emerald-500/20 text-emerald-500' : 
+                  result.analysis.sentiment === 'bearish' ? 'bg-rose-500/20 text-rose-500' : 'bg-amber-500/20 text-amber-500'
                 }`}>
-                  {aiResult.sentiment}
+                  {result.analysis.sentiment}
                 </div>
               )}
             </div>
             
             <div className="space-y-4">
-              {aiResult ? (
+              {result ? (
                 <>
-                  {aiResult.pros.map((pro: string, i: number) => (
+                  {result.analysis.pros.map((pro, i) => (
                     <div key={`pro-${i}`} className="p-5 border-l-4 border-emerald-500 bg-emerald-500/5 rounded-r-xl">
                       <div className="text-xs text-emerald-500 mb-2 font-bold flex items-center gap-1.5">
                         <TrendingUp className="w-3 h-3" />
@@ -240,7 +214,7 @@ const Dashboard: React.FC = () => {
                       <div className="text-sm leading-snug">{pro}</div>
                     </div>
                   ))}
-                  {aiResult.cons.map((con: string, i: number) => (
+                  {result.analysis.cons.map((con, i) => (
                     <div key={`con-${i}`} className="p-5 border-l-4 border-rose-500 bg-rose-500/5 rounded-r-xl">
                       <div className="text-xs text-rose-500 mb-2 font-bold flex items-center gap-1.5">
                         <TrendingDown className="w-3 h-3" />

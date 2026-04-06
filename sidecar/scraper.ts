@@ -121,24 +121,3 @@ async function extractYahooNews(page: Page): Promise<StockNews[]> {
   } catch (e) {}
   return news;
 }
-
-import { performFullAnalysis } from './analysis';
-
-// 修改 CLI 入口逻辑，支持编译后的二进制文件运行
-if (import.meta.main || (typeof process !== 'undefined' && process.argv[1] && (process.argv[1].endsWith('stockai-backend') || process.argv[1].endsWith('stockai-backend.exe')))) {
-  const symbol = process.argv[2];
-  if (!symbol) {
-    console.error("使用方法: stockai-backend <SYMBOL>");
-    process.exit(1);
-  }
-
-  try {
-    // 执行完整分析 (抓取 + AI)
-    const result = await performFullAnalysis(symbol);
-    process.stdout.write(JSON.stringify(result));
-    process.exit(0);
-  } catch (error) {
-    console.error("Sidecar 运行出错:", error);
-    process.exit(1);
-  }
-}
