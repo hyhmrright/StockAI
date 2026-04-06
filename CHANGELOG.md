@@ -2,6 +2,20 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.1.1] - 2026-04-06
+
+### Fixed
+
+- **A-share support** — Google Finance and Yahoo Finance now correctly resolve Shanghai (SHA/.SS), Shenzhen (SZE/.SZ), and Beijing BSE (BJS/.BJ) exchanges; Chinese stock codes like `601012` or `隆基绿能601012` no longer cause JSON parse errors
+- **Editable watchlist** — watchlist now supports add/remove with persistence via `tauri-plugin-store`; previously hardcoded and read-only
+- **Functional settings toggles** — "Auto Analyze" and "Deep Mode" toggles in General Settings now save state and take effect
+- **Deep mode wired end-to-end** — `deepMode=false` now skips full article extraction for faster analysis; the setting flows from UI → Rust → Sidecar CLI args
+- **Error propagation** — sidecar errors are now returned as structured JSON to the frontend instead of silently discarding stdout
+
+### Changed
+
+- Removed `-alpha` label; the core pipeline is stable
+
 ## [0.1.0] - 2026-04-06
 
 ### Added

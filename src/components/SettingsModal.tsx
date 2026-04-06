@@ -67,7 +67,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           ))}
           
           <div className="mt-auto p-4 text-[10px] text-gray-600 font-mono">
-            StockAI v0.1.0-alpha
+            StockAI v0.1.1
           </div>
         </aside>
 
