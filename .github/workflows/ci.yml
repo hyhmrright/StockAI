@@ -39,12 +39,22 @@ jobs:
       - name: install frontend dependencies
         run: bun install
 
-      - name: build sidecar
+      - name: build sidecar (unix)
+        if: matrix.platform != 'windows-latest'
         shell: bash
         run: |
           mkdir -p sidecar
           TARGET_TRIPLE=$(rustc -Vv | grep host | cut -d ' ' -f 2)
           bun build ./sidecar/scraper.ts --compile --outfile "./sidecar/stockai-backend-$TARGET_TRIPLE"
+
+      - name: build sidecar (windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          if (!(Test-Path sidecar)) { New-Item -ItemType Directory -Path sidecar }
+          $hostInfo = rustc -Vv | Select-String "host:"
+          $triple = $hostInfo.ToString().Split(" ")[1]
+          bun build ./sidecar/scraper.ts --compile --outfile "sidecar/stockai-backend-$triple.exe"
 
       - name: build frontend and check rust
         uses: tauri-apps/tauri-action@v0
