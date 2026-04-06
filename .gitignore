@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+target/
+src-tauri/target/
+sidecar/stockai-backend-*
+*.lockb
+*.lock
 
 # Editor directories and files
 .vscode/*
