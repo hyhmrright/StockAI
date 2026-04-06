@@ -31,3 +31,4 @@ sidecar/stockai-backend-*
 # Worktrees
 .worktrees/
 worktrees/
+.playwright-mcp/
