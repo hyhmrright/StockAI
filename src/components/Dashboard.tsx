@@ -33,31 +33,17 @@ const Dashboard: React.FC = () => {
     setError(null);
 
     try {
-      // 1. 调用 Sidecar 抓取新闻
+      // 1. 调用 Sidecar 抓取新闻并执行 AI 分析
       const resultJson = await startAnalysis(symbol);
-      const news = JSON.parse(resultJson);
+      const data = JSON.parse(resultJson);
       
-      const payload: AnalysisPayload = {
-        symbol: symbol,
-        news: news
-      };
-      setAnalysisData(payload);
+      // 数据结构: { symbol, news, analysis }
+      setAnalysisData({
+        symbol: data.symbol,
+        news: data.news
+      });
 
-      // 2. 模拟调用 AI 分析 (在实际项目中这应该是另一个 IPC 调用)
-      // 这里进行 Mock 调用以符合任务要求
-      const mockAiResult: AIAnalysisResult = {
-        rating: Math.floor(Math.random() * 40) + 50, // 50-90 分
-        sentiment: Math.random() > 0.6 ? 'bullish' : (Math.random() > 0.3 ? 'neutral' : 'bearish'),
-        summary: `基于对 ${symbol} 的最新新闻分析，市场情绪呈现${
-          Math.random() > 0.5 ? '积极' : '谨慎'
-        }态势。机构投资者正在重新评估其估值模型。`,
-        pros: ['技术指标显示超卖', '核心业务增长稳健', '市场占有率提升'],
-        cons: ['宏观经济环境不确定性', '竞争加剧', '短期估值压力']
-      };
-      
-      // 模拟网络延迟
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setAiResult(mockAiResult);
+      setAiResult(data.analysis);
       
     } catch (err: any) {
       console.error("分析失败:", err);
