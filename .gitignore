@@ -27,3 +27,7 @@ sidecar/stockai-backend-*
 *.njsproj
 *.sln
 *.sw?
+
+# Worktrees
+.worktrees/
+worktrees/
