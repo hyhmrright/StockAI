@@ -10,9 +10,10 @@ async function main() {
   const apiKey = process.argv[4] || '';
   const baseUrl = process.argv[5] || '';
   const modelName = process.argv[6] || '';
+  const deepMode = process.argv[7] !== 'false'; // 默认 true，仅字符串 "false" 时关闭
   
   if (!symbol) {
-    console.error("使用方法: stockai-backend <SYMBOL> [provider] [apiKey] [baseUrl] [modelName]");
+    console.error("使用方法: stockai-backend <SYMBOL> [provider] [apiKey] [baseUrl] [modelName] [deepMode]");
     process.exit(1);
   }
 
@@ -22,7 +23,8 @@ async function main() {
     const result = await performFullAnalysis(symbol, provider as any, {
       apiKey,
       baseUrl,
-      model: modelName
+      model: modelName,
+      deepMode,
     });
     
     // 将结果输出到标准输出，供 Tauri 捕获

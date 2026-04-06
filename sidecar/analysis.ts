@@ -12,11 +12,11 @@ import { AIProvider, AIAnalysisResult } from './ai';
 export async function performFullAnalysis(
   symbol: string,
   providerType: 'openai' | 'ollama' = 'openai',
-  config: { apiKey?: string; baseUrl?: string; model?: string } = {}
+  config: { apiKey?: string; baseUrl?: string; model?: string; deepMode?: boolean } = {}
 ): Promise<{ symbol: string; news: any[]; analysis: AIAnalysisResult }> {
-  
-  // 1. 抓取新闻
-  const news = await scrapeStockNews(symbol);
+
+  // 1. 抓取新闻（deepMode 控制是否提取全文正文）
+  const news = await scrapeStockNews(symbol, config.deepMode ?? true);
   
   // 2. 初始化 AI 提供者
   let provider: AIProvider;

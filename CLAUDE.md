@@ -51,10 +51,11 @@ The Rust layer does exactly two things:
 - `settings.apiKey` → apiKey (argv[4])
 - `settings.baseUrl` → baseUrl (argv[5])
 - `settings.aiModel` → modelName (argv[6])
+- `settings.deepMode` → deepMode (argv[7])
 
 ### 3. Sidecar (`sidecar/`)
 A Bun process that reads config from CLI args and runs a two-step pipeline:
-1. **Scrape** (`scraper.ts`): Uses Playwright + Strategy pattern (`strategies/google.ts`, `strategies/yahoo.ts`) to fetch news, then extracts full article content for the first 3 results. HTML parsing helpers live in `strategies/parsers.ts`.
+1. **Scrape** (`scraper.ts`): Uses Playwright + Strategy pattern (`strategies/google.ts`, `strategies/yahoo.ts`) to fetch news. When `deepMode=true` (default), extracts full article content for the first 3 results. HTML parsing helpers live in `strategies/parsers.ts`.
 2. **Analyze** (`analysis.ts`): Instantiates a provider from `providers/` (`OpenAIProvider` or `OllamaProvider`) based on provider type, then calls `provider.analyze()`.
 
 The result is written as a JSON string to stdout, captured by Tauri, and returned to the frontend where it is parsed into `FullAnalysisResponse`.

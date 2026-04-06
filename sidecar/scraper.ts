@@ -11,7 +11,7 @@ import { NodeHtmlMarkdown } from 'node-html-markdown';
  * @param symbol 股票代码
  * @returns 抓取到的新闻列表
  */
-export async function scrapeStockNews(symbol: string): Promise<StockNews[]> {
+export async function scrapeStockNews(symbol: string, deepMode = true): Promise<StockNews[]> {
   // 模拟错误降级测试
   if (symbol === "FAIL") {
     throw new Error("模拟网络错误: 无法连接至抓取服务。");
@@ -43,18 +43,22 @@ export async function scrapeStockNews(symbol: string): Promise<StockNews[]> {
         news = results;
         console.error(`${strategy.name} 抓取成功，获取到 ${results.length} 条新闻概要。`);
         
-        // 为获取到的新闻抓取详细正文 (仅限前 3 条，以平衡性能和分析深度)
-        console.error("正在尝试提取新闻正文以进行深度分析...");
-        for (let i = 0; i < Math.min(news.length, 3); i++) {
-          try {
-            const content = await extractFullContent(page, news[i].url);
-            if (content) {
-              news[i].content = content;
-              console.error(`  - 已提取正文: ${news[i].title.substring(0, 30)}...`);
+        // 深度模式：提取前 3 条新闻的完整正文，耗时较长但分析质量更高
+        if (deepMode) {
+          console.error("深度模式已开启，正在提取新闻正文...");
+          for (let i = 0; i < Math.min(news.length, 3); i++) {
+            try {
+              const content = await extractFullContent(page, news[i].url);
+              if (content) {
+                news[i].content = content;
+                console.error(`  - 已提取正文: ${news[i].title.substring(0, 30)}...`);
+              }
+            } catch (e) {
+              console.error(`  - 无法提取正文 [${news[i].title.substring(0, 20)}]:`, (e as any).message);
             }
-          } catch (e) {
-            console.error(`  - 无法提取正文 [${news[i].title.substring(0, 20)}]:`, (e as any).message);
           }
+        } else {
+          console.error("深度模式已关闭，仅使用新闻摘要进行分析。");
         }
         
         break; // 只要有一个策略成功就停止

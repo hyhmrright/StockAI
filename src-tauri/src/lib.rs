@@ -16,6 +16,7 @@ struct AppConfig {
     api_key: String,
     base_url: String,
     model_name: String,
+    deep_mode: bool,
 }
 
 /**
@@ -26,6 +27,7 @@ fn resolve_config(
     api_key: Option<&str>,
     base_url: Option<&str>,
     ai_model: Option<&str>,
+    deep_mode: Option<bool>,
 ) -> AppConfig {
     let p = provider.unwrap_or("openai");
     // 统一使用 ai_model 字段，如果缺失则根据 provider 提供默认值
@@ -37,6 +39,7 @@ fn resolve_config(
         api_key: api_key.unwrap_or("").to_string(),
         base_url: base_url.unwrap_or("").to_string(),
         model_name: m.to_string(),
+        deep_mode: deep_mode.unwrap_or(true),
     }
 }
 
@@ -55,7 +58,7 @@ impl SidecarManager {
         config: AppConfig,
     ) -> Result<String, String> {
         // 获取 sidecar 命令并注入配置参数
-        // 参数顺序: [symbol, provider, apiKey, baseUrl, modelName]
+        // 参数顺序: [symbol, provider, apiKey, baseUrl, modelName, deepMode]
         let sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
@@ -66,6 +69,7 @@ impl SidecarManager {
                 config.api_key,
                 config.base_url,
                 config.model_name,
+                config.deep_mode.to_string(), // 深度模式开关
             ]);
 
         // 运行并捕获输出
@@ -115,8 +119,9 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
             s.get("apiKey").and_then(|v| v.as_str()),
             s.get("baseUrl").and_then(|v| v.as_str()),
             s.get("aiModel").and_then(|v| v.as_str()), // 统一后的模型名称字段
+            s.get("deepMode").and_then(|v| v.as_bool()),
         ),
-        None => resolve_config(None, None, None, None),
+        None => resolve_config(None, None, None, None, None),
     };
 
     SidecarManager::run_analysis(&app_handle, symbol, config).await
@@ -139,10 +144,11 @@ mod tests {
 
     #[test]
     fn test_resolve_config_defaults() {
-        let config = resolve_config(None, None, None, None);
+        let config = resolve_config(None, None, None, None, None);
         assert_eq!(config.provider, "openai");
         assert_eq!(config.model_name, "gpt-4o");
         assert_eq!(config.api_key, "");
+        assert_eq!(config.deep_mode, true);
     }
 
     #[test]
@@ -152,11 +158,13 @@ mod tests {
             Some("sk-test"),
             Some("https://api.proxy.com"),
             Some("gpt-3.5-turbo"),
+            Some(false),
         );
         assert_eq!(config.provider, "openai");
         assert_eq!(config.api_key, "sk-test");
         assert_eq!(config.base_url, "https://api.proxy.com");
         assert_eq!(config.model_name, "gpt-3.5-turbo");
+        assert_eq!(config.deep_mode, false);
     }
 
     #[test]
@@ -166,9 +174,11 @@ mod tests {
             None,
             Some("http://127.0.0.1:11434"),
             Some("llama2"),
+            None,
         );
         assert_eq!(config.provider, "ollama");
         assert_eq!(config.model_name, "llama2");
         assert_eq!(config.base_url, "http://127.0.0.1:11434");
+        assert_eq!(config.deep_mode, true);
     }
 }
