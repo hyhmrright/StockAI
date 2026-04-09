@@ -10,10 +10,6 @@ import { detectChinaStock } from './exchange';
 export class YahooStrategy implements ScrapeStrategy {
   name = "Yahoo Finance";
 
-  canHandle(url: string): boolean {
-    return url.includes("finance.yahoo.com");
-  }
-
   async scrape(page: Page, symbol: string): Promise<StockNews[]> {
     console.error(`正在通过 Yahoo Finance 策略抓取 ${symbol}...`);
     // A 股代码需要加交易所后缀（沪 .SS / 深 .SZ / 北 .BJ）

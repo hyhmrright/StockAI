@@ -6,12 +6,7 @@ import { StockNews } from '../types';
  */
 export interface ScrapeStrategy {
   name: string;
-  
-  /**
-   * 检查该策略是否能处理给定的 URL (目前主要用于调度，未来可以扩展)
-   */
-  canHandle(url: string): boolean;
-  
+
   /**
    * 执行具体的抓取逻辑
    * @param page Playwright Page 对象

@@ -10,10 +10,6 @@ import { detectChinaStock } from './exchange';
 export class GoogleStrategy implements ScrapeStrategy {
   name = "Google Finance";
 
-  canHandle(url: string): boolean {
-    return url.includes("google.com/finance");
-  }
-
   async scrape(page: Page, symbol: string): Promise<StockNews[]> {
     console.error(`正在通过 Google Finance 策略抓取 ${symbol}...`);
     const china = detectChinaStock(symbol);

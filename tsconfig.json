@@ -24,7 +24,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "sidecar"],
+  "include": ["src", "sidecar", "shared"],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "src/test"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

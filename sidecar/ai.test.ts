@@ -1,7 +1,6 @@
 import { expect, test, describe } from "bun:test";
 import { AIAnalysisResult } from "./ai";
-import { OpenAIProvider } from "./providers/openai";
-import { OllamaProvider } from "./providers/ollama";
+import { buildAnalysisPrompt } from "./prompts";
 
 /**
  * AI 分析 Prompt 生成逻辑测试
@@ -13,8 +12,8 @@ describe("AI Prompt 分析逻辑", () => {
     { title: "iPhone sales slow down in China", source: "Reuters", date: "2024-03-02", content: "Apple's iPhone sales in China fell 19% in the first quarter of 2024." }
   ];
 
-  test("OpenAIProvider 应该生成包含股票代码和新闻标题的 Prompt", () => {
-    const prompt = OpenAIProvider.buildPrompt(mockSymbol, mockNews);
+  test("buildAnalysisPrompt 应该生成包含股票代码和新闻标题的 Prompt", () => {
+    const prompt = buildAnalysisPrompt(mockSymbol, mockNews);
     expect(prompt).toContain("AAPL");
     expect(prompt).toContain("Apple reports record Q3 earnings");
     expect(prompt).toContain("iPhone sales slow down in China");
@@ -22,13 +21,13 @@ describe("AI Prompt 分析逻辑", () => {
     expect(prompt).toContain("资深金融分析师");
   });
 
-  test("OllamaProvider 应该生成包含股票代码和新闻标题的 Prompt", () => {
-    const prompt = OllamaProvider.buildPrompt(mockSymbol, mockNews);
-    expect(prompt).toContain("AAPL");
-    expect(prompt).toContain("Apple reports record Q3 earnings");
-    expect(prompt).toContain("iPhone sales slow down in China");
-    expect(prompt).toContain("JSON");
-    expect(prompt).toContain("评分报告");
+  test("buildAnalysisPrompt 应该支持自定义 contentLimit", () => {
+    const longContent = "A".repeat(2000);
+    const news = [{ title: "Test", source: "Test", content: longContent }];
+    const prompt800 = buildAnalysisPrompt("TEST", news, 800);
+    const prompt1000 = buildAnalysisPrompt("TEST", news, 1000);
+    // 800 截断应该比 1000 截断的结果短
+    expect(prompt800.length).toBeLessThan(prompt1000.length);
   });
 
   test("解析模拟的 AI JSON 响应", () => {

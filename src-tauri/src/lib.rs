@@ -8,9 +8,10 @@ fn greet(name: &str) -> String {
 }
 
 /**
- * 股票分析配置结构体
+ * 股票分析配置结构体，序列化为 JSON 传递给 Sidecar
  */
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 struct AppConfig {
     provider: String,
     api_key: String,
@@ -57,20 +58,15 @@ impl SidecarManager {
         symbol: String,
         config: AppConfig,
     ) -> Result<String, String> {
-        // 获取 sidecar 命令并注入配置参数
-        // 参数顺序: [symbol, provider, apiKey, baseUrl, modelName, deepMode]
+        // 将配置序列化为 JSON，通过单个参数传递给 Sidecar
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+
         let sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
             .map_err(|e| format!("无法找到 Sidecar: {}", e))?
-            .args(&[
-                symbol,
-                config.provider,
-                config.api_key,
-                config.base_url,
-                config.model_name,
-                config.deep_mode.to_string(), // 深度模式开关
-            ]);
+            .args(&[symbol, config_json]);
 
         // 运行并捕获输出
         let (mut rx, _child) = sidecar_command
@@ -103,16 +99,17 @@ impl SidecarManager {
         provider: String,
         base_url: String,
     ) -> Result<String, String> {
+        // list-models 也使用 JSON 传递参数
+        let config_json = serde_json::json!({
+            "provider": provider,
+            "baseUrl": base_url
+        }).to_string();
+
         let sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
             .map_err(|e| format!("无法找到 Sidecar: {}", e))?
-            .args(&[
-                "--list-models".to_string(),
-                provider,
-                "".to_string(), // apiKey (unused)
-                base_url,
-            ]);
+            .args(&["--list-models".to_string(), config_json]);
 
         let (mut rx, _child) = sidecar_command
             .spawn()
@@ -161,7 +158,8 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
 
     let config = match settings {
         Some(s) => resolve_config(
-            s.get("model").and_then(|v| v.as_str()), // 前端用 model 表示 provider
+            s.get("provider").and_then(|v| v.as_str())
+                .or_else(|| s.get("model").and_then(|v| v.as_str())), // 兼容旧版本
             s.get("apiKey").and_then(|v| v.as_str()),
             s.get("baseUrl").and_then(|v| v.as_str()),
             s.get("aiModel").and_then(|v| v.as_str()), // 统一后的模型名称字段

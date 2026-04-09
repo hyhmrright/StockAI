@@ -1,13 +1,7 @@
-/**
- * AI 分析结果接口
- */
-export interface AIAnalysisResult {
-  rating: number; // 1-100 分
-  sentiment: 'bullish' | 'bearish' | 'neutral'; // 情绪：看涨、看跌、中性
-  summary: string; // 简要总结
-  pros: string[]; // 优点/看涨理由
-  cons: string[]; // 缺点/看跌理由
-}
+import type { AIAnalysisResult, StockNews } from '../shared/types';
+
+// 从共享定义重新导出
+export type { AIAnalysisResult } from '../shared/types';
 
 /**
  * AI 提供者接口
@@ -18,5 +12,5 @@ export interface AIProvider {
    * @param symbol 股票代码
    * @param news 相关新闻列表
    */
-  analyze(symbol: string, news: any[]): Promise<AIAnalysisResult>;
+  analyze(symbol: string, news: StockNews[]): Promise<AIAnalysisResult>;
 }

@@ -46,12 +46,11 @@ The Rust layer does exactly two things:
 - Reads config from `settings.json` (`tauri-plugin-store`) and produces an `AppConfig` via the pure function `resolve_config()`
 - Spawns the Sidecar subprocess, injects config as CLI args, captures stdout, and returns it to the frontend
 
-**Config field mapping** (frontend → Rust → Sidecar CLI args):
-- `settings.model` → provider (argv[3])
-- `settings.apiKey` → apiKey (argv[4])
-- `settings.baseUrl` → baseUrl (argv[5])
-- `settings.aiModel` → modelName (argv[6])
-- `settings.deepMode` → deepMode (argv[7])
+**Config field mapping** (frontend → Rust → Sidecar):
+Rust 层将 `AppConfig` 序列化为 JSON 字符串，作为 Sidecar 的第二个 CLI 参数传递。
+Sidecar 通过 `JSON.parse(process.argv[3])` 解析，字段为 camelCase：
+`{ provider, apiKey, baseUrl, modelName, deepMode }`
+前端 Settings 接口字段 `provider`（"openai" | "ollama"）对应 Rust `AppConfig.provider`。
 
 ### 3. Sidecar (`sidecar/`)
 A Bun process that reads config from CLI args and runs a two-step pipeline:

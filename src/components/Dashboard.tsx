@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import PriceChart from './PriceChart';
-import SentimentBar from './SentimentBar';
-import { Loader2, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { useAnalysis } from '../hooks/useAnalysis';
 import { useSettings } from '../hooks/useSettings';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
+import AnalysisPanel from './AnalysisPanel';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
@@ -85,17 +85,15 @@ const Dashboard: React.FC = () => {
           {/* 注入 PriceChart 组件 */}
           <PriceChart symbol={currentSymbol} />
           
-          {/* 指标展示区 */}
+          {/* 指标展示区（待接入行情数据源） */}
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
               <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">成交量 (Volume)</div>
-              <div className="text-2xl font-mono font-bold">12,548,932</div>
-              <div className="mt-2 text-xs text-emerald-400 font-medium">高于平均水平 15%</div>
+              <div className="text-2xl font-mono font-bold text-gray-500">暂无数据</div>
             </div>
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
               <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">市值 (Market Cap)</div>
-              <div className="text-2xl font-mono font-bold">$2.85T</div>
-              <div className="mt-2 text-xs text-gray-500">全球排名 #1</div>
+              <div className="text-2xl font-mono font-bold text-gray-500">暂无数据</div>
             </div>
           </div>
 
@@ -125,74 +123,7 @@ const Dashboard: React.FC = () => {
         </section>
 
         {/* 右侧分析栏 (25%) - 舆情与 AI 洞察 */}
-        <aside className="w-1/4 border-l border-white/10 bg-panel p-6 overflow-y-auto hidden lg:block">
-          {/* 舆情概览区 */}
-          <div className="mb-10">
-            <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">舆情概览 (Sentiment)</h2>
-            <div className="p-6 bg-white/5 rounded-2xl border border-white/5 shadow-inner">
-              {/* 注入 SentimentBar 组件 */}
-              <SentimentBar bullish={result ? result.analysis.rating : 65} />
-              
-              <div className="mt-6 flex gap-3">
-                <div className={`w-1.5 h-auto rounded-full shrink-0 ${
-                  !result ? 'bg-emerald-500' : 
-                  result.analysis.sentiment === 'bullish' ? 'bg-emerald-500' : 
-                  result.analysis.sentiment === 'bearish' ? 'bg-rose-500' : 'bg-amber-500'
-                }`} />
-                <p className="text-sm text-gray-300 leading-relaxed italic font-light">
-                  "{result ? result.analysis.summary : "正在通过 AI 分析市场情绪。请稍候..."}"
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* AI 洞察区 */}
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">AI 实时洞察 (AI Insights)</h2>
-              {result && (
-                <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                  result.analysis.sentiment === 'bullish' ? 'bg-emerald-500/20 text-emerald-500' : 
-                  result.analysis.sentiment === 'bearish' ? 'bg-rose-500/20 text-rose-500' : 'bg-amber-500/20 text-amber-500'
-                }`}>
-                  {result.analysis.sentiment}
-                </div>
-              )}
-            </div>
-            
-            <div className="space-y-4">
-              {result ? (
-                <>
-                  {result.analysis.pros.map((pro, i) => (
-                    <div key={`pro-${i}`} className="p-5 border-l-4 border-emerald-500 bg-emerald-500/5 rounded-r-xl">
-                      <div className="text-xs text-emerald-500 mb-2 font-bold flex items-center gap-1.5">
-                        <TrendingUp className="w-3 h-3" />
-                        利多因素
-                      </div>
-                      <div className="text-sm leading-snug">{pro}</div>
-                    </div>
-                  ))}
-                  {result.analysis.cons.map((con, i) => (
-                    <div key={`con-${i}`} className="p-5 border-l-4 border-rose-500 bg-rose-500/5 rounded-r-xl">
-                      <div className="text-xs text-rose-500 mb-2 font-bold flex items-center gap-1.5">
-                        <TrendingDown className="w-3 h-3" />
-                        风险提示
-                      </div>
-                      <div className="text-sm leading-snug">{con}</div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <div className="text-center py-10 opacity-50 space-y-4">
-                  <div className="flex justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500/30" />
-                  </div>
-                  <div className="text-xs">等待分析数据...</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
+        <AnalysisPanel result={result} />
       </main>
 
       {/* 设置模态框 */}

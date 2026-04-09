@@ -1,7 +1,7 @@
+import type { StockNews } from '../shared/types';
 import { scrapeStockNews } from './scraper';
-import { OpenAIProvider } from './providers/openai';
-import { OllamaProvider } from './providers/ollama';
-import { AIProvider, AIAnalysisResult } from './ai';
+import { AIAnalysisResult } from './ai';
+import { createProvider } from './providers/registry';
 
 /**
  * 执行完整的股票分析流程
@@ -11,9 +11,9 @@ import { AIProvider, AIAnalysisResult } from './ai';
  */
 export async function performFullAnalysis(
   symbol: string,
-  providerType: 'openai' | 'ollama' = 'openai',
+  providerType: string = 'openai',
   config: { apiKey?: string; baseUrl?: string; model?: string; deepMode?: boolean } = {}
-): Promise<{ symbol: string; news: any[]; analysis: AIAnalysisResult }> {
+): Promise<{ symbol: string; news: StockNews[]; analysis: AIAnalysisResult }> {
 
   // 1. 抓取新闻（deepMode 控制是否提取全文正文）
   const news = await scrapeStockNews(symbol, config.deepMode ?? true);
@@ -21,31 +21,12 @@ export async function performFullAnalysis(
   if (!news || news.length === 0) {
     throw new Error(`未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`);
   }
-  
-  // 2. 初始化 AI 提供者
-  let provider: AIProvider;
-  
-  if (providerType === 'ollama') {
-    // 对于 Ollama，使用 config.baseUrl 作为 host，config.model 作为模型名称
-    provider = new OllamaProvider(
-      config.baseUrl || 'http://localhost:11434', 
-      config.model || 'qwen3.5:27b'
-    );
-  } else {
-    // 对于 OpenAI/自定义 API，传递 apiKey, baseUrl 和 model
-    provider = new OpenAIProvider(
-      config.apiKey || process.env.OPENAI_API_KEY || '',
-      config.baseUrl || 'https://api.openai.com/v1',
-      config.model || 'gpt-4o'
-    );
-  }
-  
+
+  // 2. 通过工厂创建 AI Provider
+  const provider = createProvider(providerType, config);
+
   // 3. 执行 AI 分析
   const analysis = await provider.analyze(symbol, news);
-  
-  return {
-    symbol,
-    news,
-    analysis
-  };
+
+  return { symbol, news, analysis };
 }

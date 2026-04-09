@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { load } from "@tauri-apps/plugin-store";
+import { useState, useEffect } from "react";
+import { getStore } from "../lib/store";
 
 export interface WatchlistItem {
   sym: string;
@@ -13,7 +13,6 @@ const DEFAULT_WATCHLIST: WatchlistItem[] = [
   { sym: "MSFT", name: "Microsoft Corp." },
 ];
 
-const STORE_PATH = "settings.json";
 const STORE_KEY = "watchlist";
 
 /**
@@ -21,14 +20,6 @@ const STORE_KEY = "watchlist";
  */
 export function useWatchlist() {
   const [items, setItems] = useState<WatchlistItem[]>(DEFAULT_WATCHLIST);
-  const storeRef = useRef<Awaited<ReturnType<typeof load>> | null>(null);
-
-  async function getStore() {
-    if (!storeRef.current) {
-      storeRef.current = await load(STORE_PATH);
-    }
-    return storeRef.current;
-  }
 
   useEffect(() => {
     async function init() {

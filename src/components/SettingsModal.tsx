@@ -105,15 +105,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                           const baseUrl = m === "ollama"
                             ? "http://localhost:11434"
                             : "https://api.openai.com/v1";
-                          setLocalSettings({ ...localSettings, model: m as "openai" | "ollama", baseUrl });
+                          setLocalSettings({ ...localSettings, provider: m as "openai" | "ollama", baseUrl });
                         }}
                         className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
-                          localSettings.model === m 
+                          localSettings.provider === m 
                             ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
                             : "bg-black/20 border-white/5 text-gray-400 hover:bg-white/5"
                         }`}
                       >
-                        <div className={`w-2 h-2 rounded-full ${localSettings.model === m ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" : "bg-gray-600"}`} />
+                        <div className={`w-2 h-2 rounded-full ${localSettings.provider === m ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" : "bg-gray-600"}`} />
                         <span className="capitalize font-medium">{m}</span>
                       </button>
                     ))}
@@ -121,7 +121,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </div>
 
                 <div className="space-y-6 pt-4 border-t border-white/5">
-                  {localSettings.model === "openai" ? (
+                  {localSettings.provider === "openai" ? (
                     <OpenAIForm 
                       settings={localSettings} 
                       onChange={(s) => setLocalSettings({ ...localSettings, ...s })} 
