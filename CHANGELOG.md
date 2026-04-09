@@ -2,6 +2,38 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.1.2] - 2026-04-09
+
+### Improved
+
+- **Architecture refactor** — Shared type definitions (`shared/types.ts`) as single source of truth across frontend and sidecar; eliminated 3 duplicate interface definitions
+- **JSON config passing** — Rust→Sidecar config injection changed from fragile positional CLI args to single JSON parameter; adding new config fields now requires changes in 2 files instead of 4+
+- **Provider factory** — AI provider creation moved to `providers/registry.ts` factory; `analysis.ts` no longer imports concrete providers
+- **Unified error handling** — Extracted `toErrorMessage()` utility; all error catch blocks use type-safe `instanceof` checks instead of `as any`
+- **Centralized config** — Magic numbers (timeouts, content limits, model defaults) consolidated in `sidecar/config.ts`
+- **Runtime validation** — Sidecar JSON responses validated before rendering; malformed AI output now shows clear error message
+- **Component extraction** — Dashboard (207→140 lines), SettingsModal (177→140 lines) via AnalysisPanel and ProviderSelector components
+- **Shared FormInput** — OpenAI/Ollama settings forms share a common input component
+- **Store singleton** — `src/lib/store.ts` ensures all hooks share one store instance with retry-on-failure
+- **OllamaForm debounce** — Model list fetch debounced (500ms) to prevent IPC spam on every keystroke
+- **PriceChart placeholder** — Replaced misleading hardcoded mock data with honest "coming soon" placeholder
+
+### Fixed
+
+- **`page.evaluate` compiled binary bug** — Inline arrow function for Playwright evaluate to prevent breakage in Bun-compiled sidecar binary
+- **Settings migration** — `model→provider` field rename with backward-compatible migration that persists to store
+- **Default aiModel mismatch** — Fixed default Ollama model name being used with OpenAI provider
+
+### Added
+
+- **Test suite expansion** — 12→34 unit tests (exchange detection, provider factory, withTimeout, sad-path validation, HTML resilience)
+- **Integration test isolation** — Flaky scraper test renamed to `.integration.ts`, excluded from default `bun test` (86s→82ms)
+- **SentimentBar data-testid** — Tests decoupled from Tailwind CSS class names
+
+### Removed
+
+- Dead `AnalysisPayload` export and unused `canHandle()` from ScrapeStrategy interface
+
 ## [0.1.1] - 2026-04-06
 
 ### Fixed
