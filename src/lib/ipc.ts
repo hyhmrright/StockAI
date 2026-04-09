@@ -21,13 +21,8 @@ export async function startAnalysis(symbol: string): Promise<string> {
  * @param baseUrl 接口地址
  */
 export async function listModels(provider: string, baseUrl: string): Promise<string[]> {
-  try {
-    const result = await invoke<string>("list_models", { provider, baseUrl });
-    const parsed = JSON.parse(result);
-    if (parsed.error) throw new Error(parsed.error);
-    return parsed.models || [];
-  } catch (error) {
-    console.error("IPC 调用失败 (list_models):", error);
-    return [];
-  }
+  const result = await invoke<string>("list_models", { provider, baseUrl });
+  const parsed = JSON.parse(result);
+  if (parsed.error) throw new Error(parsed.error);
+  return parsed.models || [];
 }

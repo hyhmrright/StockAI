@@ -1,6 +1,7 @@
 import React from "react";
 import { Key, Globe, Cpu } from "lucide-react";
 import { Settings } from "../../hooks/useSettings";
+import { FormInput } from "./FormInput";
 
 interface OpenAIFormProps {
   settings: Settings;
@@ -10,53 +11,34 @@ interface OpenAIFormProps {
 /**
  * OpenAI 配置表单组件
  */
-export const OpenAIForm: React.FC<OpenAIFormProps> = ({ settings, onChange }) => {
+export function OpenAIForm({ settings, onChange }: OpenAIFormProps): React.ReactElement {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
-      {/* API Key */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1.5">
-            <Key className="w-3 h-3" /> API Key
-          </label>
-          <span className="text-[10px] text-gray-600">本地加密存储</span>
-        </div>
-        <input
-          type="password"
-          value={settings.apiKey}
-          onChange={(e) => onChange({ apiKey: e.target.value })}
-          placeholder="sk-..."
-          className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-        />
-      </div>
-
-      {/* Base URL */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1.5">
-          <Globe className="w-3 h-3" /> 接口地址 (Endpoint)
-        </label>
-        <input
-          type="text"
-          value={settings.baseUrl}
-          onChange={(e) => onChange({ baseUrl: e.target.value })}
-          placeholder="https://api.openai.com/v1"
-          className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
-        />
-      </div>
-
-      {/* Model Name */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1.5">
-          <Cpu className="w-3 h-3" /> 模型名称
-        </label>
-        <input
-          type="text"
-          value={settings.aiModel}
-          onChange={(e) => onChange({ aiModel: e.target.value })}
-          placeholder="gpt-4o..."
-          className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-mono"
-        />
-      </div>
+      <FormInput
+        label="API Key"
+        icon={<Key className="w-3 h-3" />}
+        type="password"
+        value={settings.apiKey}
+        onChange={(v) => onChange({ apiKey: v })}
+        placeholder="sk-..."
+        hint="本地加密存储"
+      />
+      <FormInput
+        label="接口地址 (Endpoint)"
+        icon={<Globe className="w-3 h-3" />}
+        value={settings.baseUrl}
+        onChange={(v) => onChange({ baseUrl: v })}
+        placeholder="https://api.openai.com/v1"
+        mono
+      />
+      <FormInput
+        label="模型名称"
+        icon={<Cpu className="w-3 h-3" />}
+        value={settings.aiModel}
+        onChange={(v) => onChange({ aiModel: v })}
+        placeholder="gpt-4o..."
+        mono
+      />
     </div>
   );
-};
+}

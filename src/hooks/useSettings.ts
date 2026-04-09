@@ -14,12 +14,20 @@ export interface Settings {
 }
 
 /**
+ * 各 Provider 对应的默认 baseUrl
+ */
+export const PROVIDER_BASE_URLS: Record<Settings["provider"], string> = {
+  openai: "https://api.openai.com/v1",
+  ollama: "http://localhost:11434",
+};
+
+/**
  * 默认设置
  */
-const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   apiKey: "",
   provider: "openai",
-  baseUrl: "https://api.openai.com/v1",
+  baseUrl: PROVIDER_BASE_URLS.openai,
   aiModel: "",
   autoAnalyze: true,
   deepMode: true,
@@ -66,7 +74,7 @@ export function useSettings() {
    * 更新并保存设置
    * @param newSettings 部分或全部新设置
    */
-  const updateSettings = async (newSettings: Partial<Settings>) => {
+  async function updateSettings(newSettings: Partial<Settings>) {
     try {
       const updated = { ...settings, ...newSettings };
       setSettings(updated);
@@ -77,7 +85,7 @@ export function useSettings() {
     } catch (error) {
       console.error("保存设置失败:", error);
     }
-  };
+  }
 
   return {
     settings,

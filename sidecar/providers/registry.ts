@@ -1,4 +1,5 @@
 import { AIProvider } from "../ai";
+import { PROVIDER_DEFAULTS } from "../config";
 import { OpenAIProvider } from "./openai";
 import { OllamaProvider } from "./ollama";
 
@@ -22,15 +23,15 @@ export function createProvider(
   switch (type) {
     case 'ollama':
       return new OllamaProvider(
-        config.baseUrl || 'http://localhost:11434',
-        config.model || 'qwen3.5:27b'
+        config.baseUrl || PROVIDER_DEFAULTS.ollama.baseUrl,
+        config.model || PROVIDER_DEFAULTS.ollama.model
       );
     case 'openai':
     default:
       return new OpenAIProvider(
         config.apiKey || process.env.OPENAI_API_KEY || '',
-        config.baseUrl || 'https://api.openai.com/v1',
-        config.model || 'gpt-4o'
+        config.baseUrl || PROVIDER_DEFAULTS.openai.baseUrl,
+        config.model || PROVIDER_DEFAULTS.openai.model
       );
   }
 }

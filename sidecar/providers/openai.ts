@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { StockNews } from "../../shared/types";
 import { AIAnalysisResult, AIProvider } from "../ai";
+import { CONTENT_LIMITS, PROVIDER_DEFAULTS, TIMEOUTS } from "../config";
 import { buildAnalysisPrompt } from "../prompts";
 
 /**
@@ -10,7 +11,7 @@ export class OpenAIProvider implements AIProvider {
   private client: OpenAI;
   private model: string;
 
-  constructor(apiKey?: string, baseURL?: string, model: string = "gpt-4o") {
+  constructor(apiKey?: string, baseURL?: string, model: string = PROVIDER_DEFAULTS.openai.model) {
     // 优先使用构造函数传入的参数，否则使用环境变量
     this.client = new OpenAI({
       apiKey: apiKey || process.env.OPENAI_API_KEY,
@@ -23,7 +24,7 @@ export class OpenAIProvider implements AIProvider {
    * 分析股票
    */
   async analyze(symbol: string, news: StockNews[]): Promise<AIAnalysisResult> {
-    const prompt = buildAnalysisPrompt(symbol, news, 1000);
+    const prompt = buildAnalysisPrompt(symbol, news, CONTENT_LIMITS.openai);
 
     try {
       const response = await this.client.chat.completions.create({
@@ -33,13 +34,13 @@ export class OpenAIProvider implements AIProvider {
           { role: "user", content: prompt }
         ],
         response_format: { type: "json_object" }
-      }, { timeout: 60000 });
+      }, { timeout: TIMEOUTS.openai });
 
       const content = response.choices[0].message.content || "{}";
       return JSON.parse(content) as AIAnalysisResult;
     } catch (error) {
       console.error("OpenAI 分析出错:", error);
-      throw new Error(`OpenAI 分析失败: ${(error as any).message}`);
+      throw new Error(`OpenAI 分析失败: ${(error instanceof Error ? error.message : String(error))}`);
     }
   }
 }

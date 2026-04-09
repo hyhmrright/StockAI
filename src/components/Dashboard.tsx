@@ -4,6 +4,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { useAnalysis } from '../hooks/useAnalysis';
 import { useSettings } from '../hooks/useSettings';
+import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import AnalysisPanel from './AnalysisPanel';
@@ -14,21 +15,21 @@ import AnalysisPanel from './AnalysisPanel';
  */
 const Dashboard: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [currentSymbol, setCurrentSymbol] = useState('AAPL');
+  const [currentSymbol, setCurrentSymbol] = useState(DEFAULT_WATCHLIST[0].sym);
   
   // 使用封装好的分析 Hook
   const { step, loading, error, result, performAnalysis } = useAnalysis();
   const { settings } = useSettings();
 
   // 获取当前步骤的描述文字
-  const getStepLabel = () => {
+  function getStepLabel(): string {
     switch (step) {
       case 'scraping': return '正在抓取实时新闻...';
       case 'extracting': return '正在提取新闻正文...';
       case 'analyzing': return 'AI 正在深度分析市场情绪...';
       default: return '正在实时分析数据...';
     }
-  };
+  }
 
   // 处理搜索栏提交
   function handleSearch(symbol: string) {

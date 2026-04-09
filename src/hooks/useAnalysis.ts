@@ -25,10 +25,6 @@ export function useAnalysis() {
     setResult(null);
 
     try {
-      // 在当前的 Sidecar 实现中，步骤是内部流转的，
-      // 但我们可以通过模拟延时或未来增加 IPC 事件流来实现真正的实时同步。
-      // 目前我们通过逻辑分段模拟进度。
-      
       const responseStr = await startAnalysisIpc(symbol);
 
       // 模拟步骤流转 (因为目前的 IPC 是阻塞式的)
@@ -45,11 +41,17 @@ export function useAnalysis() {
         throw new Error(parsed.error);
       }
 
+      // 验证响应结构完整性
+      if (!parsed.analysis || typeof parsed.analysis.rating !== 'number' || !Array.isArray(parsed.news)) {
+        throw new Error('分析结果格式异常，请检查 AI 模型是否正确返回了 JSON。');
+      }
+
       setResult(parsed);
       setStep('completed');
-    } catch (err: any) {
+    } catch (err) {
       console.error('分析执行失败:', err);
-      setError(err.message || '分析过程中发生错误，请重试。');
+      const msg = err instanceof Error ? err.message : '分析过程中发生错误，请重试。';
+      setError(msg);
       setStep('error');
     }
   };

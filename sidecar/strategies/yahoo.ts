@@ -3,6 +3,7 @@ import { StockNews } from '../types';
 import { ScrapeStrategy } from './base';
 import { parseYahooNews } from './parsers';
 import { detectChinaStock } from './exchange';
+import { TIMEOUTS } from '../config';
 
 /**
  * Yahoo Finance 抓取策略
@@ -18,14 +19,15 @@ export class YahooStrategy implements ScrapeStrategy {
     const yahooUrl = `https://finance.yahoo.com/quote/${yahooSymbol}`;
     
     try {
-      await page.goto(yahooUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
-      await page.waitForTimeout(1000);
+      await page.goto(yahooUrl, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.pageNavigation }).catch(() => {});
+      await page.waitForTimeout(TIMEOUTS.pageWait);
 
       // 获取完整 HTML 并交由解耦的解析器处理
       const html = await page.content();
       return await parseYahooNews(html);
     } catch (error) {
-      console.error(`Yahoo Finance 抓取异常:`, error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`Yahoo Finance 抓取异常 (${symbol}): ${msg}`);
       return [];
     }
   }

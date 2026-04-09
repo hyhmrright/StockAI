@@ -6,7 +6,7 @@ export interface WatchlistItem {
   name: string;
 }
 
-const DEFAULT_WATCHLIST: WatchlistItem[] = [
+export const DEFAULT_WATCHLIST: WatchlistItem[] = [
   { sym: "AAPL", name: "Apple Inc." },
   { sym: "TSLA", name: "Tesla, Inc." },
   { sym: "NVDA", name: "NVIDIA Corp." },

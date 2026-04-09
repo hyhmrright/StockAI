@@ -12,12 +12,14 @@ describe('useAnalysis Hook', () => {
   it('应该能正常处理分析流程的状态流转', async () => {
     const mockResult = JSON.stringify({
       symbol: 'AAPL',
-      price: 150,
-      change: 2.5,
-      change_percent: 1.7,
-      summary: '看涨',
-      sentiment: { bullish: 80, bearish: 20 },
-      news: []
+      news: [{ title: '测试新闻', source: 'Test', date: '2025-01-01', content: '', url: '' }],
+      analysis: {
+        rating: 75,
+        sentiment: 'bullish',
+        summary: '看涨信号明显',
+        pros: ['业绩增长'],
+        cons: ['估值偏高']
+      }
     });
 
     (startAnalysisIpc as any).mockResolvedValue(mockResult);
