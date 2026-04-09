@@ -26,10 +26,25 @@ export interface AIAnalysisResult {
 }
 
 /**
+ * 股票基本信息（来自 Sina Finance / Yahoo Finance）
+ */
+export interface StockInfo {
+  name: string;            // 股票全称
+  code: string;            // 标准化代码（如 688693）
+  exchange: string;        // 交易所名称（科创板 / 上交所 / 深交所 / 北交所 / NASDAQ / NYSE）
+  market: string;          // 市场（A股 / 美股）
+  price?: number;          // 最新价
+  change?: number;         // 涨跌额
+  changePercent?: number;  // 涨跌幅 %
+  currency: string;        // 货币（CNY / USD）
+}
+
+/**
  * 完整的股票分析响应
  */
 export interface FullAnalysisResponse {
   symbol: string;
+  stockInfo?: StockInfo;
   news: StockNews[];
   analysis: AIAnalysisResult;
 }

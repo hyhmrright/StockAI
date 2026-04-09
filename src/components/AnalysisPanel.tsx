@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import SentimentBar from './SentimentBar';
+import StockInfoCard from './StockInfoCard';
 import { FullAnalysisResponse } from '../lib/api-types';
 
 interface AnalysisPanelProps {
@@ -34,6 +35,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result }) => {
 
   return (
     <aside className="w-1/4 border-l border-white/10 bg-panel p-6 overflow-y-auto hidden lg:block">
+      {/* 股票信息卡片 */}
+      {result?.stockInfo && <StockInfoCard info={result.stockInfo} />}
+
       {/* 舆情概览区 */}
       <div className="mb-10">
         <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">舆情概览 (Sentiment)</h2>

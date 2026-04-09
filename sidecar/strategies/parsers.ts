@@ -155,3 +155,60 @@ export async function parseYahooNews(html: string, baseUrl: string = "https://fi
   
   return [];
 }
+
+/**
+ * 从 HTML 字符串中提取非 google.com 的外部 HTTP 链接（已去重）
+ */
+export function extractExternalLinks(html: string): string[] {
+  const seen = new Set<string>();
+  const results: string[] = [];
+  const hrefRegex = /href="(https?:\/\/[^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = hrefRegex.exec(html)) !== null) {
+    const href = m[1];
+    if (!href.includes('google.com') && !seen.has(href)) {
+      seen.add(href);
+      results.push(href);
+    }
+  }
+  return results;
+}
+
+/**
+ * 从 URL 中提取域名（去除 www. 前缀）
+ */
+export function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * 从 Google News 搜索结果页面解析新闻列表
+ */
+export function parseGoogleNewsSearch(html: string, symbol: string): StockNews[] {
+  const links = extractExternalLinks(html);
+  if (links.length === 0) return [];
+
+  const seen = new Set<string>();
+  const titleRegex = /<div[^>]*class="[^"]*BNeawe[^"]*"[^>]*>([^<]{10,120})<\/div>/g;
+  const titles: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = titleRegex.exec(html)) !== null) {
+    const t = m[1].trim();
+    if (!t.includes('http') && !seen.has(t)) {
+      seen.add(t);
+      titles.push(t);
+    }
+  }
+
+  return links.slice(0, 8).map((url, i) => ({
+    title: titles[i] ?? `${symbol} 相关新闻 ${i + 1}`,
+    source: extractDomain(url),
+    date: new Date().toISOString().split('T')[0],
+    content: '',
+    url,
+  }));
+}

@@ -1,6 +1,7 @@
 import { chromium, Browser, Page } from 'playwright-core';
 import { StockNews } from './types';
 import { ScrapeStrategy } from './strategies/base';
+import { GoogleNewsSearchStrategy } from './strategies/google-news';
 import { GoogleStrategy } from './strategies/google';
 import { YahooStrategy } from './strategies/yahoo';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
@@ -34,8 +35,9 @@ export async function scrapeStockNews(symbol: string, deepMode = true): Promise<
   const page: Page = await context.newPage();
   let news: StockNews[] = [];
 
-  // 定义所有可用策略
+  // 定义所有可用策略（GoogleNewsSearch 优先，适用于任何股票）
   const strategies: ScrapeStrategy[] = [
+    new GoogleNewsSearchStrategy(),
     new GoogleStrategy(),
     new YahooStrategy()
   ];
