@@ -6,20 +6,20 @@ All notable changes to StockAI will be documented in this file.
 
 ### Added
 
-- **多 AI 提供商支持** — 新增 Anthropic Claude 和 DeepSeek 提供商；设置面板改为下拉框选择，各 Provider 配置独立保存，切换时不丢失
-- **股票搜索标准化** — 新增 Google News 搜索策略作为首选抓取方式，修复小盘 A 股（如科创板 688693）因 Google Finance 页面无新闻导致无结果的问题
-- **股票信息卡片** — 分析完成后展示股票名称、交易所标签（科创板 / 上交所 / 深交所等）、最新价及涨跌幅
-- **混合输入支持** — 支持"锴威特688693"格式输入，自动提取中文名与 6 位代码
-- **Sina Finance 行情接口** — 通过新浪财经实时行情 API 获取 A 股基本信息（价格、涨跌额、涨跌幅）
+- **Multi-provider AI support** — Added Anthropic Claude and DeepSeek providers; settings panel redesigned as a dropdown with independent per-provider config storage
+- **Google News search strategy** — New primary scrape strategy that searches Google News by stock name/code, fixing zero-result failures for small-cap A-shares (e.g. STAR Market 688xxx) that have no Google Finance quote page
+- **Stock info card** — Displays exchange label (STAR Market / SSE / SZSE / BSE), stock name, latest price, and change% above analysis results
+- **Mixed-format input** — Accepts inputs like "锴威特688693"; automatically extracts the Chinese display name and 6-digit code
+- **Sina Finance API** — Fetches real-time A-share price data (price, change, change%) from `hq.sinajs.cn`
 
 ### Fixed
 
-- **分析服务无响应** — 修复编译后 Bun sidecar 在管道模式下 `process.exit()` 不刷新 stdout 缓冲区的问题
-- **Rust 事件循环竞态** — 移除 `Terminated` 事件上的 `break`，防止丢失尾部 stdout 事件
+- **Silent analysis failure** — Fixed compiled Bun sidecar not flushing stdout buffer when connected to a pipe (`process.exit()` skips flush in full-buffered mode)
+- **Rust stdout race condition** — Removed `break` on `Terminated` event to drain all pending stdout events before the loop exits
 
 ### Changed
 
-- 默认 AI 提供商改为 Ollama（`qwen3.5:9b`）
+- Default AI provider changed to Ollama (`qwen3.5:9b`)
 
 ## [0.1.2] - 2026-04-09
 
