@@ -2,6 +2,25 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.1.3] - 2026-04-09
+
+### Added
+
+- **多 AI 提供商支持** — 新增 Anthropic Claude 和 DeepSeek 提供商；设置面板改为下拉框选择，各 Provider 配置独立保存，切换时不丢失
+- **股票搜索标准化** — 新增 Google News 搜索策略作为首选抓取方式，修复小盘 A 股（如科创板 688693）因 Google Finance 页面无新闻导致无结果的问题
+- **股票信息卡片** — 分析完成后展示股票名称、交易所标签（科创板 / 上交所 / 深交所等）、最新价及涨跌幅
+- **混合输入支持** — 支持"锴威特688693"格式输入，自动提取中文名与 6 位代码
+- **Sina Finance 行情接口** — 通过新浪财经实时行情 API 获取 A 股基本信息（价格、涨跌额、涨跌幅）
+
+### Fixed
+
+- **分析服务无响应** — 修复编译后 Bun sidecar 在管道模式下 `process.exit()` 不刷新 stdout 缓冲区的问题
+- **Rust 事件循环竞态** — 移除 `Terminated` 事件上的 `break`，防止丢失尾部 stdout 事件
+
+### Changed
+
+- 默认 AI 提供商改为 Ollama（`qwen3.5:9b`）
+
 ## [0.1.2] - 2026-04-09
 
 ### Improved
