@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getStore } from "../lib/store";
 import { ProviderType } from "../../shared/types";
+import { PROVIDER_DEFAULTS, DEFAULT_SETTINGS as SHARED_DEFAULT_SETTINGS } from "../../shared/constants";
 
 export type { ProviderType };
 
@@ -17,20 +18,18 @@ export interface Settings {
   deepMode: boolean;
 }
 
-export const PROVIDER_DEFAULTS: Record<ProviderType, ProviderConfig> = {
-  openai:    { apiKey: "", baseUrl: "https://api.openai.com/v1",   model: "gpt-4o" },
-  ollama:    { apiKey: "", baseUrl: "http://localhost:11434",       model: "qwen3.5:9b" },
-  anthropic: { apiKey: "", baseUrl: "https://api.anthropic.com",   model: "claude-3-5-sonnet-20241022" },
-  deepseek:  { apiKey: "", baseUrl: "https://api.deepseek.com/v1", model: "deepseek-chat" },
-};
+// 重新导出常量以供 UI 组件使用
+export { PROVIDER_DEFAULTS };
 
 export const DEFAULT_SETTINGS: Settings = {
-  activeProvider: "ollama",
+  ...SHARED_DEFAULT_SETTINGS,
   providerConfigs: {
-    ollama: { ...PROVIDER_DEFAULTS.ollama },
+    ollama: { 
+      apiKey: "", 
+      baseUrl: PROVIDER_DEFAULTS.ollama.baseUrl, 
+      model: PROVIDER_DEFAULTS.ollama.model 
+    },
   },
-  autoAnalyze: true,
-  deepMode: true,
 };
 
 export function useSettings() {
@@ -50,7 +49,6 @@ export function useSettings() {
             setSettings({ ...DEFAULT_SETTINGS, ...saved });
           } else {
             // 迁移旧格式（v0.1.x 扁平结构）
-            // 注意：旧 saved.model 是模型名称，不是 provider 类型，不能用于迁移
             const oldProvider: ProviderType = (saved.provider ?? "openai") as ProviderType;
             const migrated: Settings = {
               ...DEFAULT_SETTINGS,

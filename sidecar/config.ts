@@ -1,12 +1,9 @@
+import { PROVIDER_DEFAULTS } from '../shared/constants';
+
 // Sidecar 全局配置常量（所有默认值的唯一来源）
 
-/** 各 Provider 的默认配置 */
-export const PROVIDER_DEFAULTS = {
-  openai:    { baseUrl: 'https://api.openai.com/v1',   model: 'gpt-4o' },
-  ollama:    { baseUrl: 'http://localhost:11434',       model: 'qwen3.5:9b' },
-  anthropic: { baseUrl: 'https://api.anthropic.com',   model: 'claude-3-5-sonnet-20241022' },
-  deepseek:  { baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-} as const;
+/** 重新导出跨端共享的默认配置 */
+export { PROVIDER_DEFAULTS };
 
 /** Prompt 正文截断长度（字符数） */
 export const CONTENT_LIMITS = {

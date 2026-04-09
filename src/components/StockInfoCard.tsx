@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { StockInfo } from '../lib/api-types';
+import { StockInfo } from '../../shared/types';
 
 interface StockInfoCardProps {
   info: StockInfo;

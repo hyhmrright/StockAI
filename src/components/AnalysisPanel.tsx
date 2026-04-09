@@ -2,7 +2,7 @@ import React from 'react';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import SentimentBar from './SentimentBar';
 import StockInfoCard from './StockInfoCard';
-import { FullAnalysisResponse } from '../lib/api-types';
+import { FullAnalysisResponse } from '../../shared/types';
 
 interface AnalysisPanelProps {
   result: FullAnalysisResponse | null;

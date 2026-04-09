@@ -42,7 +42,7 @@ bun scripts/smoke-test.ts
 Three-layer architecture with strictly unidirectional dependencies: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
 ### 1. Frontend (`src/`)
-React + TypeScript + Vite. The sole IPC entry point is `src/lib/ipc.ts`, which calls `invoke("start_analysis")`. Cross-layer DTO 类型定义在 `shared/types.ts`（唯一来源），前端通过 `src/lib/api-types.ts` 重新导出。全局 Store 单例在 `src/lib/store.ts`，所有 Hook 共享同一实例。Core logic lives in `src/hooks/useAnalysis.ts`, which manages the `AnalysisStep` state machine (`idle → scraping → extracting → analyzing → completed | error`).
+React + TypeScript + Vite. The sole IPC entry point is `src/lib/ipc.ts`, which calls `invoke("start_analysis")`. Cross-layer DTO 类型定义在 `shared/types.ts`（唯一来源）。全局 Store 单例在 `src/lib/store.ts`，所有 Hook 共享同一实例。Core logic lives in `src/hooks/useAnalysis.ts`, which manages the `AnalysisStep` state machine (`idle → scraping → extracting → analyzing → completed | error`).
 
 ### 2. Tauri Core (`src-tauri/src/lib.rs`)
 The Rust layer does exactly two things:

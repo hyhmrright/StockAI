@@ -49,7 +49,7 @@ bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-x86_64-un
 ### Architectural Principles:
 *   **Clean Architecture**: Unidirectional dependency flow (UI -> Core -> Sidecar).
 *   **Strategy Pattern**: Scrapers use strategy pattern in `sidecar/strategies/`.
-*   **Anti-Corruption Layer**: Use DTOs in `src/lib/api-types.ts` for UI-Sidecar communication.
+*   **Anti-Corruption Layer**: Use DTOs in `shared/types.ts` for UI-Sidecar communication.
 
 ### Code Style:
 *   **Comment Preference**: All logic comments must use **Chinese** (Simplified).
@@ -100,7 +100,7 @@ bun tauri dev
 ### 架构原则：
 *   **Clean Architecture**: 严格保持依赖单向流动（UI -> Core -> Sidecar）。
 *   **Strategy Pattern**: 抓取器采用策略模式。
-*   **Anti-Corruption Layer**: 前端与 Sidecar 通信必须通过 `src/lib/api-types.ts` 定义的 DTO 契约。
+*   **Anti-Corruption Layer**: 前端与 Sidecar 通信必须通过 `shared/types.ts` 定义的 DTO 契约。
 
 ### 代码风格：
 *   **注释偏好**: 所有的代码逻辑注释必须使用 **中文**。

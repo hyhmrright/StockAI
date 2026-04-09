@@ -30,8 +30,20 @@ export async function performFullAnalysis(
     throw new Error(`未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`);
   }
 
-  const provider = createProvider(providerType, config);
-  const analysis: AIAnalysisResult = await provider.analyze(symbol, news);
+  let analysis: AIAnalysisResult;
+  try {
+    const provider = createProvider(providerType, config);
+    analysis = await provider.analyze(symbol, news);
+  } catch (error) {
+    console.error(`AI 分析异常 (${symbol}):`, error);
+    analysis = {
+      rating: 50,
+      sentiment: 'neutral',
+      summary: `AI 分析服务暂不可用 (可能未配置 API Key 或网络异常)。真实新闻数据已抓取，请参考上方列表。\n详细错误: ${error instanceof Error ? error.message : String(error)}`,
+      pros: ["新闻抓取成功"],
+      cons: ["AI 分析失败"]
+    };
+  }
 
   return { symbol, stockInfo, news, analysis };
 }

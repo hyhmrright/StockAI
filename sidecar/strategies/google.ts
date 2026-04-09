@@ -1,19 +1,15 @@
-import { Page } from 'playwright-core';
 import { StockNews } from '../types';
 import { ScrapeStrategy } from './base';
 import { parseGoogleNews } from './parsers';
 import { detectChinaStock } from './exchange';
-import { TIMEOUTS } from '../config';
-import { toErrorMessage } from '../utils';
 
 /**
  * Google Finance 抓取策略
  */
-export class GoogleStrategy implements ScrapeStrategy {
+export class GoogleStrategy extends ScrapeStrategy {
   name = "Google Finance";
 
-  async scrape(page: Page, symbol: string): Promise<StockNews[]> {
-    console.error(`正在通过 Google Finance 策略抓取 ${symbol}...`);
+  protected getUrl(symbol: string): string {
     const china = detectChinaStock(symbol);
     
     // 构造 Google Finance 的 Ticker:
@@ -27,18 +23,14 @@ export class GoogleStrategy implements ScrapeStrategy {
       ticker = `${symbol}:NASDAQ`;
     }
     
-    const googleUrl = `https://www.google.com/finance/quote/${ticker}`;
+    return `https://www.google.com/finance/quote/${ticker}`;
+  }
 
-    try {
-      await page.goto(googleUrl, { waitUntil: 'networkidle', timeout: TIMEOUTS.pageNavigation }).catch(() => {});
-      await page.waitForTimeout(TIMEOUTS.pageWait);
+  protected async parse(html: string): Promise<StockNews[]> {
+    return await parseGoogleNews(html);
+  }
 
-      // 获取完整 HTML 并交由解耦的解析器处理
-      const html = await page.content();
-      return await parseGoogleNews(html);
-    } catch (error) {
-      console.error(`Google Finance 抓取异常 (${symbol}): ${toErrorMessage(error)}`);
-      return [];
-    }
+  protected override getWaitUntil(): 'networkidle' {
+    return 'networkidle';
   }
 }

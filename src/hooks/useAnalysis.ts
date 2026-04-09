@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { startAnalysis as startAnalysisIpc } from '../lib/ipc';
-import { FullAnalysisResponse } from '../lib/api-types';
+import { FullAnalysisResponse } from '../../shared/types';
 
 export type AnalysisStep = 'idle' | 'scraping' | 'extracting' | 'analyzing' | 'completed' | 'error';
 
