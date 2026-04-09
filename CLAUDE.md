@@ -18,11 +18,14 @@ bunx vitest run
 # Run a single frontend test file
 bunx vitest run src/hooks/useAnalysis.test.ts
 
-# Sidecar tests (Bun native)
+# Sidecar unit tests (Bun native, fast)
 cd sidecar && bun test
 
 # Run a single Sidecar test file
-cd sidecar && bun test scraper.test.ts
+cd sidecar && bun test exchange.test.ts
+
+# Sidecar integration tests (需要网络, 较慢, 可能 flaky)
+cd sidecar && bun test scraper.integration.ts
 
 # Rust tests
 cd src-tauri && cargo test

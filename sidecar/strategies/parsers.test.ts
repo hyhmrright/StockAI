@@ -51,6 +51,22 @@ describe("Scraper Parsers (Unit)", () => {
     expect(news[0].url).toBe("https://finance.yahoo.com/news/tesla-auto-pilot-update");
   });
 
+  test("畸形 HTML 不应崩溃，返回空数组", async () => {
+    // 未闭合标签、嵌套错误
+    const malformed = `<html><body><a href="/news<div>broken</a></div><a><span>`;
+    const googleNews = await parseGoogleNews(malformed);
+    const yahooNews = await parseYahooNews(malformed);
+    expect(googleNews).toBeArray();
+    expect(yahooNews).toBeArray();
+  });
+
+  test("空字符串 HTML 不应崩溃", async () => {
+    const googleNews = await parseGoogleNews("");
+    const yahooNews = await parseYahooNews("");
+    expect(googleNews.length).toBe(0);
+    expect(yahooNews.length).toBe(0);
+  });
+
   test("当没有匹配链接时应返回空列表", async () => {
     const mockHtml = `<html><body><div>No news here</div></body></html>`;
     const googleNews = await parseGoogleNews(mockHtml);

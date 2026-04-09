@@ -37,6 +37,53 @@ describe('useAnalysis Hook', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('JSON 缺少 analysis 字段时应该报验证错误', async () => {
+    const invalidResult = JSON.stringify({
+      symbol: 'AAPL',
+      news: [{ title: '测试', source: 'Test', date: '', content: '', url: '' }],
+      // 缺少 analysis 字段
+    });
+
+    (startAnalysisIpc as any).mockResolvedValue(invalidResult);
+
+    const { result } = renderHook(() => useAnalysis());
+
+    await act(async () => {
+      await result.current.performAnalysis('AAPL');
+    });
+
+    expect(result.current.step).toBe('error');
+    expect(result.current.error).toContain('格式异常');
+  });
+
+  it('Sidecar 返回空响应时应该报错', async () => {
+    (startAnalysisIpc as any).mockResolvedValue('');
+
+    const { result } = renderHook(() => useAnalysis());
+
+    await act(async () => {
+      await result.current.performAnalysis('AAPL');
+    });
+
+    expect(result.current.step).toBe('error');
+    expect(result.current.error).toContain('无响应');
+  });
+
+  it('Sidecar 返回 error JSON 时应该展示错误信息', async () => {
+    const errorResult = JSON.stringify({ error: '未搜寻到相关新闻' });
+
+    (startAnalysisIpc as any).mockResolvedValue(errorResult);
+
+    const { result } = renderHook(() => useAnalysis());
+
+    await act(async () => {
+      await result.current.performAnalysis('AAPL');
+    });
+
+    expect(result.current.step).toBe('error');
+    expect(result.current.error).toBe('未搜寻到相关新闻');
+  });
+
   it('应该能正确处理错误情况', async () => {
     (startAnalysisIpc as any).mockRejectedValue(new Error('网络错误'));
 

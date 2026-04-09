@@ -54,7 +54,7 @@ export function useAnalysis() {
       setError(msg);
       setStep('error');
     }
-  };
+  }
 
   return {
     step,

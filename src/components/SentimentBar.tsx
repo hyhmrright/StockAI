@@ -19,12 +19,14 @@ const SentimentBar: React.FC<SentimentBarProps> = ({ bullish }) => {
         <span className="text-rose-500 font-bold">看跌 {bearish}%</span>
       </div>
       <div className="h-2 w-full flex rounded-full overflow-hidden bg-gray-800">
-        <div 
-          className="h-full bg-emerald-500 transition-all duration-500 ease-out" 
+        <div
+          data-testid="bullish-bar"
+          className="h-full bg-emerald-500 transition-all duration-500 ease-out"
           style={{ width: `${bullish}%` }}
         />
-        <div 
-          className="h-full bg-rose-500 transition-all duration-500 ease-out" 
+        <div
+          data-testid="bearish-bar"
+          className="h-full bg-rose-500 transition-all duration-500 ease-out"
           style={{ width: `${bearish}%` }}
         />
       </div>
