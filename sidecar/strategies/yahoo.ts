@@ -4,6 +4,7 @@ import { ScrapeStrategy } from './base';
 import { parseYahooNews } from './parsers';
 import { detectChinaStock } from './exchange';
 import { TIMEOUTS } from '../config';
+import { toErrorMessage } from '../utils';
 
 /**
  * Yahoo Finance 抓取策略
@@ -26,8 +27,7 @@ export class YahooStrategy implements ScrapeStrategy {
       const html = await page.content();
       return await parseYahooNews(html);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.error(`Yahoo Finance 抓取异常 (${symbol}): ${msg}`);
+      console.error(`Yahoo Finance 抓取异常 (${symbol}): ${toErrorMessage(error)}`);
       return [];
     }
   }

@@ -1,5 +1,6 @@
 import { performFullAnalysis } from './analysis';
 import { Ollama } from 'ollama';
+import { toErrorMessage } from './utils';
 
 /**
  * Sidecar 配置接口（与 Rust AppConfig 的 JSON 序列化格式对应）
@@ -73,7 +74,7 @@ async function main() {
     console.log(JSON.stringify(result));
     process.exit(0);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = toErrorMessage(error);
     console.error("Sidecar 运行出错:", errorMessage);
     console.log(JSON.stringify({ error: errorMessage }));
     process.exit(0);

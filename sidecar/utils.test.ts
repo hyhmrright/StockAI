@@ -1,5 +1,21 @@
 import { expect, test, describe } from "bun:test";
-import { withTimeout } from "./utils";
+import { toErrorMessage, withTimeout } from "./utils";
+
+describe("toErrorMessage", () => {
+  test("Error 实例返回 message", () => {
+    expect(toErrorMessage(new Error("测试错误"))).toBe("测试错误");
+  });
+
+  test("字符串直接返回", () => {
+    expect(toErrorMessage("字符串错误")).toBe("字符串错误");
+  });
+
+  test("其他类型转为字符串", () => {
+    expect(toErrorMessage(42)).toBe("42");
+    expect(toErrorMessage(null)).toBe("null");
+    expect(toErrorMessage(undefined)).toBe("undefined");
+  });
+});
 
 describe("withTimeout", () => {
   test("Promise 在超时前 resolve 时正常返回结果", async () => {

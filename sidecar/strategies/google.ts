@@ -4,6 +4,7 @@ import { ScrapeStrategy } from './base';
 import { parseGoogleNews } from './parsers';
 import { detectChinaStock } from './exchange';
 import { TIMEOUTS } from '../config';
+import { toErrorMessage } from '../utils';
 
 /**
  * Google Finance 抓取策略
@@ -36,8 +37,7 @@ export class GoogleStrategy implements ScrapeStrategy {
       const html = await page.content();
       return await parseGoogleNews(html);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.error(`Google Finance 抓取异常 (${symbol}): ${msg}`);
+      console.error(`Google Finance 抓取异常 (${symbol}): ${toErrorMessage(error)}`);
       return [];
     }
   }

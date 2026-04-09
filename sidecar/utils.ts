@@ -1,4 +1,11 @@
 /**
+ * 从 unknown 类型的错误中安全提取消息字符串
+ */
+export function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
  * 为 Promise 添加超时控制
  * 超时后自动 reject，避免手动管理 setTimeout + clearTimeout
  */

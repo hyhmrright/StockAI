@@ -8,10 +8,14 @@ let storePromise: ReturnType<typeof load> | null = null;
 /**
  * 获取全局唯一的 Store 实例
  * 所有 Hook 通过此函数共享同一个 store，避免写冲突
+ * 加载失败时清除缓存，允许下次重试
  */
 export function getStore() {
   if (!storePromise) {
-    storePromise = load(STORE_PATH);
+    storePromise = load(STORE_PATH).catch((err) => {
+      storePromise = null;
+      return Promise.reject(err);
+    });
   }
   return storePromise;
 }

@@ -3,7 +3,7 @@ import type { StockNews } from "../../shared/types";
 import { AIAnalysisResult, AIProvider } from "../ai";
 import { CONTENT_LIMITS, PROVIDER_DEFAULTS, TIMEOUTS } from "../config";
 import { buildAnalysisPrompt } from "../prompts";
-import { withTimeout } from "../utils";
+import { toErrorMessage, withTimeout } from "../utils";
 
 /**
  * Ollama 本地提供者实现
@@ -40,7 +40,7 @@ export class OllamaProvider implements AIProvider {
       return JSON.parse(response.message.content) as AIAnalysisResult;
     } catch (error) {
       console.error("Ollama 分析出错:", error);
-      throw new Error(`Ollama 分析失败: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Ollama 分析失败: ${toErrorMessage(error)}`);
     }
   }
 }

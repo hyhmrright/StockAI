@@ -1,5 +1,5 @@
 import { scrapeStockNews } from '../sidecar/scraper';
-import { AnalysisPayload, StockNews } from '../sidecar/types';
+import { StockNews } from '../sidecar/types';
 import { AIAnalysisResult, AIProvider } from '../sidecar/ai';
 
 /**
@@ -23,17 +23,14 @@ async function runSmokeTest() {
     
     console.log(`✅ 成功抓取到 ${news.length} 条新闻`);
 
-    // 2. 验证 AnalysisPayload 结构
-    const payload: AnalysisPayload = {
-      symbol: symbol,
-      news: news
-    };
-    
+    // 2. 验证数据结构
+    const payload = { symbol, news };
+
     console.log("阶段 2: 验证数据结构...");
     if (payload.symbol !== symbol || !Array.isArray(payload.news)) {
-      throw new Error("AnalysisPayload 结构不正确");
+      throw new Error("数据结构不正确");
     }
-    console.log("✅ 数据结构符合 AnalysisPayload 定义");
+    console.log("✅ 数据结构验证通过");
 
     // 3. 模拟 AI 分析逻辑 (Mock 调用)
     console.log("阶段 3: 模拟 AI 分析...");

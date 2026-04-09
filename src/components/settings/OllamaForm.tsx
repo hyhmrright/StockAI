@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Globe, Cpu, RefreshCw, AlertCircle } from "lucide-react";
 import { Settings } from "../../hooks/useSettings";
 import { listModels } from "../../lib/ipc";
@@ -37,9 +37,12 @@ export function OllamaForm({ settings, onChange }: OllamaFormProps): React.React
     }
   }
 
-  // 初始加载
+  // baseUrl 变化时 debounce 拉取模型列表（避免每次按键触发 IPC）
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
-    fetchModels();
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(fetchModels, 500);
+    return () => clearTimeout(debounceRef.current);
   }, [settings.baseUrl]);
 
   const refreshButton = (

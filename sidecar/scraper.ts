@@ -5,6 +5,7 @@ import { GoogleStrategy } from './strategies/google';
 import { YahooStrategy } from './strategies/yahoo';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 import { CONTENT_LIMITS, DEEP_MODE_MAX_ARTICLES, TIMEOUTS } from './config';
+import { toErrorMessage } from './utils';
 
 const nhm = new NodeHtmlMarkdown();
 
@@ -57,7 +58,7 @@ export async function scrapeStockNews(symbol: string, deepMode = true): Promise<
                 console.error(`  - 已提取正文: ${news[i].title.substring(0, 30)}...`);
               }
             } catch (e) {
-              console.error(`  - 无法提取正文 [${news[i].title.substring(0, 20)}]:`, (e instanceof Error ? e.message : String(e)));
+              console.error(`  - 无法提取正文 [${news[i].title.substring(0, 20)}]:`, toErrorMessage(e));
             }
           }
         } else {
@@ -77,29 +78,6 @@ export async function scrapeStockNews(symbol: string, deepMode = true): Promise<
 }
 
 /**
- * 从页面 DOM 中启发式提取正文 HTML（在浏览器上下文中执行）
- */
-function extractArticleHtml(): string {
-  // 移除干扰元素
-  document.querySelectorAll('script, style, nav, footer, iframe, ads').forEach(t => t.remove());
-
-  // 按优先级尝试常见正文容器
-  const selectors = ['article', '.article-content', '.story-content', 'main', '#main-content', '.post-content'];
-  for (const selector of selectors) {
-    const el = document.querySelector(selector) as HTMLElement | null;
-    if (el && el.innerText.length > 300) return el.innerHTML;
-  }
-
-  // 回退：找包含最多段落的容器
-  const containers = Array.from(document.querySelectorAll('div, section')) as HTMLElement[];
-  const best = containers
-    .filter(div => div.querySelectorAll('p').length > 3)
-    .sort((a, b) => b.innerText.length - a.innerText.length)[0];
-
-  return best ? best.innerHTML : document.body.innerHTML;
-}
-
-/**
  * 将 HTML 转换为 Markdown 并截断
  */
 function htmlToMarkdown(html: string): string {
@@ -111,13 +89,33 @@ function htmlToMarkdown(html: string): string {
 
 /**
  * 提取新闻详情页的完整正文并转换为 Markdown
+ * 注意：page.evaluate 的回调必须内联，不能传命名函数引用——
+ * Playwright 通过 .toString() 序列化函数体，编译后的二进制中命名函数引用会丢失
  */
 async function extractFullContent(page: Page, url: string): Promise<string> {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.contentExtraction });
-    const html = await page.evaluate(extractArticleHtml);
+    const html = await page.evaluate(() => {
+      // 移除干扰元素
+      document.querySelectorAll('script, style, nav, footer, iframe, ads').forEach(t => t.remove());
+
+      // 按优先级尝试常见正文容器
+      const selectors = ['article', '.article-content', '.story-content', 'main', '#main-content', '.post-content'];
+      for (const selector of selectors) {
+        const el = document.querySelector(selector) as HTMLElement | null;
+        if (el && el.innerText.length > 300) return el.innerHTML;
+      }
+
+      // 回退：找包含最多段落的容器
+      const containers = Array.from(document.querySelectorAll('div, section')) as HTMLElement[];
+      const best = containers
+        .filter(div => div.querySelectorAll('p').length > 3)
+        .sort((a, b) => b.innerText.length - a.innerText.length)[0];
+
+      return best ? best.innerHTML : document.body.innerHTML;
+    });
     return html ? htmlToMarkdown(html) : "";
   } catch (error) {
-    throw new Error(`页面加载失败: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`页面加载失败: ${toErrorMessage(error)}`);
   }
 }
