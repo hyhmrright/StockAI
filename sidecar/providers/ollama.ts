@@ -19,8 +19,14 @@ export class OllamaProvider implements AIProvider {
   async analyze(symbol: string, news: any[]): Promise<AIAnalysisResult> {
     const prompt = OllamaProvider.buildPrompt(symbol, news);
 
+    // 增加超时控制：2 分钟 (针对本地大模型分析)
+    let timeoutId: any;
+    const timeoutPromise = new Promise((_, reject) => 
+      timeoutId = setTimeout(() => reject(new Error("Ollama 服务连接超时，请检查服务是否已启动并在运行。")), 120000)
+    );
+
     try {
-      const response = await this.client.chat({
+      const responsePromise = this.client.chat({
         model: this.model,
         messages: [
           { role: "system", content: "你是一个专业的金融分析师。请分析以下信息并返回结构化的 JSON 数据。不要返回 JSON 以外的任何文本。" },
@@ -29,9 +35,13 @@ export class OllamaProvider implements AIProvider {
         format: "json" // 强制要求 JSON 响应 (如果模型支持)
       });
 
+      const response = await Promise.race([responsePromise, timeoutPromise]) as any;
+      clearTimeout(timeoutId);
+
       const content = response.message.content;
       return JSON.parse(content) as AIAnalysisResult;
     } catch (error) {
+      if (timeoutId) clearTimeout(timeoutId);
       console.error("Ollama 分析出错:", error);
       throw new Error(`Ollama 分析失败: ${(error as any).message}`);
     }

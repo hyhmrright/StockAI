@@ -95,6 +95,52 @@ impl SidecarManager {
         }
         Ok(output)
     }
+    /**
+     * 运行 Sidecar 列表任务
+     */
+    async fn list_models(
+        app_handle: &tauri::AppHandle,
+        provider: String,
+        base_url: String,
+    ) -> Result<String, String> {
+        let sidecar_command = app_handle
+            .shell()
+            .sidecar("stockai-backend")
+            .map_err(|e| format!("无法找到 Sidecar: {}", e))?
+            .args(&[
+                "--list-models".to_string(),
+                provider,
+                "".to_string(), // apiKey (unused)
+                base_url,
+            ]);
+
+        let (mut rx, _child) = sidecar_command
+            .spawn()
+            .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
+
+        let mut output = String::new();
+        while let Some(event) = rx.recv().await {
+            match event {
+                tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
+                    output.push_str(&String::from_utf8_lossy(&line));
+                }
+                _ => {}
+            }
+        }
+        Ok(output)
+    }
+}
+
+/**
+ * 获取可用模型列表
+ */
+#[tauri::command]
+async fn list_models(
+    app_handle: tauri::AppHandle,
+    provider: String,
+    base_url: String,
+) -> Result<String, String> {
+    SidecarManager::list_models(&app_handle, provider, base_url).await
 }
 
 /**
@@ -133,7 +179,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, start_analysis])
+        .invoke_handler(tauri::generate_handler![greet, start_analysis, list_models])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -97,10 +97,12 @@ export async function extractLinksFromHtml(
  * @param baseUrl 基础 URL，默认为 "https://www.google.com"
  */
 export async function parseGoogleNews(html: string, baseUrl: string = "https://www.google.com"): Promise<StockNews[]> {
+  // Google Finance 现在常使用带有 /articles/ 或直接外部链接的新闻
+  // 我们放宽选择器，寻找包含常见新闻标识符的链接
   const links = await extractLinksFromHtml(
     html,
-    'a[href*="/news/"]',
-    '/news/',
+    'a[href*="article"]', // 匹配 /article/, /articles/, /articleshow/ 等
+    /article/i,
     baseUrl
   );
 
@@ -109,7 +111,7 @@ export async function parseGoogleNews(html: string, baseUrl: string = "https://w
     .filter(link => link.lines.length >= 2)
     .slice(0, 5)
     .map(link => ({
-      title: link.lines.find(l => l.length > 20) || link.lines[1], // 较长的行通常是标题
+      title: link.lines.find(l => l.length > 15) || link.lines[1] || link.lines[0], 
       source: link.lines[0],
       date: link.lines[link.lines.length - 1],
       content: "",

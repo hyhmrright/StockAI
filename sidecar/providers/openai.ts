@@ -31,7 +31,7 @@ export class OpenAIProvider implements AIProvider {
           { role: "user", content: prompt }
         ],
         response_format: { type: "json_object" } // 强制要求 JSON 响应 (如果模型支持)
-      });
+      }, { timeout: 60000 }); // 60s 超时
 
       const content = response.choices[0].message.content || "{}";
       return JSON.parse(content) as AIAnalysisResult;

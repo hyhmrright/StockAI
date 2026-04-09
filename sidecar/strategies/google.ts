@@ -17,7 +17,18 @@ export class GoogleStrategy implements ScrapeStrategy {
   async scrape(page: Page, symbol: string): Promise<StockNews[]> {
     console.error(`正在通过 Google Finance 策略抓取 ${symbol}...`);
     const china = detectChinaStock(symbol);
-    const ticker = china ? `${china.code}:${china.googleSuffix}` : `${symbol}:NASDAQ`;
+    
+    // 构造 Google Finance 的 Ticker:
+    // 1. 如果检测到 A 股代码，加上 SHA/SZE 后缀
+    // 2. 如果是纯英文/数字（通常是美股代码），默认加上 NASDAQ 后缀提高准确度
+    // 3. 否则（如中文名）直接搜索
+    let ticker = symbol;
+    if (china) {
+      ticker = `${china.code}:${china.googleSuffix}`;
+    } else if (/^[A-Za-z0-9]+$/.test(symbol)) {
+      ticker = `${symbol}:NASDAQ`;
+    }
+    
     const googleUrl = `https://www.google.com/finance/quote/${ticker}`;
 
     try {

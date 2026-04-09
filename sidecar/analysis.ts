@@ -17,6 +17,10 @@ export async function performFullAnalysis(
 
   // 1. 抓取新闻（deepMode 控制是否提取全文正文）
   const news = await scrapeStockNews(symbol, config.deepMode ?? true);
+
+  if (!news || news.length === 0) {
+    throw new Error(`未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`);
+  }
   
   // 2. 初始化 AI 提供者
   let provider: AIProvider;
