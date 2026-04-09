@@ -44,16 +44,16 @@ async function main() {
       if (provider === 'ollama') {
         const ollama = new Ollama({ host: baseUrl });
         const list = await ollama.list();
-        console.log(JSON.stringify({ models: list.models.map(m => m.name) }));
+        // 用 write 替代 console.log，确保 pipe 模式下 stdout 立即刷新
+        process.stdout.write(JSON.stringify({ models: list.models.map(m => m.name) }) + '\n');
       } else {
         // 对于 OpenAI 等，返回常用默认值
-        console.log(JSON.stringify({ models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"] }));
+        process.stdout.write(JSON.stringify({ models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"] }) + '\n');
       }
-      process.exit(0);
     } catch (error) {
-      console.log(JSON.stringify({ error: (error as Error).message }));
-      process.exit(0);
+      process.stdout.write(JSON.stringify({ error: toErrorMessage(error) }) + '\n');
     }
+    return;
   }
 
   const provider = config.provider || 'openai';
@@ -71,17 +71,18 @@ async function main() {
       deepMode,
     });
 
-    console.log(JSON.stringify(result));
-    process.exit(0);
+    // 用 write 替代 console.log，确保 pipe 模式下 stdout 立即刷新后再退出
+    process.stdout.write(JSON.stringify(result) + '\n');
   } catch (error) {
     const errorMessage = toErrorMessage(error);
     console.error("Sidecar 运行出错:", errorMessage);
-    console.log(JSON.stringify({ error: errorMessage }));
-    process.exit(0);
+    process.stdout.write(JSON.stringify({ error: errorMessage }) + '\n');
   }
 }
 
 main().catch(err => {
-  console.error("致命错误:", err);
-  process.exit(1);
+  const errorMessage = toErrorMessage(err);
+  console.error("致命错误:", errorMessage);
+  // 顶层异常也输出 JSON，确保前端不会收到空响应
+  process.stdout.write(JSON.stringify({ error: `内部错误: ${errorMessage}` }) + '\n');
 });

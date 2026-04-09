@@ -8,7 +8,7 @@ export const PROVIDER_DEFAULTS = {
   },
   ollama: {
     baseUrl: 'http://localhost:11434',
-    model: 'qwen3.5:27b',
+    model: 'qwen3.5:9b',
   },
 } as const;
 

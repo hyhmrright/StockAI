@@ -30,9 +30,9 @@ fn resolve_config(
     ai_model: Option<&str>,
     deep_mode: Option<bool>,
 ) -> AppConfig {
-    let p = provider.unwrap_or("openai");
+    let p = provider.unwrap_or("ollama");
     // 统一使用 ai_model 字段，如果缺失则根据 provider 提供默认值
-    let default_model = if p == "ollama" { "qwen3.5:27b" } else { "gpt-4o" };
+    let default_model = if p == "ollama" { "qwen3.5:9b" } else { "gpt-4o" };
     let m = ai_model.unwrap_or(default_model);
 
     AppConfig {
@@ -84,7 +84,7 @@ impl SidecarManager {
                 }
                 tauri_plugin_shell::process::CommandEvent::Terminated(status) => {
                     println!("Sidecar 已终止，状态码: {:?}", status.code);
-                    break;
+                    // 不在此处 break，让 channel 自然关闭，确保所有 Stdout 事件都已处理
                 }
                 _ => {}
             }
@@ -189,8 +189,8 @@ mod tests {
     #[test]
     fn test_resolve_config_defaults() {
         let config = resolve_config(None, None, None, None, None);
-        assert_eq!(config.provider, "openai");
-        assert_eq!(config.model_name, "gpt-4o");
+        assert_eq!(config.provider, "ollama");
+        assert_eq!(config.model_name, "qwen3.5:9b");
         assert_eq!(config.api_key, "");
         assert_eq!(config.deep_mode, true);
     }
