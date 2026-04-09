@@ -1,64 +1,74 @@
 import { useState, useEffect } from "react";
 import { getStore } from "../lib/store";
+import { ProviderType } from "../../shared/types";
 
-/**
- * 设置项接口定义
- */
-export interface Settings {
+export type { ProviderType };
+
+export interface ProviderConfig {
   apiKey: string;
-  provider: "openai" | "ollama";
   baseUrl: string;
-  aiModel: string;
-  autoAnalyze: boolean;  // 点击关注列表时自动分析
-  deepMode: boolean;     // 保留字段（当前抓取全文已默认开启）
+  model: string;
 }
 
-/**
- * 各 Provider 对应的默认 baseUrl
- */
-export const PROVIDER_BASE_URLS: Record<Settings["provider"], string> = {
-  openai: "https://api.openai.com/v1",
-  ollama: "http://localhost:11434",
+export interface Settings {
+  activeProvider: ProviderType;
+  providerConfigs: Partial<Record<ProviderType, ProviderConfig>>;
+  autoAnalyze: boolean;
+  deepMode: boolean;
+}
+
+export const PROVIDER_DEFAULTS: Record<ProviderType, ProviderConfig> = {
+  openai:    { apiKey: "", baseUrl: "https://api.openai.com/v1",   model: "gpt-4o" },
+  ollama:    { apiKey: "", baseUrl: "http://localhost:11434",       model: "qwen3.5:9b" },
+  anthropic: { apiKey: "", baseUrl: "https://api.anthropic.com",   model: "claude-3-5-sonnet-20241022" },
+  deepseek:  { apiKey: "", baseUrl: "https://api.deepseek.com/v1", model: "deepseek-chat" },
 };
 
-/**
- * 默认设置
- */
 export const DEFAULT_SETTINGS: Settings = {
-  apiKey: "",
-  provider: "openai",
-  baseUrl: PROVIDER_BASE_URLS.openai,
-  aiModel: "",
+  activeProvider: "ollama",
+  providerConfigs: {
+    ollama: { ...PROVIDER_DEFAULTS.ollama },
+  },
   autoAnalyze: true,
   deepMode: true,
 };
 
-/**
- * 设置持久化 Hook
- */
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 初始化加载设置
   useEffect(() => {
     async function loadSettings() {
       try {
         const store = await getStore();
-        const savedSettings = await store.get<Settings>("app_settings");
-        
-        if (savedSettings) {
-          // 兼容旧版本：将 model 字段迁移为 provider
-          const migrated = { ...DEFAULT_SETTINGS, ...savedSettings } as Settings & { model?: string };
-          if (!savedSettings.provider && migrated.model) {
-            migrated.provider = migrated.model as "openai" | "ollama";
-            delete migrated.model;
-            // 将迁移后的设置持久化，避免每次启动重复迁移
-            const s = await getStore();
-            await s.set("app_settings", migrated);
-            await s.save();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const saved = await store.get<any>("app_settings");
+
+        if (saved) {
+          if (saved.activeProvider) {
+            // 已是新格式，直接合并
+            setSettings({ ...DEFAULT_SETTINGS, ...saved });
+          } else {
+            // 迁移旧格式（v0.1.x 扁平结构）
+            // 注意：旧 saved.model 是模型名称，不是 provider 类型，不能用于迁移
+            const oldProvider: ProviderType = (saved.provider ?? "openai") as ProviderType;
+            const migrated: Settings = {
+              ...DEFAULT_SETTINGS,
+              activeProvider: oldProvider,
+              autoAnalyze: saved.autoAnalyze ?? true,
+              deepMode: saved.deepMode ?? true,
+              providerConfigs: {
+                [oldProvider]: {
+                  apiKey: saved.apiKey ?? "",
+                  baseUrl: saved.baseUrl ?? PROVIDER_DEFAULTS[oldProvider].baseUrl,
+                  model: saved.aiModel ?? PROVIDER_DEFAULTS[oldProvider].model,
+                },
+              },
+            };
+            await store.set("app_settings", migrated);
+            await store.save();
+            setSettings(migrated);
           }
-          setSettings(migrated);
         }
       } catch (error) {
         console.error("加载设置失败:", error);
@@ -70,10 +80,6 @@ export function useSettings() {
     loadSettings();
   }, []);
 
-  /**
-   * 更新并保存设置
-   * @param newSettings 部分或全部新设置
-   */
   async function updateSettings(newSettings: Partial<Settings>) {
     try {
       const updated = { ...settings, ...newSettings };
@@ -81,15 +87,11 @@ export function useSettings() {
 
       const store = await getStore();
       await store.set("app_settings", updated);
-      await store.save(); // 显式保存到磁盘
+      await store.save();
     } catch (error) {
       console.error("保存设置失败:", error);
     }
   }
 
-  return {
-    settings,
-    updateSettings,
-    isLoading,
-  };
+  return { settings, updateSettings, isLoading };
 }

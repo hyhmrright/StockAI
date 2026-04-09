@@ -1,5 +1,8 @@
 // 跨层共享的数据类型定义（前端 + Sidecar 的唯一来源）
 
+/** AI 服务提供商类型（跨 Rust / Sidecar / 前端共用） */
+export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek";
+
 /**
  * 股票新闻数据接口
  */

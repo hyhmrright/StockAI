@@ -157,14 +157,31 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
     let settings = settings_val.as_ref().and_then(|v| v.as_object());
 
     let config = match settings {
-        Some(s) => resolve_config(
-            s.get("provider").and_then(|v| v.as_str())
-                .or_else(|| s.get("model").and_then(|v| v.as_str())), // 兼容旧版本
-            s.get("apiKey").and_then(|v| v.as_str()),
-            s.get("baseUrl").and_then(|v| v.as_str()),
-            s.get("aiModel").and_then(|v| v.as_str()), // 统一后的模型名称字段
-            s.get("deepMode").and_then(|v| v.as_bool()),
-        ),
+        Some(s) => {
+            // 新格式：activeProvider + providerConfigs[provider]
+            // 旧格式兼容：provider / model + apiKey + baseUrl + aiModel
+            let provider = s.get("activeProvider").and_then(|v| v.as_str())
+                .or_else(|| s.get("provider").and_then(|v| v.as_str()))
+                .or_else(|| s.get("model").and_then(|v| v.as_str()));
+
+            let active_cfg = provider.and_then(|p| {
+                s.get("providerConfigs")
+                    .and_then(|v| v.as_object())
+                    .and_then(|m| m.get(p))
+                    .and_then(|v| v.as_object())
+            });
+
+            resolve_config(
+                provider,
+                active_cfg.and_then(|c| c.get("apiKey").and_then(|v| v.as_str()))
+                    .or_else(|| s.get("apiKey").and_then(|v| v.as_str())),
+                active_cfg.and_then(|c| c.get("baseUrl").and_then(|v| v.as_str()))
+                    .or_else(|| s.get("baseUrl").and_then(|v| v.as_str())),
+                active_cfg.and_then(|c| c.get("model").and_then(|v| v.as_str()))
+                    .or_else(|| s.get("aiModel").and_then(|v| v.as_str())),
+                s.get("deepMode").and_then(|v| v.as_bool()),
+            )
+        }
         None => resolve_config(None, None, None, None, None),
     };
 
