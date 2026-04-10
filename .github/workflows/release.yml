@@ -90,7 +90,7 @@ jobs:
 
             ### macOS
             If Gatekeeper blocks the app on first launch, run:
-            ```
+            ```bash
             xattr -cr /Applications/StockAI.app
             ```
 
@@ -98,10 +98,10 @@ jobs:
             If SmartScreen warns you, click **More info → Run anyway**.
 
             ### Linux
-            ```
+            ```bash
             sudo dpkg -i StockAI_*_amd64.deb
             ```
-            Requires WebKitGTK (pre-installed on most GNOME-based distros).
+            Requires WebKitGTK (pre-installed on most GTK-based desktop environments).
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
