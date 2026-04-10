@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.2.2] - 2026-04-10
+
+### Fixed
+
+- **A 股纯代码搜索零命中** — 用户仅输入 6 位代码（如 `300866`）时，搜索词由 `"300866" 股票 新闻`（精确匹配）改为 `300866 股票 新闻`（宽松匹配）。中文财经新闻标题几乎不出现纯数字代码，加引号导致搜索零结果；有股票名称时（如 `隆基绿能601012`）仍使用精确匹配。
+- **Sidecar binary 过期** — 重新编译 binary，使其包含 v0.2.1 中所有已提交的修复（configResolver、outputJson guard、logger 统一等）。
+
 ## [0.2.1] - 2026-04-10
 
 ### Added
