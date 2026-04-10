@@ -78,15 +78,30 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"
           releaseBody: |
+            See the [CHANGELOG](https://github.com/hyhmrright/StockAI/blob/main/CHANGELOG.md) for what's new in this release.
+
             ## Installation
 
-            | Platform | File |
-            |----------|------|
-            | macOS (Apple Silicon) | `.dmg` ending in `aarch64` |
-            | Windows | `.msi` or `.exe` installer |
-            | Linux | `.deb` package |
+            | Platform | Download |
+            |----------|----------|
+            | macOS (Apple Silicon) | `.dmg` file ending in `aarch64` |
+            | Windows | `.msi` (recommended) or `.exe` installer |
+            | Linux (Ubuntu / Debian) | `.deb` package |
 
-            > **macOS note:** If blocked by Gatekeeper, right-click the app and select Open.
+            ### macOS
+            If Gatekeeper blocks the app on first launch, run:
+            ```
+            xattr -cr /Applications/StockAI.app
+            ```
+
+            ### Windows
+            If SmartScreen warns you, click **More info → Run anyway**.
+
+            ### Linux
+            ```
+            sudo dpkg -i StockAI_*_amd64.deb
+            ```
+            Requires WebKitGTK (pre-installed on most GNOME-based distros).
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
