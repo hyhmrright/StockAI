@@ -41,9 +41,22 @@ export const logger = {
   }
 };
 
+let _stdoutWritten = false;
+
 /**
  * 标准化结果输出
+ * 协议约定：每个 Sidecar 进程只允许调用一次，输出单行 JSON 后退出。
+ * 重复调用视为协议违规，直接抛出异常防止静默数据损坏。
  */
-export function outputJson(data: any) {
+export function outputJson(data: unknown): void {
+  if (_stdoutWritten) {
+    throw new Error('[PROTOCOL] outputJson called more than once in the same process');
+  }
+  _stdoutWritten = true;
   process.stdout.write(JSON.stringify(data) + '\n');
+}
+
+/** 仅供测试使用：重置写入防护状态 */
+export function _resetOutputGuard(): void {
+  _stdoutWritten = false;
 }

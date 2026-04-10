@@ -32,11 +32,17 @@ impl SidecarManager {
             .spawn()
             .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
 
-        let mut output = String::new();
+        // 取最后一行非空内容——Sidecar 协议保证 stdout 只写一次，
+        // 但防御性地取最后行可避免意外多行时 JSON.parse 失败。
+        let mut last_line = String::new();
         while let Some(event) = rx.recv().await {
             match event {
                 tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
-                    output.push_str(&String::from_utf8_lossy(&line));
+                    let s = String::from_utf8_lossy(&line);
+                    let trimmed = s.trim();
+                    if !trimmed.is_empty() {
+                        last_line = trimmed.to_string();
+                    }
                 }
                 tauri_plugin_shell::process::CommandEvent::Stderr(line) => {
                     eprintln!("Sidecar Stderr: {}", String::from_utf8_lossy(&line));
@@ -47,7 +53,7 @@ impl SidecarManager {
                 _ => {}
             }
         }
-        Ok(output)
+        Ok(last_line)
     }
 
     /**
@@ -74,16 +80,20 @@ impl SidecarManager {
             .spawn()
             .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
 
-        let mut output = String::new();
+        let mut last_line = String::new();
         while let Some(event) = rx.recv().await {
             match event {
                 tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
-                    output.push_str(&String::from_utf8_lossy(&line));
+                    let s = String::from_utf8_lossy(&line);
+                    let trimmed = s.trim();
+                    if !trimmed.is_empty() {
+                        last_line = trimmed.to_string();
+                    }
                 }
                 _ => {}
             }
         }
-        Ok(output)
+        Ok(last_line)
     }
 }
 
