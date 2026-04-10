@@ -1,5 +1,6 @@
 import { AIProvider } from "../ai";
 import { PROVIDER_DEFAULTS } from "../config";
+import { logger } from "../utils";
 import { OpenAIProvider } from "./openai";
 import { OllamaProvider } from "./ollama";
 import { AnthropicProvider } from "./anthropic";
@@ -41,6 +42,9 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
  * 根据类型创建 AI Provider 实例
  */
 export function createProvider(type: string, config: ProviderConfig): AIProvider {
-  const factory = PROVIDER_FACTORIES[type] ?? PROVIDER_FACTORIES.openai;
-  return factory(config);
+  const factory = PROVIDER_FACTORIES[type];
+  if (!factory) {
+    logger.warn(`未知 Provider 类型 "${type}"，降级为 openai`);
+  }
+  return (factory ?? PROVIDER_FACTORIES.openai)(config);
 }

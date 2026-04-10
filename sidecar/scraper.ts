@@ -88,26 +88,25 @@ async function extractFullContent(page: Page, url: string): Promise<string> {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.contentExtraction });
     const html = await page.evaluate(() => {
-      // 移除广告、导航等干扰元素，减少 token 噪声
-      document.querySelectorAll('script, style, nav, footer, iframe, ads').forEach(t => t.remove());
+      // 减少 token 噪声：移除非正文元素
+      document.querySelectorAll('script, style, nav, footer, iframe').forEach(t => t.remove());
 
-      // 按覆盖率优先级尝试常见正文容器：
-      // article > 语义容器（财经网站常用）> main > id/class 型容器
+      // 优先级：article > 财经网站语义容器 > main > id/class 容器
+      // 300 字符阈值：排除空容器或仅含导航链接的伪正文区
       const selectors = ['article', '.article-content', '.story-content', 'main', '#main-content', '.post-content'];
       for (const selector of selectors) {
         const el = document.querySelector(selector) as HTMLElement | null;
-        // 300 字符阈值：排除空容器或仅含导航链接的伪正文区
         if (el && el.innerText.length > 300) return el.innerHTML;
       }
 
-      // 最终回退：在所有 div/section 中找段落最多且文本最长的容器
-      // 3 个段落阈值：过滤掉侧边栏、广告位等低密度区块
-      const containers = Array.from(document.querySelectorAll('div, section')) as HTMLElement[];
-      const best = containers
-        .filter(div => div.querySelectorAll('p').length > 3)
-        .sort((a, b) => b.innerText.length - a.innerText.length)[0];
+      // 最终回退：段落数优先（过滤侧边栏/广告位等低密度区块），段落数相同时取文本最长的
+      // 先 map 缓存段落数，避免 filter 内重复调用 querySelectorAll 造成 O(n²) DOM 遍历
+      const scored = (Array.from(document.querySelectorAll('div, section')) as HTMLElement[])
+        .map(div => ({ div, pCount: div.querySelectorAll('p').length, len: div.innerText.length }))
+        .filter(({ pCount }) => pCount > 3)
+        .sort((a, b) => b.pCount - a.pCount || b.len - a.len);
 
-      return best ? best.innerHTML : document.body.innerHTML;
+      return scored[0] ? scored[0].div.innerHTML : document.body.innerHTML;
     });
     return html ? htmlToMarkdown(html) : "";
   } catch (error) {
