@@ -2,6 +2,22 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.2.3] - 2026-04-10
+
+### Fixed
+
+- **Settings version display** — Settings panel now shows the real app version read from `tauri.conf.json` via `getVersion()` API instead of the hardcoded `v0.1.3` string.
+- **A-share code-only search (zero results)** — Root cause identified: Google's headless-browser CAPTCHA blocked all Playwright-based Google News search results. Fix: A-share queries now use the Google News RSS feed (no JavaScript required, no CAPTCHA). RSS returns up to 40 articles per search.
+- **A-share GBK encoding** — Sina Finance API (`hq.sinajs.cn`) returns GBK-encoded text; `resp.text()` decoded it as UTF-8, producing garbled company names. Fixed by reading `arrayBuffer()` and decoding with `TextDecoder('gbk')`.
+- **Config version migration** — When settings stored in the old format (missing `_version`) are loaded, the migrated settings are now written back to the store so that the Rust layer reads the correct version on analysis. Previously only React state was updated.
+- **Empty stdout fallback** — If the sidecar produces no stdout output (crash or hang), the Rust layer now returns a structured `{"error":"..."}` JSON instead of an empty string, preventing the generic "分析服务无响应" error from masking the real cause.
+
+### Changed
+
+- **A-share news strategy** — For A-share pure-code inputs (e.g. `300866`), the sidecar now fetches the company name from Sina Finance first, then passes `"公司名+code"` to the scraper so the RSS query uses `"公司名" 股票` (exact-match, high hit rate).
+- **`extractExternalLinks`** — Two-pass regex scan (direct links + Google redirects) merged into a single-pass alternation regex for cleaner code.
+- **`todayISO()` utility** — Extracted shared `new Date().toISOString().split('T')[0]` pattern to `sidecar/utils.ts`.
+
 ## [0.2.2] - 2026-04-10
 
 ### Fixed

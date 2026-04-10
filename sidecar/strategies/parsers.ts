@@ -1,4 +1,5 @@
 import { StockNews } from '../types';
+import { todayISO } from '../utils';
 
 /**
  * 提取链接的信息接口
@@ -162,10 +163,13 @@ export async function parseYahooNews(html: string, baseUrl: string = "https://fi
 export function extractExternalLinks(html: string): string[] {
   const seen = new Set<string>();
   const results: string[] = [];
-  const hrefRegex = /href="(https?:\/\/[^"]+)"/g;
+  // 一遍扫描匹配两种格式：
+  //   直接外链  href="https://..."
+  //   Google 跳转  href="/url?q=https://..."（Google News 常见格式）
+  const linkRegex = /href="(?:(https?:\/\/[^"]+)|\/url\?q=(https?:\/\/[^&"]+))/g;
   let m: RegExpExecArray | null;
-  while ((m = hrefRegex.exec(html)) !== null) {
-    const href = m[1];
+  while ((m = linkRegex.exec(html)) !== null) {
+    const href = m[1] ?? decodeURIComponent(m[2]);
     if (!href.includes('google.com') && !seen.has(href)) {
       seen.add(href);
       results.push(href);
@@ -207,7 +211,7 @@ export function parseGoogleNewsSearch(html: string, symbol: string): StockNews[]
   return links.slice(0, 8).map((url, i) => ({
     title: titles[i] ?? `${symbol} 相关新闻 ${i + 1}`,
     source: extractDomain(url),
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     content: '',
     url,
   }));

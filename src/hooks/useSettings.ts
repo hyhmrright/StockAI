@@ -47,8 +47,13 @@ export function useSettings() {
 
         if (saved) {
           if (saved.activeProvider) {
-            // 已是新格式；补全 _version（兼容无版本字段的旧新格式）
-            setSettings({ ...DEFAULT_SETTINGS, ...saved, _version: CONFIG_VERSION });
+            // 已是新格式；若缺少 _version 则写回 store，确保 Rust 层读取时版本一致
+            const migrated = { ...DEFAULT_SETTINGS, ...saved, _version: CONFIG_VERSION };
+            if (saved._version !== CONFIG_VERSION) {
+              await store.set("app_settings", migrated);
+              await store.save();
+            }
+            setSettings(migrated);
           } else {
             // 迁移旧格式（v0.1.x 扁平结构）→ 新格式 + 写入版本
             const oldProvider: ProviderType = (saved.provider ?? "openai") as ProviderType;

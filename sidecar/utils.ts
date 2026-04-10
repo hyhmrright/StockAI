@@ -60,3 +60,8 @@ export function outputJson(data: unknown): void {
 export function _resetOutputGuard(): void {
   _stdoutWritten = false;
 }
+
+/** 返回当前日期的 ISO 字符串（YYYY-MM-DD） */
+export function todayISO(): string {
+  return new Date().toISOString().split('T')[0];
+}

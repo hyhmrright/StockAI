@@ -53,7 +53,12 @@ impl SidecarManager {
                 _ => {}
             }
         }
-        Ok(last_line)
+        if last_line.is_empty() {
+            // Sidecar 未向 stdout 写入任何内容（崩溃或挂起）
+            Ok(r#"{"error":"分析服务无响应，请检查 AI 模型配置后重试。"}"#.to_string())
+        } else {
+            Ok(last_line)
+        }
     }
 
     /**

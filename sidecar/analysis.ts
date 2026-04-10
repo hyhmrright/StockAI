@@ -7,14 +7,29 @@ import { createProvider } from './providers/registry';
 import { toErrorMessage, logger } from './utils';
 
 /**
- * 并行抓取股票基本信息和新闻
- * stockInfo 失败不影响主流程，返回 undefined
+ * 并行抓取股票基本信息和新闻。
+ * 对于纯代码输入的 A 股（无中文名），先从 Sina 获取公司名，再用"名称+代码"搜索新闻，
+ * 提升中文新闻的命中率（中文财经新闻通常用公司名而非数字代码）。
  */
 async function fetchMarketData(
   symbol: string,
   deepMode: boolean
 ): Promise<{ stockInfo: FullAnalysisResponse['stockInfo']; news: StockNews[] }> {
   const parsed = parseSymbol(symbol);
+
+  // A 股纯代码输入：先获取公司名再搜索，用名称替代数字代码提升新闻命中率
+  if (parsed.chinaInfo && !parsed.displayName) {
+    const stockInfo = await fetchStockInfo(parsed).catch(() => null);
+    const searchSymbol = stockInfo?.name
+      ? `${stockInfo.name}${parsed.chinaInfo!.code}`
+      : symbol;
+
+    const news = await scrapeStockNews(searchSymbol, deepMode).catch(() => [] as StockNews[]);
+    return {
+      stockInfo: stockInfo ?? undefined,
+      news,
+    };
+  }
 
   const [stockInfoResult, newsResult] = await Promise.allSettled([
     fetchStockInfo(parsed),

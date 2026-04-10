@@ -33,7 +33,9 @@ export async function fetchStockInfo(parsed: ParsedSymbol): Promise<StockInfo | 
         Referer: 'https://finance.sina.com.cn',
       },
     });
-    const text = await resp.text();
+    // 新浪行情接口返回 GBK 编码，需手动解码（默认 UTF-8 会产生乱码）
+    const buffer = await resp.arrayBuffer();
+    const text = new TextDecoder('gbk').decode(buffer);
 
     // 响应格式: var hq_str_sh688693="字段1,字段2,...";
     const match = text.match(/"([^"]+)"/);

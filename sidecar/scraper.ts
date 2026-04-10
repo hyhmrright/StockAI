@@ -4,6 +4,8 @@ import { ScrapeStrategy } from './strategies/base';
 import { GoogleNewsSearchStrategy } from './strategies/google-news';
 import { GoogleStrategy } from './strategies/google';
 import { YahooStrategy } from './strategies/yahoo';
+import { fetchGoogleNewsRSS } from './strategies/google-news-rss';
+import { parseSymbol } from './strategies/exchange';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS, CONTENT_LIMITS, DEEP_MODE_MAX_ARTICLES, TIMEOUTS } from './config';
 import { toErrorMessage, logger } from './utils';
@@ -12,16 +14,36 @@ const nhm = new NodeHtmlMarkdown();
 
 /**
  * 抓取股票相关新闻
- * @param symbol 股票代码
+ * @param symbol 股票代码（可含中文名，如"安克创新300866"）
  */
 export async function scrapeStockNews(symbol: string, deepMode = true): Promise<StockNews[]> {
+  const parsed = parseSymbol(symbol);
+
+  // A 股：优先用 Google News RSS（无 CAPTCHA、速度快）
+  // Playwright 抓取的 Google News 搜索结果因 reCAPTCHA 始终返回空
+  if (parsed.chinaInfo) {
+    const query = parsed.displayName
+      ? `"${parsed.displayName}" 股票`
+      : `${parsed.chinaInfo.code} 股票`;
+    try {
+      const rssNews = await fetchGoogleNewsRSS(query);
+      if (rssNews.length > 0) {
+        logger.info(`Google News RSS 抓取成功，获取到 ${rssNews.length} 条新闻。`);
+        return rssNews;
+      }
+    } catch (err) {
+      logger.warn(`Google News RSS 失败，降级到 Playwright 策略: ${toErrorMessage(err)}`);
+    }
+  }
+
+  // 非 A 股或 RSS 失败：使用 Playwright 多策略抓取
   const browser: Browser = await chromium.launch({
     headless: true,
     args: BROWSER_LAUNCH_ARGS,
   });
 
   const context = await browser.newContext(BROWSER_CONTEXT_DEFAULTS);
-  
+
   const page: Page = await context.newPage();
   let news: StockNews[] = [];
 

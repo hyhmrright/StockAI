@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { X, Settings as SettingsIcon, Save, Bot, User, CheckCircle2 } from "lucide-react";
 import { useSettings, Settings } from "../hooks/useSettings";
 import { GeneralForm } from "./settings/GeneralForm";
@@ -18,12 +19,17 @@ type Tab = "general" | "providers";
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { settings, updateSettings, isLoading } = useSettings();
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
+  const [appVersion, setAppVersion] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("providers");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings]);
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
 
   if (!isOpen) return null;
 
@@ -66,7 +72,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           ))}
           
           <div className="mt-auto p-4 text-[10px] text-gray-600 font-mono">
-            StockAI v0.1.3
+            StockAI {appVersion ? `v${appVersion}` : ''}
           </div>
         </aside>
 
