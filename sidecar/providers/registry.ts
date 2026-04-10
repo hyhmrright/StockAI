@@ -10,35 +10,37 @@ interface ProviderConfig {
   model?: string;
 }
 
+type ProviderFactory = (config: ProviderConfig) => AIProvider;
+
+/**
+ * Provider 工厂映射表
+ * 新增 Provider 只需在此添加一行，analysis.ts 和其他调用方无需修改
+ */
+const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
+  ollama: (cfg) => new OllamaProvider(
+    cfg.baseUrl || PROVIDER_DEFAULTS.ollama.baseUrl,
+    cfg.model   || PROVIDER_DEFAULTS.ollama.model
+  ),
+  anthropic: (cfg) => new AnthropicProvider(
+    cfg.apiKey,
+    cfg.model || PROVIDER_DEFAULTS.anthropic.model
+  ),
+  deepseek: (cfg) => new OpenAIProvider(
+    cfg.apiKey,
+    cfg.baseUrl || PROVIDER_DEFAULTS.deepseek.baseUrl,
+    cfg.model   || PROVIDER_DEFAULTS.deepseek.model
+  ),
+  openai: (cfg) => new OpenAIProvider(
+    cfg.apiKey || process.env.OPENAI_API_KEY || '',
+    cfg.baseUrl || PROVIDER_DEFAULTS.openai.baseUrl,
+    cfg.model   || PROVIDER_DEFAULTS.openai.model
+  ),
+};
+
 /**
  * 根据类型创建 AI Provider 实例
- * 新增 Provider 只需在此注册，analysis.ts 无需修改
  */
 export function createProvider(type: string, config: ProviderConfig): AIProvider {
-  switch (type) {
-    case 'ollama':
-      return new OllamaProvider(
-        config.baseUrl || PROVIDER_DEFAULTS.ollama.baseUrl,
-        config.model   || PROVIDER_DEFAULTS.ollama.model
-      );
-    case 'anthropic':
-      return new AnthropicProvider(
-        config.apiKey,
-        config.model || PROVIDER_DEFAULTS.anthropic.model
-      );
-    case 'deepseek':
-      // DeepSeek API 完全兼容 OpenAI SDK，直接复用
-      return new OpenAIProvider(
-        config.apiKey,
-        config.baseUrl || PROVIDER_DEFAULTS.deepseek.baseUrl,
-        config.model   || PROVIDER_DEFAULTS.deepseek.model
-      );
-    case 'openai':
-    default:
-      return new OpenAIProvider(
-        config.apiKey || process.env.OPENAI_API_KEY || '',
-        config.baseUrl || PROVIDER_DEFAULTS.openai.baseUrl,
-        config.model   || PROVIDER_DEFAULTS.openai.model
-      );
-  }
+  const factory = PROVIDER_FACTORIES[type] ?? PROVIDER_FACTORIES.openai;
+  return factory(config);
 }

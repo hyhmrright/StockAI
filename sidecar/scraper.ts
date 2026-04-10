@@ -88,17 +88,20 @@ async function extractFullContent(page: Page, url: string): Promise<string> {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.contentExtraction });
     const html = await page.evaluate(() => {
-      // 移除干扰元素
+      // 移除广告、导航等干扰元素，减少 token 噪声
       document.querySelectorAll('script, style, nav, footer, iframe, ads').forEach(t => t.remove());
 
-      // 按优先级尝试常见正文容器
+      // 按覆盖率优先级尝试常见正文容器：
+      // article > 语义容器（财经网站常用）> main > id/class 型容器
       const selectors = ['article', '.article-content', '.story-content', 'main', '#main-content', '.post-content'];
       for (const selector of selectors) {
         const el = document.querySelector(selector) as HTMLElement | null;
+        // 300 字符阈值：排除空容器或仅含导航链接的伪正文区
         if (el && el.innerText.length > 300) return el.innerHTML;
       }
 
-      // 回退：找包含最多段落的容器
+      // 最终回退：在所有 div/section 中找段落最多且文本最长的容器
+      // 3 个段落阈值：过滤掉侧边栏、广告位等低密度区块
       const containers = Array.from(document.querySelectorAll('div, section')) as HTMLElement[];
       const best = containers
         .filter(div => div.querySelectorAll('p').length > 3)
