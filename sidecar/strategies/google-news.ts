@@ -16,8 +16,14 @@ export class GoogleNewsSearchStrategy extends ScrapeStrategy {
     let lang: string;
 
     if (parsed.chinaInfo) {
-      const keyword = parsed.displayName ?? parsed.chinaInfo.code;
-      query = `"${keyword}" 股票 新闻`;
+      if (parsed.displayName) {
+        // 有股票名称：精确匹配名称，命中率高
+        query = `"${parsed.displayName}" 股票 新闻`;
+      } else {
+        // 纯代码输入：不加引号，允许宽松匹配
+        // 中文财经新闻通常用股票名而非代码，加引号反而导致零结果
+        query = `${parsed.chinaInfo.code} 股票 新闻`;
+      }
       lang = 'zh-CN';
     } else {
       query = `"${symbol}" stock news`;
