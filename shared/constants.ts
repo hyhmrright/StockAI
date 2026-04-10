@@ -14,3 +14,9 @@ export const DEFAULT_SETTINGS = {
   autoAnalyze: true,
   deepMode: true,
 };
+
+/**
+ * 配置格式版本号。每次 Settings / Sidecar 配置结构发生 breaking change 时递增。
+ * Sidecar 会拒绝不匹配此版本的配置，防止静默降级。
+ */
+export const CONFIG_VERSION = "2";

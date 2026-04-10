@@ -1,32 +1,14 @@
+/**
+ * Sidecar stdout 协议约定：
+ * 每次进程运行只允许向 stdout 写入一次 JSON 行（通过 outputJson()）。
+ * 所有调试信息通过 stderr（logger.*）输出。
+ * Rust 层从 stdout 取最后一行非空内容作为响应。
+ */
+
 import { performFullAnalysis } from './analysis';
 import { Ollama } from 'ollama';
 import { toErrorMessage, logger, outputJson } from './utils';
-import { PROVIDER_DEFAULTS } from './config';
-
-/**
- * 从原始配置对象中提取有效的 Provider 配置
- */
-function resolveConfig(raw: any) {
-  // 1. 确定当前活跃的 Provider
-  const provider = (raw.activeProvider || raw.provider || raw.model || 'ollama') as keyof typeof PROVIDER_DEFAULTS;
-  
-  // 2. 获取该 Provider 的配置 (优先从新格式 providerConfigs 中获取)
-  const providerCfg = raw.providerConfigs?.[provider] || {};
-  
-  // 3. 提取各个字段 (兼容旧格式直接存储在根对象的情况)
-  const apiKey = providerCfg.apiKey || raw.apiKey || '';
-  const baseUrl = providerCfg.baseUrl || raw.baseUrl || PROVIDER_DEFAULTS[provider]?.baseUrl || '';
-  const modelName = providerCfg.model || raw.aiModel || raw.modelName || PROVIDER_DEFAULTS[provider]?.model || '';
-  const deepMode = raw.deepMode !== false; // 默认为开启
-
-  return {
-    provider,
-    apiKey,
-    baseUrl,
-    modelName,
-    deepMode
-  };
-}
+import { resolveConfig } from './configResolver';
 
 /**
  * Sidecar CLI 入口点
@@ -50,8 +32,14 @@ async function main() {
     rawConfig = {};
   }
 
-  // 使用统一的逻辑解析配置
-  const config = resolveConfig(rawConfig);
+  // 解析配置，版本不兼容时直接返回错误
+  let config;
+  try {
+    config = resolveConfig(rawConfig);
+  } catch (error) {
+    outputJson({ error: toErrorMessage(error) });
+    return;
+  }
 
   // 支持获取模型列表动作
   if (symbolOrAction === '--list-models') {
