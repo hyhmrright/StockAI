@@ -22,7 +22,7 @@
     "node-html-markdown": "^2.0.0",
     "ollama": "^0.6.3",
     "openai": "^6.33.0",
-    "playwright-core": "^1.59.1",
+    "playwright-core": "1.59.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^3.5.0"
