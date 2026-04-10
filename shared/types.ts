@@ -8,17 +8,17 @@ export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek";
  */
 export interface StockNews {
   title: string;   // 新闻标题
-  source: string;  // 新闻来源
-  date: string;    // 发布日期
-  content: string; // 新闻内容 (Markdown 格式)
-  url: string;     // 新闻链接
+  source: string;  // 新闻来源（域名或媒体名称）
+  date: string;    // 发布日期，格式为 YYYY-MM-DD（无法解析时为原始字符串）
+  content: string; // 新闻内容（Markdown 格式；深度模式下为完整正文，否则为摘要或空字符串）
+  url: string;     // 新闻原文链接
 }
 
 /**
  * AI 分析结果接口
  */
 export interface AIAnalysisResult {
-  rating: number; // 1-100 分
+  rating: number; // 综合评分，范围 1-100（50 为中性基准）
   sentiment: 'bullish' | 'bearish' | 'neutral'; // 情绪：看涨、看跌、中性
   summary: string; // 简要总结
   pros: string[]; // 利多理由
