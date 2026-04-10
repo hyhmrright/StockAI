@@ -42,9 +42,9 @@ describe("withTimeout", () => {
   });
 
   test("超时后 timer 被正确清理（不泄漏）", async () => {
-    // 正常完成后 finally 应清理 timer
-    await withTimeout(Promise.resolve(42), 100, "");
-    // 如果 timer 泄漏，进程会挂起——测试能正常结束即证明已清理
+    // 验证返回值正确，同时间接证明 timer 已清理（进程不挂起）
+    const result = await withTimeout(Promise.resolve(42), 100, "不应超时");
+    expect(result).toBe(42);
   });
 });
 

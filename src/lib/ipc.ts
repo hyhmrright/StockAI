@@ -10,7 +10,7 @@ const isTauri = () => !!(window as any).__TAURI_INTERNALS__;
  * 从原始 stdout 字符串中解析分析结果，集中处理验证和错误转换。
  * 调用方只接触强类型的 FullAnalysisResponse，不需要处理 JSON 或错误格式。
  */
-function parseAnalysisResponse(raw: string): FullAnalysisResponse {
+export function parseAnalysisResponse(raw: string): FullAnalysisResponse {
   if (!raw || raw.trim() === '') {
     throw new Error('分析服务无响应，请检查 AI 模型配置后重试。');
   }

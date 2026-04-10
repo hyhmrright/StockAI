@@ -82,7 +82,10 @@ function htmlToMarkdown(html: string): string {
 /**
  * 提取新闻详情页的完整正文并转换为 Markdown
  * 注意：page.evaluate 的回调必须内联，不能传命名函数引用——
- * Playwright 通过 .toString() 序列化函数体，编译后的二进制中命名函数引用会丢失
+ * Playwright 通过 .toString() 序列化函数体，编译后的二进制中命名函数引用会丢失。
+ * 测试限制：DOM 选择逻辑运行在浏览器沙箱中，无法在 Bun 进程内单元测试；
+ * 覆盖依赖 scraper.integration.ts（需要网络，标记 flaky）。
+ * 若需要单元测试，需将 page.evaluate 替换为 page.content() + 服务端 HTML 解析器。
  */
 async function extractFullContent(page: Page, url: string): Promise<string> {
   try {

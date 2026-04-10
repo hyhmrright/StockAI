@@ -51,20 +51,26 @@ describe("Scraper Parsers (Unit)", () => {
     expect(news[0].url).toBe("https://finance.yahoo.com/news/tesla-auto-pilot-update");
   });
 
-  test("畸形 HTML 不应崩溃，返回空数组", async () => {
-    // 未闭合标签、嵌套错误
+  test("parseGoogleNews: 畸形 HTML 不应崩溃，返回数组", async () => {
     const malformed = `<html><body><a href="/news<div>broken</a></div><a><span>`;
-    const googleNews = await parseGoogleNews(malformed);
-    const yahooNews = await parseYahooNews(malformed);
-    expect(googleNews).toBeArray();
-    expect(yahooNews).toBeArray();
+    const news = await parseGoogleNews(malformed);
+    expect(news).toBeArray();
   });
 
-  test("空字符串 HTML 不应崩溃", async () => {
-    const googleNews = await parseGoogleNews("");
-    const yahooNews = await parseYahooNews("");
-    expect(googleNews.length).toBe(0);
-    expect(yahooNews.length).toBe(0);
+  test("parseYahooNews: 畸形 HTML 不应崩溃，返回数组", async () => {
+    const malformed = `<html><body><a href="/news<div>broken</a></div><a><span>`;
+    const news = await parseYahooNews(malformed);
+    expect(news).toBeArray();
+  });
+
+  test("parseGoogleNews: 空字符串不应崩溃，返回空数组", async () => {
+    const news = await parseGoogleNews("");
+    expect(news.length).toBe(0);
+  });
+
+  test("parseYahooNews: 空字符串不应崩溃，返回空数组", async () => {
+    const news = await parseYahooNews("");
+    expect(news.length).toBe(0);
   });
 
   test("当没有匹配链接时应返回空列表", async () => {

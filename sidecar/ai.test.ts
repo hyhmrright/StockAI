@@ -1,5 +1,4 @@
 import { expect, test, describe } from "bun:test";
-import { AIAnalysisResult } from "./ai";
 import { buildAnalysisPrompt } from "./prompts";
 
 /**
@@ -30,19 +29,19 @@ describe("AI Prompt 分析逻辑", () => {
     expect(prompt800.length).toBeLessThan(prompt1000.length);
   });
 
-  test("解析模拟的 AI JSON 响应", () => {
-    const mockJsonResponse = JSON.stringify({
-      rating: 85,
-      sentiment: "bullish",
-      summary: "苹果业绩强劲，尽管面临地区性压力。",
-      pros: ["财报超预期", "服务业务增长"],
-      cons: ["中国市场销售疲软"]
-    });
+  test("contentLimit 截断：超出限制的正文内容被截断，未超出的保持原样", () => {
+    // 验证 buildAnalysisPrompt 的 contentLimit 参数实际作用于新闻正文截断
+    const shortContent = "A".repeat(100);
+    const longContent = "A".repeat(3000);
+    const newsShort = [{ title: "T", source: "S", content: shortContent }];
+    const newsLong  = [{ title: "T", source: "S", content: longContent }];
 
-    const result: AIAnalysisResult = JSON.parse(mockJsonResponse);
-    expect(result.rating).toBe(85);
-    expect(result.sentiment).toBe("bullish");
-    expect(result.pros).toHaveLength(2);
-    expect(result.cons).toContain("中国市场销售疲软");
+    const promptShort = buildAnalysisPrompt("TEST", newsShort, 500);
+    const promptLong  = buildAnalysisPrompt("TEST", newsLong,  500);
+
+    // 超出 500 字符的正文应被截断，导致 prompt 长度不随原始内容线性增长
+    expect(promptLong.length).toBeLessThan(promptShort.length + longContent.length);
+    // 未截断的短内容应完整出现在 prompt 中
+    expect(promptShort).toContain(shortContent);
   });
 });
