@@ -9,6 +9,7 @@ import { performFullAnalysis } from './analysis';
 import { Ollama } from 'ollama';
 import { toErrorMessage, logger, outputJson } from './utils';
 import { resolveConfig } from './configResolver';
+import { DEFAULT_OPENAI_MODELS } from './config';
 
 /**
  * Sidecar CLI 入口点
@@ -50,7 +51,7 @@ async function main() {
         outputJson({ models: list.models.map(m => m.name) });
       } else {
         // 对于 OpenAI 等，返回常用默认值
-        outputJson({ models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"] });
+        outputJson({ models: DEFAULT_OPENAI_MODELS });
       }
     } catch (error) {
       outputJson({ error: toErrorMessage(error) });

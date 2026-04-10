@@ -4,6 +4,7 @@ import { fetchStockInfo } from './stock-info';
 import { parseSymbol } from './strategies/exchange';
 import { AIAnalysisResult } from './ai';
 import { createProvider } from './providers/registry';
+import { logger } from './utils';
 
 /**
  * 执行完整的股票分析流程
@@ -35,7 +36,7 @@ export async function performFullAnalysis(
     const provider = createProvider(providerType, config);
     analysis = await provider.analyze(symbol, news);
   } catch (error) {
-    console.error(`AI 分析异常 (${symbol}):`, error);
+    logger.error(`AI 分析异常 (${symbol}): ${error instanceof Error ? error.message : String(error)}`);
     analysis = {
       rating: 50,
       sentiment: 'neutral',

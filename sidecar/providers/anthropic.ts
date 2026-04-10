@@ -3,7 +3,7 @@ import type { StockNews } from "../../shared/types";
 import { AIAnalysisResult, AIProvider } from "../ai";
 import { CONTENT_LIMITS, PROVIDER_DEFAULTS, TIMEOUTS } from "../config";
 import { buildAnalysisPrompt } from "../prompts";
-import { toErrorMessage, withTimeout } from "../utils";
+import { toErrorMessage, withTimeout, logger } from "../utils";
 
 /**
  * Anthropic Claude 提供者实现
@@ -36,7 +36,7 @@ export class AnthropicProvider implements AIProvider {
       const content = block.type === "text" ? block.text : "{}";
       return JSON.parse(content) as AIAnalysisResult;
     } catch (error) {
-      console.error("Anthropic 分析出错:", error);
+      logger.error(`Anthropic 分析出错: ${toErrorMessage(error)}`);
       throw new Error(`Anthropic 分析失败: ${toErrorMessage(error)}`);
     }
   }

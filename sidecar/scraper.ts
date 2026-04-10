@@ -5,8 +5,8 @@ import { GoogleNewsSearchStrategy } from './strategies/google-news';
 import { GoogleStrategy } from './strategies/google';
 import { YahooStrategy } from './strategies/yahoo';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
-import { CONTENT_LIMITS, DEEP_MODE_MAX_ARTICLES, TIMEOUTS } from './config';
-import { toErrorMessage } from './utils';
+import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS, CONTENT_LIMITS, DEEP_MODE_MAX_ARTICLES, TIMEOUTS } from './config';
+import { toErrorMessage, logger } from './utils';
 
 const nhm = new NodeHtmlMarkdown();
 
@@ -40,15 +40,12 @@ export async function scrapeStockNews(symbol: string, deepMode = true): Promise<
     throw new Error("模拟网络错误: 无法连接至抓取服务。");
   }
 
-  const browser: Browser = await chromium.launch({ 
+  const browser: Browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'] 
+    args: BROWSER_LAUNCH_ARGS,
   });
-  
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    locale: 'zh-CN'
-  });
+
+  const context = await browser.newContext(BROWSER_CONTEXT_DEFAULTS);
   
   const page: Page = await context.newPage();
   let news: StockNews[] = [];
@@ -65,31 +62,31 @@ export async function scrapeStockNews(symbol: string, deepMode = true): Promise<
       const results = await strategy.scrape(page, symbol);
       if (results.length > 0) {
         news = results;
-        console.error(`${strategy.name} 抓取成功，获取到 ${results.length} 条新闻概要。`);
-        
+        logger.info(`${strategy.name} 抓取成功，获取到 ${results.length} 条新闻概要。`);
+
         // 深度模式：提取前 3 条新闻的完整正文，耗时较长但分析质量更高
         if (deepMode) {
-          console.error("深度模式已开启，正在提取新闻正文...");
+          logger.info("深度模式已开启，正在提取新闻正文...");
           for (let i = 0; i < Math.min(news.length, DEEP_MODE_MAX_ARTICLES); i++) {
             try {
               const content = await extractFullContent(page, news[i].url);
               if (content) {
                 news[i].content = content;
-                console.error(`  - 已提取正文: ${news[i].title.substring(0, 30)}...`);
+                logger.info(`  - 已提取正文: ${news[i].title.substring(0, 30)}...`);
               }
             } catch (e) {
-              console.error(`  - 无法提取正文 [${news[i].title.substring(0, 20)}]:`, toErrorMessage(e));
+              logger.warn(`  - 无法提取正文 [${news[i].title.substring(0, 20)}]: ${toErrorMessage(e)}`);
             }
           }
         } else {
-          console.error("深度模式已关闭，仅使用新闻摘要进行分析。");
+          logger.info("深度模式已关闭，仅使用新闻摘要进行分析。");
         }
-        
+
         break; // 只要有一个策略成功就停止
       }
     }
   } catch (error) {
-    console.error(`抓取 ${symbol} 新闻发生异常:`, error);
+    logger.error(`抓取 ${symbol} 新闻发生异常: ${toErrorMessage(error)}`);
   } finally {
     await browser.close();
   }

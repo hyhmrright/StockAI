@@ -3,7 +3,7 @@ import type { StockNews } from "../../shared/types";
 import { AIAnalysisResult, AIProvider } from "../ai";
 import { CONTENT_LIMITS, PROVIDER_DEFAULTS, TIMEOUTS } from "../config";
 import { buildAnalysisPrompt } from "../prompts";
-import { toErrorMessage } from "../utils";
+import { toErrorMessage, logger } from "../utils";
 
 /**
  * OpenAI 提供者实现
@@ -40,7 +40,7 @@ export class OpenAIProvider implements AIProvider {
       const content = response.choices[0].message.content || "{}";
       return JSON.parse(content) as AIAnalysisResult;
     } catch (error) {
-      console.error("OpenAI 分析出错:", error);
+      logger.error(`OpenAI 分析出错: ${toErrorMessage(error)}`);
       throw new Error(`OpenAI 分析失败: ${toErrorMessage(error)}`);
     }
   }
