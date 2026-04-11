@@ -1,5 +1,5 @@
 import type { StockInfo } from '../shared/types';
-import type { ParsedSymbol } from './strategies/exchange';
+import type { ParsedSymbol } from './parsers/exchange';
 import { toErrorMessage } from './utils';
 
 // 代码前缀 → 交易所名称

@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { parseGoogleNews, parseYahooNews } from "./parsers";
+import { parseGoogleNews, parseYahooNews } from "./html";
 
 describe("Scraper Parsers (Unit)", () => {
   

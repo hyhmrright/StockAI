@@ -1,7 +1,7 @@
 import { StockNews } from '../types';
 import { ScrapeStrategy } from './base';
-import { parseGoogleNews } from './parsers';
-import { detectChinaStock } from './exchange';
+import { parseGoogleNews } from '../parsers/html';
+import { detectChinaStock } from '../parsers/exchange';
 
 /**
  * Google Finance 抓取策略

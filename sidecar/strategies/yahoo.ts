@@ -1,7 +1,7 @@
 import { StockNews } from '../types';
 import { ScrapeStrategy } from './base';
-import { parseYahooNews } from './parsers';
-import { detectChinaStock } from './exchange';
+import { parseYahooNews } from '../parsers/html';
+import { detectChinaStock } from '../parsers/exchange';
 
 /**
  * Yahoo Finance 抓取策略

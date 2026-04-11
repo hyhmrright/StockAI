@@ -1,6 +1,16 @@
 // 跨层共享的数据类型定义（前端 + Sidecar 的唯一来源）
+/**
+ * 统一的业务响应信封
+ */
+export interface ServiceResponse<T> {
+  data?: T;
+  error?: {
+    code: string;    // 错误码，如 'ERR_SCRAPE_EMPTY', 'ERR_AI_AUTH'
+    message: string; // 人类可读的消息
+  };
+}
 
-/** AI 服务提供商类型（跨 Rust / Sidecar / 前端共用） */
+/** AI 服务提供商类型 */
 export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek";
 
 /**

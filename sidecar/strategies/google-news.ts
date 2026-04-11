@@ -1,7 +1,7 @@
 import { StockNews } from '../types';
 import { ScrapeStrategy } from './base';
-import { parseSymbol } from './exchange';
-import { parseGoogleNewsSearch } from './parsers';
+import { parseSymbol } from '../parsers/exchange';
+import { parseGoogleNewsSearch } from '../parsers/html';
 
 /**
  * Google News 搜索策略

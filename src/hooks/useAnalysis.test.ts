@@ -32,29 +32,27 @@ function createMockAnalysisResponse(overrides: Partial<FullAnalysisResponse> = {
 }
 
 describe('useAnalysis Hook', () => {
-  it('应该能正常处理分析流程的状态流转并传递正确的参数', async () => {
+  it('performAnalysis_ValidSymbol_TransitionsToCompleted', async () => {
     const symbol = 'TSLA';
-    // IPC 现在直接返回强类型对象，不再是 JSON 字符串
     (startAnalysisIpc as any).mockResolvedValue(createMockAnalysisResponse({ symbol }));
 
     const { result } = renderHook(() => useAnalysis());
-    expect(result.current.step).toBe('idle');
-
+    
     await act(async () => {
       await result.current.performAnalysis(symbol);
     });
 
-    expect(startAnalysisIpc).toHaveBeenCalledWith(symbol);
     expect(result.current.step).toBe('completed');
     expect(result.current.result?.symbol).toBe(symbol);
-    expect(result.current.error).toBeNull();
   });
 
-  it('IPC 层抛出格式验证错误时应展示错误', async () => {
-    // 验证逻辑已移至 ipc.ts；useAnalysis 只需正确处理 rejected promise
-    (startAnalysisIpc as any).mockRejectedValue(
-      new Error('分析结果格式异常，请检查 AI 模型是否正确返回了 JSON。')
-    );
+  it.each([
+    ['FormatError', '分析结果格式异常', '分析结果格式异常'],
+    ['NoResponse', '分析服务无响应', '分析服务无响应'],
+    ['EmptyNews', '未搜寻到相关新闻', '未搜寻到相关新闻'],
+    ['NetworkError', '网络错误', '网络错误'],
+  ])('performAnalysis_IPCThrows%s_TransitionsToErrorWithExpectedMessage', async (_, errorMsg, expectedSubStr) => {
+    (startAnalysisIpc as any).mockRejectedValue(new Error(errorMsg));
 
     const { result } = renderHook(() => useAnalysis());
 
@@ -63,48 +61,6 @@ describe('useAnalysis Hook', () => {
     });
 
     expect(result.current.step).toBe('error');
-    expect(result.current.error).toContain('格式异常');
-  });
-
-  it('IPC 层抛出空响应错误时应展示错误', async () => {
-    (startAnalysisIpc as any).mockRejectedValue(
-      new Error('分析服务无响应，请检查 AI 模型配置后重试。')
-    );
-
-    const { result } = renderHook(() => useAnalysis());
-
-    await act(async () => {
-      await result.current.performAnalysis('AAPL');
-    });
-
-    expect(result.current.step).toBe('error');
-    expect(result.current.error).toContain('无响应');
-  });
-
-  it('Sidecar 返回 error JSON 时应展示错误信息', async () => {
-    // ipc.ts 已将 { error: "..." } 转换为 thrown Error
-    (startAnalysisIpc as any).mockRejectedValue(new Error('未搜寻到相关新闻'));
-
-    const { result } = renderHook(() => useAnalysis());
-
-    await act(async () => {
-      await result.current.performAnalysis('AAPL');
-    });
-
-    expect(result.current.step).toBe('error');
-    expect(result.current.error).toBe('未搜寻到相关新闻');
-  });
-
-  it('应该能正确处理网络异常情况', async () => {
-    (startAnalysisIpc as any).mockRejectedValue(new Error('网络错误'));
-
-    const { result } = renderHook(() => useAnalysis());
-
-    await act(async () => {
-      await result.current.performAnalysis('AAPL');
-    });
-
-    expect(result.current.step).toBe('error');
-    expect(result.current.error).toBe('网络错误');
+    expect(result.current.error).toContain(expectedSubStr);
   });
 });

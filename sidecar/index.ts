@@ -48,19 +48,23 @@ async function main() {
       if (config.provider === 'ollama') {
         const ollama = new Ollama({ host: config.baseUrl });
         const list = await ollama.list();
-        outputJson({ models: list.models.map(m => m.name) });
+        outputJson({ data: { models: list.models.map(m => m.name) } });
       } else {
-        // 对于 OpenAI 等，返回常用默认值
-        outputJson({ models: DEFAULT_OPENAI_MODELS });
+        outputJson({ data: { models: DEFAULT_OPENAI_MODELS } });
       }
     } catch (error) {
-      outputJson({ error: toErrorMessage(error) });
+      outputJson({ 
+        error: { 
+          code: 'ERR_LIST_MODELS', 
+          message: toErrorMessage(error) 
+        } 
+      });
     }
     return;
   }
 
   try {
-    // 执行完整分析 (抓取 + AI)
+    // 执行完整分析
     const result = await performFullAnalysis(symbolOrAction, config.provider, {
       apiKey: config.apiKey,
       baseUrl: config.baseUrl,
@@ -68,11 +72,16 @@ async function main() {
       deepMode: config.deepMode,
     });
 
-    outputJson(result);
+    outputJson({ data: result });
   } catch (error) {
     const errorMessage = toErrorMessage(error);
     logger.error("Sidecar 运行出错: " + errorMessage);
-    outputJson({ error: errorMessage });
+    outputJson({ 
+      error: { 
+        code: errorMessage.includes('未搜寻到') ? 'ERR_SCRAPE_EMPTY' : 'ERR_ANALYSIS_FAILED',
+        message: errorMessage 
+      } 
+    });
   }
 }
 

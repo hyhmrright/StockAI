@@ -1,10 +1,41 @@
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_store::StoreExt;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-// 可以在 https://tauri.app/develop/calling-rust/ 了解更多关于 Tauri 命令的信息
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+/**
+ * AI 服务提供商配置
+ */
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProviderConfig {
+    api_key: String,
+    base_url: String,
+    model: String,
+}
+
+/**
+ * 全局设置结构体（与前端共享的 Settings 接口一致）
+ */
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AppSettings {
+    #[serde(rename = "_version")]
+    version: String,
+    active_provider: String,
+    provider_configs: HashMap<String, ProviderConfig>,
+    auto_analyze: bool,
+    deep_mode: bool,
+}
+
+/**
+ * 模型列表查询配置
+ */
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ModelListConfig {
+    provider: String,
+    base_url: String,
 }
 
 /**
@@ -19,8 +50,11 @@ impl SidecarManager {
     async fn run_analysis(
         app_handle: &tauri::AppHandle,
         symbol: String,
-        config_json: String,
+        config: AppSettings,
     ) -> Result<String, String> {
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+
         let sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
@@ -32,8 +66,6 @@ impl SidecarManager {
             .spawn()
             .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
 
-        // 取最后一行非空内容——Sidecar 协议保证 stdout 只写一次，
-        // 但防御性地取最后行可避免意外多行时 JSON.parse 失败。
         let mut last_line = String::new();
         while let Some(event) = rx.recv().await {
             match event {
@@ -54,7 +86,6 @@ impl SidecarManager {
             }
         }
         if last_line.is_empty() {
-            // Sidecar 未向 stdout 写入任何内容（崩溃或挂起）
             Ok(r#"{"error":"分析服务无响应，请检查 AI 模型配置后重试。"}"#.to_string())
         } else {
             Ok(last_line)
@@ -66,14 +97,10 @@ impl SidecarManager {
      */
     async fn list_models(
         app_handle: &tauri::AppHandle,
-        provider: String,
-        base_url: String,
+        config: ModelListConfig,
     ) -> Result<String, String> {
-        // list-models 也使用 JSON 传递参数
-        let config_json = serde_json::json!({
-            "provider": provider,
-            "baseUrl": base_url
-        }).to_string();
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("列表配置序列化失败: {}", e))?;
 
         let sidecar_command = app_handle
             .shell()
@@ -111,29 +138,32 @@ async fn list_models(
     provider: String,
     base_url: String,
 ) -> Result<String, String> {
-    SidecarManager::list_models(&app_handle, provider, base_url).await
+    let config = ModelListConfig { provider, base_url };
+    SidecarManager::list_models(&app_handle, config).await
 }
 
 /**
- * 启动股票分析 (调用 Sidecar 抓取新闻并进行 AI 分析)
- * @param app_handle Tauri App Handle
- * @param symbol 股票代码
+ * 启动股票分析
  */
 #[tauri::command]
 async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
-    // 从 settings.json 读取配置
     let store = app_handle
         .store("settings.json")
         .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
-    // 前端将设置存储在 "app_settings" 键下，直接获取并传给 Sidecar
-    let settings_val = store.get("app_settings");
-    let config_json = match settings_val {
-        Some(v) => v.to_string(),
-        None => "{}".to_string(),
-    };
+    let settings_val = store.get("app_settings")
+        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
-    SidecarManager::run_analysis(&app_handle, symbol, config_json).await
+    // 在 Rust 层解析配置，确保其符合架构定义的 Schema
+    let settings: AppSettings = serde_json::from_value(settings_val)
+        .map_err(|e| format!("应用配置格式不正确: {}。请在设置界面重新保存。", e))?;
+
+    SidecarManager::run_analysis(&app_handle, symbol, settings).await
+}
+
+#[tauri::command]
+fn greet(name: &str) -> String {
+    format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[cfg(test)]
@@ -144,9 +174,6 @@ mod tests {
     fn test_greet() {
         assert_eq!(greet("Tauri"), "Hello, Tauri! You've been greeted from Rust!");
     }
-
-    // 注意：start_analysis 依赖 tauri::AppHandle 和 Store，通常需要集成测试或 Mock
-    // 但我们可以验证其核心逻辑的鲁棒性
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
