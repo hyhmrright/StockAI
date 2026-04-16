@@ -1,27 +1,17 @@
-import type { StockNews } from '../types';
-import { todayISO } from '../utils';
-import { ScrapeStrategy } from './base';
+import type { StockNews } from '../../shared/types';
+import { todayISO, toErrorMessage, logger } from '../utils';
+import type { ScrapeContext, ScrapeStrategy } from './base';
 import { parseSymbol } from '../parsers/exchange';
-import { Page } from 'playwright-core';
 
 /**
  * Google News RSS 抓取策略。
- * RSS 不需要 JavaScript，不触发 reCAPTCHA，适合 A 股中文关键词搜索。
+ * 纯 fetch 实现——不需要 Playwright，不触发 reCAPTCHA，适合 A 股中文关键词搜索。
+ * 不调用 ctx.getPage()，所以 RSS-only 命中路径不会启动 Chromium。
  */
-export class GoogleNewsRSSStrategy extends ScrapeStrategy {
-  name = "Google News RSS";
+export class GoogleNewsRSSStrategy implements ScrapeStrategy {
+  readonly name = "Google News RSS";
 
-  /** 
-   * 获取目标 URL（RSS 策略不使用此方法，由 parse 覆盖）
-   */
-  protected getUrl(_symbol: string): string {
-    return '';
-  }
-
-  /**
-   * RSS 策略重写 scrape 方法，直接使用 fetch 而非 Playwright
-   */
-  async scrape(_page: Page, symbol: string): Promise<StockNews[]> {
+  async scrape(symbol: string, _ctx: ScrapeContext): Promise<StockNews[]> {
     const parsed = parseSymbol(symbol);
     const query = parsed.displayName
       ? `"${parsed.displayName}" 股票`
@@ -34,6 +24,7 @@ export class GoogleNewsRSSStrategy extends ScrapeStrategy {
       const xml = await resp.text();
       return this.parse(xml);
     } catch (err) {
+      logger.warn(`[${this.name}] RSS 抓取失败 (${symbol}): ${toErrorMessage(err)}`);
       return [];
     }
   }
@@ -41,7 +32,7 @@ export class GoogleNewsRSSStrategy extends ScrapeStrategy {
   /**
    * 解析 RSS XML 字符串
    */
-  protected parse(xml: string): StockNews[] {
+  private parse(xml: string): StockNews[] {
     const items = xml.match(/<item>([\s\S]*?)<\/item>/g) ?? [];
 
     return items.slice(0, 8).map(item => {
@@ -66,4 +57,3 @@ export class GoogleNewsRSSStrategy extends ScrapeStrategy {
     }).filter(n => n.title && n.url);
   }
 }
-

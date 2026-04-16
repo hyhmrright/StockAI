@@ -2,32 +2,37 @@ import { expect, test, describe } from "bun:test";
 import { createProvider } from "./registry";
 
 describe("createProvider", () => {
-  test("返回的 provider 实现 AIProvider 接口（具有 analyze 方法）", () => {
-    const provider = createProvider("openai", { apiKey: "sk-test" });
-    expect(typeof provider.analyze).toBe("function");
+  test("'openai' → OpenAIProvider", () => {
+    const p = createProvider("openai", { apiKey: "sk-test" });
+    expect(p.kind).toBe("openai");
   });
 
-  test("type 为 'ollama' 时返回具有 analyze 方法的 provider", () => {
-    const provider = createProvider("ollama", {});
-    expect(typeof provider.analyze).toBe("function");
+  test("'deepseek' → OpenAI 兼容 Provider（共用 OpenAI 家族）", () => {
+    const p = createProvider("deepseek", { apiKey: "sk-test" });
+    expect(p.kind).toBe("openai");
   });
 
-  test("type 为 'anthropic' 时返回具有 analyze 方法的 provider", () => {
-    const provider = createProvider("anthropic", { apiKey: "sk-ant-test" });
-    expect(typeof provider.analyze).toBe("function");
+  test("'ollama' → OllamaProvider", () => {
+    const p = createProvider("ollama", {});
+    expect(p.kind).toBe("ollama");
   });
 
-  test("未知 type 回退后仍返回具有 analyze 方法的 provider", () => {
-    const provider = createProvider("unknown-provider", { apiKey: "sk-dummy" });
-    expect(typeof provider.analyze).toBe("function");
+  test("'anthropic' → AnthropicProvider", () => {
+    const p = createProvider("anthropic", { apiKey: "sk-ant-test" });
+    expect(p.kind).toBe("anthropic");
   });
 
-  test("空字符串 type 回退后仍返回具有 analyze 方法的 provider", () => {
-    const provider = createProvider("", { apiKey: "sk-dummy" });
-    expect(typeof provider.analyze).toBe("function");
+  test("未知 type 回退到 openai（不静默返回 wrong family）", () => {
+    const p = createProvider("unknown-provider", { apiKey: "sk-dummy" });
+    expect(p.kind).toBe("openai");
   });
 
-  test("自定义 config 传递正确（构造不抛出）", () => {
+  test("空字符串 type 同样回退到 openai", () => {
+    const p = createProvider("", { apiKey: "sk-dummy" });
+    expect(p.kind).toBe("openai");
+  });
+
+  test("自定义 config 字段不会让构造抛错", () => {
     expect(() =>
       createProvider("openai", {
         apiKey: "sk-custom",

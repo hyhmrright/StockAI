@@ -24,7 +24,28 @@ export function ProviderForm({ providerType, config, onChange }: ProviderFormPro
   const showBaseUrl = providerType !== "anthropic";
   const showApiKey = providerType !== "ollama";
 
-  // Ollama：切换到非 Ollama 时清理模型列表；切换回来时触发重新拉取
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  /**
+   * 统一的模型拉取实现。cancelled 为可选的取消信号（useEffect debounce 场景使用）。
+   */
+  async function loadModels(baseUrl: string, cancelled?: { current: boolean }) {
+    setIsFetching(true);
+    setFetchError(null);
+    try {
+      const models = await listModels("ollama", baseUrl);
+      if (cancelled?.current) return;
+      if (models.length > 0) setAvailableModels(models);
+      else setFetchError("未发现可用模型，请确保 Ollama 服务已启动。");
+    } catch (err) {
+      if (cancelled?.current) return;
+      setFetchError(`获取模型列表失败: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      if (!cancelled?.current) setIsFetching(false);
+    }
+  }
+
+  // Ollama：切换到非 Ollama 时清理模型列表；切换回来时触发重新拉取（debounce 500ms）
   useEffect(() => {
     if (!isOllama) {
       setAvailableModels([]);
@@ -34,24 +55,8 @@ export function ProviderForm({ providerType, config, onChange }: ProviderFormPro
 
     const cancelled = { current: false };
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      if (cancelled.current) return;
-      setIsFetching(true);
-      setFetchError(null);
-      try {
-        const models = await listModels("ollama", config.baseUrl);
-        if (cancelled.current) return;
-        if (models.length > 0) {
-          setAvailableModels(models);
-        } else {
-          setFetchError("未发现可用模型，请确保 Ollama 服务已启动。");
-        }
-      } catch (err) {
-        if (!cancelled.current)
-          setFetchError(`获取模型列表失败: ${err instanceof Error ? err.message : String(err)}`);
-      } finally {
-        if (!cancelled.current) setIsFetching(false);
-      }
+    debounceRef.current = setTimeout(() => {
+      if (!cancelled.current) loadModels(config.baseUrl, cancelled);
     }, 500);
 
     return () => {
@@ -60,20 +65,10 @@ export function ProviderForm({ providerType, config, onChange }: ProviderFormPro
     };
   }, [config.baseUrl, isOllama]);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
   function handleManualFetch() {
-    // 清空 debounce 计时器，立即触发（复用 effect 中的逻辑等效为手动刷新）
-    setAvailableModels([]);
-    setFetchError(null);
-    setIsFetching(true);
-    listModels("ollama", config.baseUrl)
-      .then((models) => {
-        if (models.length > 0) setAvailableModels(models);
-        else setFetchError("未发现可用模型，请确保 Ollama 服务已启动。");
-      })
-      .catch((err) => setFetchError(`获取模型列表失败: ${err instanceof Error ? err.message : String(err)}`))
-      .finally(() => setIsFetching(false));
+    // 手动刷新时取消可能挂起的 debounce 定时器，避免刷新后还触发旧的拉取
+    clearTimeout(debounceRef.current);
+    loadModels(config.baseUrl);
   }
 
   const refreshButton = (
@@ -97,7 +92,7 @@ export function ProviderForm({ providerType, config, onChange }: ProviderFormPro
           value={config.apiKey}
           onChange={(v) => onChange({ apiKey: v })}
           placeholder="sk-..."
-          hint="本地加密存储"
+          hint="仅存储在本地应用数据目录"
         />
       )}
 

@@ -1,13 +1,13 @@
-import { StockNews } from '../types';
-import { ScrapeStrategy } from './base';
+import type { StockNews } from '../../shared/types';
+import { PlaywrightStrategy } from './base';
 import { parseYahooNews } from '../parsers/html';
 import { detectChinaStock } from '../parsers/exchange';
 
 /**
  * Yahoo Finance 抓取策略
  */
-export class YahooStrategy extends ScrapeStrategy {
-  name = "Yahoo Finance";
+export class YahooStrategy extends PlaywrightStrategy {
+  readonly name = "Yahoo Finance";
 
   protected getUrl(symbol: string): string {
     const china = detectChinaStock(symbol);

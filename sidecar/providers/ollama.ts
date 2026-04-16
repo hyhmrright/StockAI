@@ -1,39 +1,37 @@
 import { Ollama } from "ollama";
-import type { StockNews } from "../../shared/types";
-import { AIAnalysisResult, AIProvider } from "../ai";
-import { CONTENT_LIMITS, PROVIDER_DEFAULTS, TIMEOUTS } from "../config";
-import { buildAnalysisPrompt } from "../prompts";
+import type { AIAnalysisResult, StockNews } from "../../shared/types";
+import type { AIProvider, ProviderKind } from "../ai";
+import { PROVIDER_PROFILES } from "../config";
+import { buildAnalysisPrompt, SYSTEM_PROMPT } from "../prompts";
 import { toErrorMessage, withTimeout, logger } from "../utils";
 
 /**
  * Ollama 本地提供者实现
  */
 export class OllamaProvider implements AIProvider {
+  readonly kind: ProviderKind = 'ollama';
   private client: Ollama;
   private model: string;
 
-  constructor(host: string = PROVIDER_DEFAULTS.ollama.baseUrl, model: string = PROVIDER_DEFAULTS.ollama.model) {
+  constructor(host: string = PROVIDER_PROFILES.ollama.baseUrl, model: string = PROVIDER_PROFILES.ollama.model) {
     this.client = new Ollama({ host });
     this.model = model;
   }
 
-  /**
-   * 分析股票 (本地模型)
-   */
   async analyze(symbol: string, news: StockNews[]): Promise<AIAnalysisResult> {
-    const prompt = buildAnalysisPrompt(symbol, news, CONTENT_LIMITS.ollama);
+    const prompt = buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.ollama.contentLimit);
 
     try {
       const response = await withTimeout(
         this.client.chat({
           model: this.model,
           messages: [
-            { role: "system", content: "你是一个专业的金融分析师。请分析以下信息并返回结构化的 JSON 数据。不要返回 JSON 以外的任何文本。" },
+            { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: prompt }
           ],
           format: "json"
         }),
-        TIMEOUTS.ollama,
+        PROVIDER_PROFILES.ollama.timeout,
         "Ollama 服务连接超时，请检查服务是否已启动并在运行。"
       );
 

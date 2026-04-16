@@ -1,32 +1,6 @@
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_store::StoreExt;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-/**
- * AI 服务提供商配置
- */
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ProviderConfig {
-    api_key: String,
-    base_url: String,
-    model: String,
-}
-
-/**
- * 全局设置结构体（与前端共享的 Settings 接口一致）
- */
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AppSettings {
-    #[serde(rename = "_version")]
-    version: String,
-    active_provider: String,
-    provider_configs: HashMap<String, ProviderConfig>,
-    auto_analyze: bool,
-    deep_mode: bool,
-}
 
 /**
  * 模型列表查询配置
@@ -45,12 +19,13 @@ struct SidecarManager;
 
 impl SidecarManager {
     /**
-     * 运行 Sidecar 分析任务
+     * 运行 Sidecar 分析任务。
+     * Settings schema 由 Sidecar 的 resolveConfig 负责校验——避免 Rust/TS/Sidecar 三处重复定义。
      */
     async fn run_analysis(
         app_handle: &tauri::AppHandle,
         symbol: String,
-        config: AppSettings,
+        config: serde_json::Value,
     ) -> Result<String, String> {
         let config_json = serde_json::to_string(&config)
             .map_err(|e| format!("配置序列化失败: {}", e))?;
@@ -154,11 +129,7 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
     let settings_val = store.get("app_settings")
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
-    // 在 Rust 层解析配置，确保其符合架构定义的 Schema
-    let settings: AppSettings = serde_json::from_value(settings_val)
-        .map_err(|e| format!("应用配置格式不正确: {}。请在设置界面重新保存。", e))?;
-
-    SidecarManager::run_analysis(&app_handle, symbol, settings).await
+    SidecarManager::run_analysis(&app_handle, symbol, settings_val).await
 }
 
 #[tauri::command]

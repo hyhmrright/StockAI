@@ -1,4 +1,4 @@
-import { StockNews } from '../types';
+import type { StockNews } from '../../shared/types';
 import { todayISO } from '../utils';
 
 /**

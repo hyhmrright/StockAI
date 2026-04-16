@@ -1,4 +1,4 @@
-import { PROVIDER_DEFAULTS, CONFIG_VERSION } from '../shared/constants';
+import { PROVIDER_PROFILES, CONFIG_VERSION } from '../shared/constants';
 import { ProviderType } from '../shared/types';
 
 export interface ResolvedConfig {
@@ -25,7 +25,7 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
 
   const provider = (obj.activeProvider ?? 'ollama') as ProviderType;
   const providerCfg: Record<string, string> = obj.providerConfigs?.[provider] ?? {};
-  const defaults = PROVIDER_DEFAULTS[provider] ?? { baseUrl: '', model: '' };
+  const defaults = PROVIDER_PROFILES[provider] ?? { baseUrl: '', model: '' };
 
   return {
     provider,

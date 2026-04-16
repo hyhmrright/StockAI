@@ -1,6 +1,6 @@
 import { scrapeStockNews } from '../sidecar/scraper';
-import { StockNews } from '../sidecar/types';
-import { AIAnalysisResult, AIProvider } from '../sidecar/ai';
+import type { AIAnalysisResult, StockNews } from '../shared/types';
+import type { AIProvider } from '../sidecar/ai';
 
 /**
  * 冒烟测试：验证全流程集成
@@ -35,6 +35,7 @@ async function runSmokeTest() {
     // 3. 模拟 AI 分析逻辑 (Mock 调用)
     console.log("阶段 3: 模拟 AI 分析...");
     const mockAiProvider: AIProvider = {
+      kind: 'openai',
       analyze: async (s: string, n: any[]): Promise<AIAnalysisResult> => {
         return {
           rating: 85,
@@ -47,19 +48,15 @@ async function runSmokeTest() {
     };
 
     const aiResult = await mockAiProvider.analyze(payload.symbol, payload.news);
-    
-    // 4. 测试错误降级逻辑
-    console.log("\n阶段 4: 正在测试错误降级逻辑...");
-    try {
-      await scrapeStockNews("FAIL");
-      throw new Error("错误降级测试失败: 预期应抛出错误但未抛出");
-    } catch (e: any) {
-      if (e.message.includes("模拟网络错误")) {
-        console.log("✅ 成功模拟并捕获错误:", e.message);
-      } else {
-        throw e;
-      }
+    console.log(`✅ AI Mock 返回评分 ${aiResult.rating}`);
+
+    // 4. 未知 symbol 的降级行为：应当返回空数组而非抛错
+    console.log("\n阶段 4: 验证未知 symbol 降级为空数组...");
+    const fallback = await scrapeStockNews("UNLIKELY_SYMBOL_XYZZY_42", false);
+    if (!Array.isArray(fallback)) {
+      throw new Error("未知 symbol 返回非数组，违反约定");
     }
+    console.log(`✅ 未知 symbol 返回空数组（长度 ${fallback.length}）`);
 
     console.log("\n✨ 全流程集成测试通过！");
     process.exit(0);

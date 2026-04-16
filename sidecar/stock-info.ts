@@ -9,7 +9,7 @@ const EXCHANGE_NAME: Record<string, string> = {
   bj: '北交所',
 };
 
-function resolveExchangeName(prefix: string, code: string): string {
+export function resolveExchangeName(prefix: string, code: string): string {
   if (prefix === 'sh' && code.startsWith('688')) return '科创板';
   if (prefix === 'sz' && (code.startsWith('300') || code.startsWith('301'))) return '创业板';
   return EXCHANGE_NAME[prefix] ?? prefix.toUpperCase();

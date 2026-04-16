@@ -1,18 +1,19 @@
 import OpenAI from "openai";
-import type { StockNews } from "../../shared/types";
-import { AIAnalysisResult, AIProvider } from "../ai";
-import { CONTENT_LIMITS, PROVIDER_DEFAULTS, TIMEOUTS } from "../config";
-import { buildAnalysisPrompt } from "../prompts";
+import type { AIAnalysisResult, StockNews } from "../../shared/types";
+import type { AIProvider, ProviderKind } from "../ai";
+import { PROVIDER_PROFILES } from "../config";
+import { buildAnalysisPrompt, SYSTEM_PROMPT } from "../prompts";
 import { toErrorMessage, logger } from "../utils";
 
 /**
  * OpenAI 提供者实现
  */
 export class OpenAIProvider implements AIProvider {
+  readonly kind: ProviderKind = 'openai';
   private client: OpenAI;
   private model: string;
 
-  constructor(apiKey?: string, baseURL?: string, model: string = PROVIDER_DEFAULTS.openai.model) {
+  constructor(apiKey?: string, baseURL?: string, model: string = PROVIDER_PROFILES.openai.model) {
     // 优先使用构造函数传入的参数，否则使用环境变量
     this.client = new OpenAI({
       apiKey: apiKey || process.env.OPENAI_API_KEY,
@@ -21,21 +22,18 @@ export class OpenAIProvider implements AIProvider {
     this.model = model;
   }
 
-  /**
-   * 分析股票
-   */
   async analyze(symbol: string, news: StockNews[]): Promise<AIAnalysisResult> {
-    const prompt = buildAnalysisPrompt(symbol, news, CONTENT_LIMITS.openai);
+    const prompt = buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.openai.contentLimit);
 
     try {
       const response = await this.client.chat.completions.create({
         model: this.model,
         messages: [
-          { role: "system", content: "你是一个专业的金融分析师，擅长根据新闻和市场动态对股票进行基本面分析。请始终以 JSON 格式回复。" },
+          { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: prompt }
         ],
         response_format: { type: "json_object" }
-      }, { timeout: TIMEOUTS.openai });
+      }, { timeout: PROVIDER_PROFILES.openai.timeout });
 
       const content = response.choices[0].message.content || "{}";
       return JSON.parse(content) as AIAnalysisResult;

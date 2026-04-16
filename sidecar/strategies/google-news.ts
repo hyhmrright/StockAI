@@ -1,5 +1,5 @@
-import { StockNews } from '../types';
-import { ScrapeStrategy } from './base';
+import type { StockNews } from '../../shared/types';
+import { PlaywrightStrategy } from './base';
 import { parseSymbol } from '../parsers/exchange';
 import { parseGoogleNewsSearch } from '../parsers/html';
 
@@ -7,8 +7,8 @@ import { parseGoogleNewsSearch } from '../parsers/html';
  * Google News 搜索策略
  * 通过搜索引擎 News tab 抓取新闻，适用于任何有名称/代码的股票
  */
-export class GoogleNewsSearchStrategy extends ScrapeStrategy {
-  name = "Google News Search";
+export class GoogleNewsSearchStrategy extends PlaywrightStrategy {
+  readonly name = "Google News Search";
 
   protected getUrl(symbol: string): string {
     const parsed = parseSymbol(symbol);

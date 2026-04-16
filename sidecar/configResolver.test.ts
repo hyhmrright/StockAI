@@ -39,7 +39,7 @@ describe("resolveConfig", () => {
     expect(cfg.deepMode).toBe(false);
   });
 
-  test("providerCfg 缺失时回退到 PROVIDER_DEFAULTS", () => {
+  test("providerCfg 缺失时回退到 PROVIDER_PROFILES", () => {
     const cfg = resolveConfig({ ...validConfig, providerConfigs: {} });
     expect(cfg.baseUrl).toBe("http://localhost:11434");
     expect(cfg.modelName).toBe("qwen3.5:9b");

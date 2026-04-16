@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getStore } from "../lib/store";
 import { ProviderType } from "../../shared/types";
-import { PROVIDER_DEFAULTS, DEFAULT_SETTINGS as SHARED_DEFAULT_SETTINGS, CONFIG_VERSION } from "../../shared/constants";
+import { PROVIDER_PROFILES, DEFAULT_SETTINGS as SHARED_DEFAULT_SETTINGS, CONFIG_VERSION } from "../../shared/constants";
 
 export type { ProviderType };
 
@@ -20,7 +20,7 @@ export interface Settings {
 }
 
 // 重新导出常量以供 UI 组件使用
-export { PROVIDER_DEFAULTS };
+export { PROVIDER_PROFILES };
 
 export const DEFAULT_SETTINGS: Settings = {
   _version: CONFIG_VERSION,
@@ -28,8 +28,8 @@ export const DEFAULT_SETTINGS: Settings = {
   providerConfigs: {
     ollama: {
       apiKey: "",
-      baseUrl: PROVIDER_DEFAULTS.ollama.baseUrl,
-      model: PROVIDER_DEFAULTS.ollama.model,
+      baseUrl: PROVIDER_PROFILES.ollama.baseUrl,
+      model: PROVIDER_PROFILES.ollama.model,
     },
   },
 };
@@ -66,8 +66,8 @@ export function useSettings() {
               providerConfigs: {
                 [oldProvider]: {
                   apiKey: saved.apiKey ?? "",
-                  baseUrl: saved.baseUrl ?? PROVIDER_DEFAULTS[oldProvider].baseUrl,
-                  model: saved.aiModel ?? PROVIDER_DEFAULTS[oldProvider].model,
+                  baseUrl: saved.baseUrl ?? PROVIDER_PROFILES[oldProvider].baseUrl,
+                  model: saved.aiModel ?? PROVIDER_PROFILES[oldProvider].model,
                 },
               },
             };

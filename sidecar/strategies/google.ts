@@ -1,13 +1,13 @@
-import { StockNews } from '../types';
-import { ScrapeStrategy } from './base';
+import type { StockNews } from '../../shared/types';
+import { PlaywrightStrategy } from './base';
 import { parseGoogleNews } from '../parsers/html';
 import { detectChinaStock } from '../parsers/exchange';
 
 /**
  * Google Finance 抓取策略
  */
-export class GoogleStrategy extends ScrapeStrategy {
-  name = "Google Finance";
+export class GoogleStrategy extends PlaywrightStrategy {
+  readonly name = "Google Finance";
 
   protected getUrl(symbol: string): string {
     const china = detectChinaStock(symbol);

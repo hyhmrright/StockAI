@@ -1,6 +1,13 @@
 import type { StockNews } from '../shared/types';
 
 /**
+ * 所有 Provider 共用的 system prompt——JSON 纯文本格式要求对 OpenAI / Anthropic / Ollama 都适用。
+ */
+export const SYSTEM_PROMPT =
+  "你是一个专业的金融分析师，擅长根据新闻和市场动态对股票进行基本面分析。" +
+  "请始终以纯 JSON 文本格式回复（不包含 Markdown 代码块标记或任何额外说明）。";
+
+/**
  * AI 分析的角色指令
  */
 const ROLE_INSTRUCTIONS = `请作为资深金融分析师，深入分析该股票的近期表现。

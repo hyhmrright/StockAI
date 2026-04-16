@@ -1,6 +1,12 @@
 import React from "react";
-import { Settings, ProviderType, PROVIDER_DEFAULTS } from "../../hooks/useSettings";
+import { Settings, ProviderType, PROVIDER_PROFILES } from "../../hooks/useSettings";
 import { ProviderForm } from "./ProviderForm";
+
+/** 从 ProviderProfile 中仅取出表单字段（舍弃 contentLimit/timeout，它们是后端关心的内容） */
+function defaultConfig(provider: ProviderType) {
+  const { baseUrl, model } = PROVIDER_PROFILES[provider];
+  return { baseUrl, model, apiKey: "" };
+}
 
 interface ProviderSelectorProps {
   settings: Settings;
@@ -23,11 +29,7 @@ const PROVIDERS = Object.keys(PROVIDER_META) as ProviderType[];
 export function ProviderSelector({ settings, onChange }: ProviderSelectorProps): React.ReactElement {
   const active = settings.activeProvider ?? "ollama";
   
-  // 补全 apiKey 字段以符合 ProviderConfig 接口
-  const activeConfig = settings.providerConfigs?.[active] ?? {
-    ...PROVIDER_DEFAULTS[active],
-    apiKey: ""
-  };
+  const activeConfig = settings.providerConfigs?.[active] ?? defaultConfig(active);
 
   function handleProviderChange(provider: ProviderType) {
     // 切换时若该 Provider 尚未配置，注入默认值
@@ -36,10 +38,7 @@ export function ProviderSelector({ settings, onChange }: ProviderSelectorProps):
       activeProvider: provider,
       providerConfigs: {
         ...settings.providerConfigs,
-        [provider]: existingConfig ?? { 
-          ...PROVIDER_DEFAULTS[provider],
-          apiKey: "" 
-        },
+        [provider]: existingConfig ?? defaultConfig(provider),
       },
     });
   }

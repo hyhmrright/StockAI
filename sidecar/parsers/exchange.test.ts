@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { detectChinaStock } from "./exchange";
+import { detectChinaStock, parseSymbol } from "./exchange";
 
 describe("detectChinaStock", () => {
   test("6 开头识别为上交所", () => {
@@ -58,5 +58,39 @@ describe("detectChinaStock", () => {
     expect(detectChinaStock("100001")).toBeNull();
     expect(detectChinaStock("200001")).toBeNull();
     expect(detectChinaStock("999999")).toBeNull();
+  });
+});
+
+describe("parseSymbol", () => {
+  test("纯代码输入：displayName 未定义，chinaInfo 正确填充", () => {
+    const parsed = parseSymbol("601012");
+    expect(parsed.chinaInfo?.code).toBe("601012");
+    expect(parsed.displayName).toBeUndefined();
+    expect(parsed.rawInput).toBe("601012");
+  });
+
+  test("中文名+代码混合：displayName 剥离后保留名称", () => {
+    const parsed = parseSymbol("隆基绿能601012");
+    expect(parsed.chinaInfo?.code).toBe("601012");
+    expect(parsed.displayName).toBe("隆基绿能");
+  });
+
+  test("代码在前、名称在后也能正确提取", () => {
+    const parsed = parseSymbol("601012隆基绿能");
+    expect(parsed.chinaInfo?.code).toBe("601012");
+    expect(parsed.displayName).toBe("隆基绿能");
+  });
+
+  test("美股代码：chinaInfo 为 undefined", () => {
+    const parsed = parseSymbol("AAPL");
+    expect(parsed.chinaInfo).toBeUndefined();
+    expect(parsed.displayName).toBeUndefined();
+    expect(parsed.rawInput).toBe("AAPL");
+  });
+
+  test("首尾空格：rawInput 已 trim", () => {
+    const parsed = parseSymbol("  601012  ");
+    expect(parsed.rawInput).toBe("601012");
+    expect(parsed.chinaInfo?.code).toBe("601012");
   });
 });

@@ -2,6 +2,30 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.3.0] - 2026-04-17
+
+### Changed (breaking internal refactor — no user-visible API changes)
+
+- **Settings schema 单一真源** — 移除 Rust 层 `AppSettings`/`ProviderConfig` 结构体；Rust 现在把 `app_settings` 作为 `serde_json::Value` 透传给 Sidecar，由 `configResolver.ts` 负责版本校验与字段解析。先前同一 schema 在前端 TS / Rust / Sidecar 三处重复定义，新增字段易漏同步。
+- **Provider 档案合并** — 原本分散在 `PROVIDER_DEFAULTS`（baseUrl+model）、`CONTENT_LIMITS`（截断）、`TIMEOUTS`（超时）三处的 provider 配置统一合并为 `PROVIDER_PROFILES: Record<ProviderType, ProviderProfile>`。新增 Provider 时 TypeScript 会强制补齐所有字段。
+- **Sidecar 共享类型路径统一** — 删除 `sidecar/types.ts` 桥接文件；所有 Sidecar 代码直接从 `../shared/types` 导入 `StockNews` / `AIAnalysisResult`。消除"两条等价导入路径"的歧义。
+- **Chromium 懒启动** — `scraper.ts` 现在通过 `ScrapeContext.getPage()` 延迟启动浏览器。A 股 RSS 成功 + `deepMode=false` 的路径完全跳过 Chromium 启动（省 1-3s）。
+- **Strategy 接口与实现分离** — `base.ts` 拆分为 `interface ScrapeStrategy`（所有策略）+ `abstract class PlaywrightStrategy`（模板方法）。`GoogleNewsRSSStrategy` 不再继承 `ScrapeStrategy` 并伪装 `getUrl()` 返回空串——现在直接实现接口，消除 Liskov 违规。
+- **符号归一化独立模块** — `StrategyRegistry.getEnhancedSymbol` 移至 `sidecar/symbol.ts`，让策略注册表只负责策略排序。
+- **内容提取独立模块** — `scraper.ts` 中的 `extractFullContent` / `heuristicContentExtraction` / `htmlToMarkdown` 拆到 `sidecar/content-extractor.ts`，让 `scraper.ts` 只剩编排。
+- **Provider 类暴露 `kind` 字段** — `AIProvider` 接口新增 `readonly kind: ProviderKind`，使工厂派发结果可被单测断言（先前只能验证"有 analyze 方法"）。
+- **System prompt 集中化** — 原来三个 provider 各自硬编码 system prompt，现在统一使用 `prompts.ts` 的 `SYSTEM_PROMPT` 常量。
+
+### Added
+
+- **5 个新测试文件** — `sidecar/symbol.test.ts`、`sidecar/content-extractor.test.ts`、`sidecar/stock-info.test.ts`、`sidecar/strategies/registry.test.ts`，以及 `sidecar/parsers/exchange.test.ts` 的 `parseSymbol` 用例补全。测试总数从 57 增至 82。
+- **`performFullAnalysis` 依赖注入** — 新增可选 `deps` 参数接受 scrape / fetchInfo / enhance / createProvider 的 mock，替代 `mock.module()` 全局替换，解决 bun:test 跨文件 mock 状态泄漏。
+
+### Fixed
+
+- **API Key 误导性提示** — 设置界面的"本地加密存储"改为"仅存储在本地应用数据目录"。tauri-plugin-store 默认不加密，原提示可能让用户误判安全边界。
+- **Smoke-test 错误降级阶段** — 原测试断言一个已删除的 mock 错误消息，导致 phase 4 永远失败。改为验证"未知 symbol 返回空数组"的真实行为契约。
+
 ## [0.2.3] - 2026-04-10
 
 ### Fixed

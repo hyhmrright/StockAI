@@ -1,34 +1,35 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { StockNews } from "../../shared/types";
-import { AIAnalysisResult, AIProvider } from "../ai";
-import { CONTENT_LIMITS, PROVIDER_DEFAULTS, TIMEOUTS } from "../config";
-import { buildAnalysisPrompt } from "../prompts";
+import type { AIAnalysisResult, StockNews } from "../../shared/types";
+import type { AIProvider, ProviderKind } from "../ai";
+import { PROVIDER_PROFILES } from "../config";
+import { buildAnalysisPrompt, SYSTEM_PROMPT } from "../prompts";
 import { toErrorMessage, withTimeout, logger } from "../utils";
 
 /**
  * Anthropic Claude 提供者实现
  */
 export class AnthropicProvider implements AIProvider {
+  readonly kind: ProviderKind = 'anthropic';
   private client: Anthropic;
   private model: string;
 
-  constructor(apiKey?: string, model: string = PROVIDER_DEFAULTS.anthropic.model) {
+  constructor(apiKey?: string, model: string = PROVIDER_PROFILES.anthropic.model) {
     this.client = new Anthropic({ apiKey: apiKey || "" });
     this.model = model;
   }
 
   async analyze(symbol: string, news: StockNews[]): Promise<AIAnalysisResult> {
-    const prompt = buildAnalysisPrompt(symbol, news, CONTENT_LIMITS.anthropic);
+    const prompt = buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.anthropic.contentLimit);
 
     try {
       const response = await withTimeout(
         this.client.messages.create({
           model: this.model,
           max_tokens: 1024,
-          system: "你是一个专业的金融分析师，擅长根据新闻和市场动态对股票进行基本面分析。请始终以 JSON 格式回复，不包含 Markdown 代码块标记。",
+          system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: prompt }],
         }),
-        TIMEOUTS.anthropic,
+        PROVIDER_PROFILES.anthropic.timeout,
         "Anthropic 请求超时"
       );
 
