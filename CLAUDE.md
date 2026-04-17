@@ -53,11 +53,12 @@ The Rust layer does exactly two things:
 Rust 层将 `AppConfig` 序列化为 JSON 字符串，作为 Sidecar 的第二个 CLI 参数传递。
 Sidecar 通过 `JSON.parse(process.argv[3])` 解析，字段为 camelCase：
 `{ provider, apiKey, baseUrl, modelName, deepMode }`
-前端 Settings 接口字段 `provider`（"openai" | "ollama"）对应 Rust `AppConfig.provider`。
+前端 Settings 字段 `provider` 类型定义在 `shared/types.ts` 的 `ProviderType`：
+`"openai" | "ollama" | "anthropic" | "deepseek"`（deepseek 走 OpenAI 兼容协议）。
 
 ### 3. Sidecar (`sidecar/`)
 A Bun process that reads JSON config from `process.argv[3]` and runs a two-step pipeline:
-1. **Scrape** (`scraper.ts`): Uses Playwright + Strategy pattern (`strategies/google.ts`, `strategies/yahoo.ts`) to fetch news. When `deepMode=true` (default), extracts full article content for the first 3 results. HTML parsing helpers live in `strategies/parsers.ts`.
+1. **Scrape** (`scraper.ts`): 按 `StrategyRegistry.getStrategies()` 顺序尝试策略，首个返回非空结果即停止。顺序为 RSS 优先（`strategies/google-news-rss.ts` 原生覆盖 A 股、绕过 reCAPTCHA），其次 Playwright 策略（`google-news.ts` / `google.ts` / `yahoo.ts`）。Chromium 懒启动——仅 Playwright 策略或深度正文提取才触发，纯 RSS 路径可节省 1–3 秒。`deepMode=true`（默认）时对前 3 条抽取正文。纯解析助手（HTML / 交易所识别）在 `sidecar/parsers/{html,exchange}.ts`，与网络层解耦。
 2. **Analyze** (`analysis.ts`): Delegates provider creation to `providers/registry.ts` factory, then calls `provider.analyze()`. Prompt 构建逻辑统一在 `prompts.ts`，所有 Provider 共用。
 
 The result is written as a JSON string to stdout, captured by Tauri, and returned to the frontend where it is parsed into `FullAnalysisResponse`.
@@ -66,7 +67,12 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 
 - **Code comments**: All inline logic comments must be written in Simplified Chinese.
 - **Component size**: UI component files must stay under 200 lines; extract complex logic into hooks.
-- **Test decoupling**: Parser logic (`strategies/parsers.ts`) must be separated from network requests and tested offline in `strategies/parsers.test.ts`.
-- **Adding a scrape strategy**: Extend the `ScrapeStrategy` interface in `sidecar/strategies/base.ts` and register the instance in the `strategies` array in `scraper.ts`.
+- **Test decoupling**: 解析逻辑放在 `sidecar/parsers/` 目录（`exchange.ts` / `html.ts`），与网络层分离，离线测试见 `parsers/*.test.ts`。
+- **Adding a scrape strategy**: 实现 `sidecar/strategies/base.ts` 的 `ScrapeStrategy`（纯 RSS / fetch 策略可直接实现；若需 Chromium，继承 `PlaywrightStrategy`），然后在 `sidecar/strategies/registry.ts` 的 `StrategyRegistry.strategies` 里追加一行。注意顺序：能跳过 Chromium 的策略尽量排前。
 - **Adding an AI provider**: Implement the `AIProvider` interface (defined in `sidecar/ai.ts`) in a new file under `sidecar/providers/`, then register it in `providers/registry.ts` 的 `createProvider()` 工厂函数中。
 - Sidecar stderr is for debug logging (Tauri pipes it to the terminal); stdout must only contain the final JSON output.
+
+## Workflow
+
+- Pre-push 钩子 (`lefthook.yml`) 跑 `tsc --noEmit` 与 `cargo check`。
+- 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun scripts/sidecar-bridge.ts`（:3001 HTTP 端点）。
