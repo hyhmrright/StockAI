@@ -9,7 +9,7 @@ StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程
 ## 🌟 核心特性
 
 - **多源新闻抓取**: 自动从 Google Finance、Yahoo Finance 实时采集股票新闻，完整支持美股及 A 股（沪深北三所）。
-- **深度 AI 分析**: 支持 OpenAI (GPT-4o) 和 Ollama (本地模型)。深度模式开启时自动提取新闻正文进行深度研判；关闭后仅用摘要，分析更快。
+- **深度 AI 分析**: 支持 OpenAI (GPT-4o)、Anthropic (Claude 3.5 Sonnet)、DeepSeek (DeepSeek Chat) 与 Ollama (本地模型) 多家提供商；各自独立保存 API Key / Base URL / 模型，通过下拉框切换。深度模式开启时自动提取新闻正文进行深度研判；关闭后仅用摘要，分析更快。
 - **可编辑关注列表**: 自由增删关注的股票，数据持久化存储，重启后不丢失。
 - **现代 UI 设计**: 采用玻璃拟态 (Glassmorphism) 设计语言，提供沉浸式的设置管理和实时的分析进度反馈。
 - **本地优先**: 所有 API 配置和个性化设置均安全存储在本地，数据不离开设备。
@@ -99,7 +99,7 @@ bun tauri dev
 - **桌面框架**: Tauri 2.0 (Rust)
 - **前端框架**: React 19, TailwindCSS 4, Lucide Icons, Lightweight Charts
 - **爬虫/后端**: Bun, Playwright, NodeHtmlMarkdown
-- **AI 集成**: OpenAI SDK, Ollama SDK
+- **AI 集成**: OpenAI SDK、Anthropic SDK、Ollama SDK（DeepSeek 通过 OpenAI 兼容协议接入）
 
 ## 📅 开发规范
 

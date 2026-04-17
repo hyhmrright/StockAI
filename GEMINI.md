@@ -6,7 +6,7 @@
 ### Architecture:
 1.  **Frontend (UI Layer)**: **React + TypeScript + Vite**. Modern desktop design with real-time feedback.
 2.  **Core Orchestration (Tauri Core)**: **Rust**. Handles local settings (`settings.json`) and Sidecar management.
-3.  **Analysis Engine (Sidecar)**: **Bun**. Uses **Playwright** for scraping and **OpenAI/Ollama** for AI analysis.
+3.  **Analysis Engine (Sidecar)**: **Bun**. Uses **Playwright** for scraping and pluggable AI providers (**OpenAI / Anthropic / DeepSeek / Ollama**).
 
 ---
 
@@ -56,7 +56,7 @@ bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-x86_64-un
 *   **Modularity**: Keep components small (< 200 lines). Extract logic to hooks.
 
 ### Testing Strategy:
-*   **Logic Decoupling**: Separation of fetching and parsing. Parser logic must have offline unit tests in `sidecar/strategies/parsers.test.ts`.
+*   **Logic Decoupling**: Separation of fetching and parsing. Parser logic lives in `sidecar/parsers/` (`html.ts` / `exchange.ts`) with offline unit tests in `sidecar/parsers/*.test.ts`.
 *   **State Verification**: Test `useAnalysis` hook for state transitions.
 
 ---
@@ -69,7 +69,7 @@ bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-x86_64-un
 ### 核心架构：
 1.  **前端 (UI 层)**: **React + TypeScript + Vite**。现代桌面端设计，支持实时反馈。
 2.  **核心调度 (Tauri Core)**: **Rust**。管理本地配置 (`settings.json`) 并通过 **Sidecar** 调度后台任务。
-3.  **分析引擎 (Sidecar)**: **Bun**。使用 **Playwright** 进行抓取，集成 **OpenAI/Ollama** 进行 AI 分析。
+3.  **分析引擎 (Sidecar)**: **Bun**。使用 **Playwright** 进行抓取，通过可插拔 Provider 接口集成 **OpenAI / Anthropic / DeepSeek / Ollama** 多种 AI 模型。
 
 ---
 
@@ -107,5 +107,5 @@ bun tauri dev
 *   **组件化**: 保持 UI 组件原子化（文件行数 < 200）。
 
 ### 测试驱动：
-*   **逻辑解耦**: 解析逻辑必须与网络请求分离，在 `sidecar/strategies/parsers.test.ts` 中进行离线单元测试。
+*   **逻辑解耦**: 解析逻辑放在 `sidecar/parsers/`（`html.ts` / `exchange.ts`），与网络层分离，离线单元测试位于 `sidecar/parsers/*.test.ts`。
 *   **状态验证**: 对核心 Hook (`useAnalysis`) 进行状态流转测试。

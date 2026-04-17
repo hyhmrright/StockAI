@@ -9,7 +9,7 @@ StockAI is a modern cross-platform desktop application built with **Tauri 2.0**.
 ## 🌟 Key Features
 
 - **Multi-source News Scraping**: Automatically collects real-time stock news from Google Finance and Yahoo Finance, with full support for US stocks and Chinese A-shares (Shanghai, Shenzhen, and Beijing Stock Exchange).
-- **Deep AI Analysis**: Supports OpenAI (GPT-4o) and Ollama (local models). Deep Mode extracts full article content for richer analysis; disable it for faster results.
+- **Deep AI Analysis**: Supports OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), DeepSeek (DeepSeek Chat), and Ollama (local models). Each provider keeps its own API key / base URL / model; switch active provider via a dropdown. Deep Mode extracts full article content for richer analysis; disable it for faster results.
 - **Editable Watchlist**: Add and remove stocks freely — the list persists across sessions via local storage.
 - **Modern UI Design**: Features a Glassmorphism design language with immersive settings management and real-time analysis progress feedback.
 - **Local-first**: All API configurations and personalized settings are securely stored locally, never leaving your device.
@@ -98,7 +98,7 @@ The project uses a multi-layered testing system:
 - **Desktop Framework**: Tauri 2.0 (Rust)
 - **Frontend Framework**: React 19, TailwindCSS 4, Lucide Icons, Lightweight Charts
 - **Scraper/Backend**: Bun, Playwright, NodeHtmlMarkdown
-- **AI Integration**: OpenAI SDK, Ollama SDK
+- **AI Integration**: OpenAI SDK, Anthropic SDK, Ollama SDK (DeepSeek via OpenAI-compatible API)
 
 ## 📅 Development Conventions
 
