@@ -12,7 +12,7 @@ import { toErrorMessage, logger } from './utils';
  * @param symbol 股票代码（可含中文名，如"安克创新300866"）
  */
 export async function scrapeStockNews(symbol: string, deepMode = true): Promise<StockNews[]> {
-  const strategies = StrategyRegistry.getStrategies(symbol);
+  const strategies = StrategyRegistry.getStrategies();
 
   // 用 ref 对象持有可变状态：ts 控制流在 finally 里无法收窄闭包内赋值的 `let`。
   // pagePromise 缓存的是 Promise 而非已解析的 Page——防止并发 getPage() 触发两次 Chromium 启动。

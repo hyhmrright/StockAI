@@ -55,7 +55,8 @@ export function useSettings() {
             }
             setSettings(migrated);
           } else {
-            // 迁移旧格式（v0.1.x 扁平结构）→ 新格式 + 写入版本
+            // v0.1.x 旧格式（扁平结构）→ 新格式迁移。
+            // TODO(v0.4.0): 确认无 v0.1.x 直升用户后可删除此分支。
             const oldProvider: ProviderType = (saved.provider ?? "openai") as ProviderType;
             const migrated: Settings = {
               ...DEFAULT_SETTINGS,

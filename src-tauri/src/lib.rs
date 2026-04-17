@@ -2,6 +2,10 @@ use tauri_plugin_shell::ShellExt;
 use tauri_plugin_store::StoreExt;
 use serde::{Deserialize, Serialize};
 
+// stdout 为空时的降级响应——提取为常量便于测试验证其格式正确性。
+const EMPTY_STDOUT_RESPONSE: &str =
+    r#"{"error":"分析服务无响应，请检查 AI 模型配置后重试。"}"#;
+
 /**
  * 模型列表查询配置
  */
@@ -18,25 +22,17 @@ struct ModelListConfig {
 struct SidecarManager;
 
 impl SidecarManager {
-    /**
-     * 运行 Sidecar 分析任务。
-     * Settings schema 由 Sidecar 的 resolveConfig 负责校验——避免 Rust/TS/Sidecar 三处重复定义。
-     */
-    async fn run_analysis(
+    // 取最后一行——Sidecar 协议保证每次运行只写一行 JSON 到 stdout。
+    async fn run(
         app_handle: &tauri::AppHandle,
-        symbol: String,
-        config: serde_json::Value,
+        args: Vec<String>,
     ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
-
         let sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
             .map_err(|e| format!("无法找到 Sidecar: {}", e))?
-            .args(&[symbol, config_json]);
+            .args(&args);
 
-        // 运行并捕获输出
         let (mut rx, _child) = sidecar_command
             .spawn()
             .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
@@ -60,16 +56,26 @@ impl SidecarManager {
                 _ => {}
             }
         }
-        if last_line.is_empty() {
-            Ok(r#"{"error":"分析服务无响应，请检查 AI 模型配置后重试。"}"#.to_string())
+        Ok(last_line)
+    }
+
+    // Settings schema 由 Sidecar 的 resolveConfig 负责校验——避免 Rust/TS/Sidecar 三处重复定义。
+    async fn run_analysis(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+        config: serde_json::Value,
+    ) -> Result<String, String> {
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+
+        let result = Self::run(app_handle, vec![symbol, config_json]).await?;
+        if result.is_empty() {
+            Ok(EMPTY_STDOUT_RESPONSE.to_string())
         } else {
-            Ok(last_line)
+            Ok(result)
         }
     }
 
-    /**
-     * 运行 Sidecar 列表任务
-     */
     async fn list_models(
         app_handle: &tauri::AppHandle,
         config: ModelListConfig,
@@ -77,30 +83,7 @@ impl SidecarManager {
         let config_json = serde_json::to_string(&config)
             .map_err(|e| format!("列表配置序列化失败: {}", e))?;
 
-        let sidecar_command = app_handle
-            .shell()
-            .sidecar("stockai-backend")
-            .map_err(|e| format!("无法找到 Sidecar: {}", e))?
-            .args(&["--list-models".to_string(), config_json]);
-
-        let (mut rx, _child) = sidecar_command
-            .spawn()
-            .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
-
-        let mut last_line = String::new();
-        while let Some(event) = rx.recv().await {
-            match event {
-                tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
-                    let s = String::from_utf8_lossy(&line);
-                    let trimmed = s.trim();
-                    if !trimmed.is_empty() {
-                        last_line = trimmed.to_string();
-                    }
-                }
-                _ => {}
-            }
-        }
-        Ok(last_line)
+        Self::run(app_handle, vec!["--list-models".to_string(), config_json]).await
     }
 }
 
@@ -132,18 +115,26 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
     SidecarManager::run_analysis(&app_handle, symbol, settings_val).await
 }
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_greet() {
-        assert_eq!(greet("Tauri"), "Hello, Tauri! You've been greeted from Rust!");
+    fn test_empty_stdout_fallback_is_valid_json_with_error_field() {
+        let v: serde_json::Value = serde_json::from_str(EMPTY_STDOUT_RESPONSE)
+            .expect("EMPTY_STDOUT_RESPONSE 必须是合法 JSON");
+        assert!(v.get("error").is_some(), "fallback 必须包含 error 字段");
+    }
+
+    #[test]
+    fn test_model_list_config_serializes_to_camel_case() {
+        let cfg = ModelListConfig {
+            provider: "openai".to_string(),
+            base_url: "https://api.openai.com/v1".to_string(),
+        };
+        let json = serde_json::to_string(&cfg).unwrap();
+        assert!(json.contains("baseUrl"), "serde 应序列化为 camelCase baseUrl");
+        assert!(!json.contains("base_url"), "不应出现 snake_case base_url");
     }
 }
 
@@ -153,7 +144,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, start_analysis, list_models])
+        .invoke_handler(tauri::generate_handler![start_analysis, list_models])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");
 }
