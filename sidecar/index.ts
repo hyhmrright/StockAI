@@ -63,6 +63,46 @@ async function main() {
     return;
   }
 
+  // 支持仅获取股票信息动作
+  if (symbolOrAction === '--info') {
+    const symbol = process.argv[4]; // 格式: backend --info <config> <symbol>
+    if (!symbol) {
+      outputJson({ error: "未提供股票代码" });
+      return;
+    }
+    try {
+      const { parseSymbol } = await import('./parsers/exchange');
+      const { fetchStockInfo } = await import('./stock-info');
+      const parsed = parseSymbol(symbol);
+      const info = await fetchStockInfo(parsed);
+      if (info) {
+        outputJson({ data: info });
+      } else {
+        outputJson({ error: `未找到股票 "${symbol}" 的信息` });
+      }
+    } catch (error) {
+      outputJson({ error: toErrorMessage(error) });
+    }
+    return;
+  }
+
+  // 支持搜索股票建议
+  if (symbolOrAction === '--search') {
+    const keyword = process.argv[4]; // 格式: backend --search <config> <keyword>
+    if (!keyword) {
+      outputJson({ data: [] });
+      return;
+    }
+    try {
+      const { searchStocks } = await import('./search');
+      const results = await searchStocks(keyword);
+      outputJson({ data: results });
+    } catch (error) {
+      outputJson({ error: toErrorMessage(error) });
+    }
+    return;
+  }
+
   try {
     // 执行完整分析
     const result = await performFullAnalysis(symbolOrAction, config.provider, {

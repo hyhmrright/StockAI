@@ -50,6 +50,16 @@ export interface StockInfo {
 }
 
 /**
+ * 股票搜索结果
+ */
+export interface StockSearchResult {
+  name: string;
+  code: string;
+  type: string;     // 股票类型：A股、美股、港股等
+  fullCode: string; // 完整带市场前缀的代码（用于新浪接口，如 sh601012, gb_aapl）
+}
+
+/**
  * 完整的股票分析响应
  */
 export interface FullAnalysisResponse {

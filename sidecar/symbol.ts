@@ -9,10 +9,13 @@ import { fetchStockInfo } from './stock-info';
 export async function getEnhancedSymbol(symbol: string): Promise<string> {
   const parsed = parseSymbol(symbol);
 
-  if (parsed.chinaInfo && !parsed.displayName) {
+  if ((parsed.chinaInfo || parsed.usInfo) && !parsed.displayName) {
     try {
       const info = await fetchStockInfo(parsed);
-      if (info?.name) return `${info.name}${parsed.chinaInfo.code}`;
+      if (info?.name) {
+        const code = parsed.chinaInfo ? parsed.chinaInfo.code : parsed.usInfo!.symbol;
+        return `${info.name} ${code}`;
+      }
     } catch {
       // 忽略获取失败，回退到原始输入
     }

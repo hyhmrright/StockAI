@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { FullAnalysisResponse, ServiceResponse } from "../../shared/types";
+import { FullAnalysisResponse, ServiceResponse, StockInfo, StockSearchResult } from "../../shared/types";
 
 /**
  * 从原始 stdout 字符串中解析响应，支持标准 ServiceResponse 信封。
@@ -29,6 +29,47 @@ export function parseServiceResponse<T>(raw: string): T {
   }
 
   return envelope.data;
+}
+
+/**
+ * 搜索股票建议
+ */
+export async function searchStocks(keyword: string): Promise<StockSearchResult[]> {
+  if (!isTauri()) {
+    return [
+      { name: "苹果公司", code: "AAPL", type: "美股", fullCode: "gb_aapl" },
+      { name: "隆基绿能", code: "601012", type: "A股", fullCode: "sh601012" }
+    ];
+  }
+
+  try {
+    const raw = await invoke<string>("search_stocks", { keyword });
+    return parseServiceResponse<StockSearchResult[]>(raw);
+  } catch (error) {
+    console.error("IPC 调用失败 (search_stocks):", error);
+    return [];
+  }
+}
+
+/**
+ * 获取股票基本信息
+ */
+export async function getStockInfo(symbol: string): Promise<StockInfo> {
+  if (!isTauri()) {
+    return {
+      name: "苹果公司",
+      code: "AAPL",
+      exchange: "NASDAQ",
+      market: "美股",
+      price: 180.5,
+      change: 2.5,
+      changePercent: 1.4,
+      currency: "USD"
+    };
+  }
+
+  const raw = await invoke<string>("get_stock_info", { symbol });
+  return parseServiceResponse<StockInfo>(raw);
 }
 
 /**

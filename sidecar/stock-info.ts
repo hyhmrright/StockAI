@@ -21,21 +21,24 @@ export function resolveExchangeName(prefix: string, code: string): string {
  * 字段 0=名称, 1=今开, 2=昨收, 3=当前价, ...
  */
 export async function fetchStockInfo(parsed: ParsedSymbol): Promise<StockInfo | null> {
-  if (!parsed.chinaInfo) return null;
+  if (parsed.chinaInfo) {
+    return fetchChinaStockInfo(parsed);
+  } else if (parsed.usInfo) {
+    return fetchUSStockInfo(parsed);
+  }
+  return null;
+}
 
-  const { code, sinaPrefix } = parsed.chinaInfo;
+/**
+ * 从新浪财经实时行情接口获取 A 股基本信息
+ */
+async function fetchChinaStockInfo(parsed: ParsedSymbol): Promise<StockInfo | null> {
+  const { code, sinaPrefix } = parsed.chinaInfo!;
   const url = `https://hq.sinajs.cn/list=${sinaPrefix}${code}`;
 
   try {
-    const resp = await fetch(url, {
-      headers: {
-        // 新浪需要 Referer 才能返回数据，否则返回空串
-        Referer: 'https://finance.sina.com.cn',
-      },
-    });
-    // 新浪行情接口返回 GBK 编码，需手动解码（默认 UTF-8 会产生乱码）
-    const buffer = await resp.arrayBuffer();
-    const text = new TextDecoder('gbk').decode(buffer);
+    const text = await fetchWithSinaReferer(url);
+    if (!text) return null;
 
     // 响应格式: var hq_str_sh688693="字段1,字段2,...";
     const match = text.match(/"([^"]+)"/);
@@ -64,7 +67,65 @@ export async function fetchStockInfo(parsed: ParsedSymbol): Promise<StockInfo | 
       currency: 'CNY',
     };
   } catch (err) {
-    console.error(`fetchStockInfo 失败 (${code}):`, toErrorMessage(err));
+    console.error(`fetchChinaStockInfo 失败 (${code}):`, toErrorMessage(err));
+    return null;
+  }
+}
+
+/**
+ * 从新浪财经实时行情接口获取美股基本信息
+ */
+async function fetchUSStockInfo(parsed: ParsedSymbol): Promise<StockInfo | null> {
+  const { symbol, sinaPrefix } = parsed.usInfo!;
+  const url = `https://hq.sinajs.cn/list=${sinaPrefix}${symbol.toLowerCase()}`;
+
+  try {
+    const text = await fetchWithSinaReferer(url);
+    if (!text) return null;
+
+    // 响应格式: var hq_str_gb_aapl="名称,当前价,涨跌百分比,时间,涨跌额,开盘价,最高价,最低价,...,昨收";
+    const match = text.match(/"([^"]+)"/);
+    if (!match || !match[1]) return null;
+
+    const fields = match[1].split(',');
+    if (fields.length < 27) return null;
+
+    const name = fields[0];
+    const price = parseFloat(fields[1]);
+    const changePercent = parseFloat(fields[2]);
+    const change = parseFloat(fields[4]);
+
+    if (!name || isNaN(price) || price === 0) return null;
+
+    return {
+      name,
+      code: symbol,
+      exchange: 'NASDAQ/NYSE',
+      market: '美股',
+      price,
+      change,
+      changePercent,
+      currency: 'USD',
+    };
+  } catch (err) {
+    console.error(`fetchUSStockInfo 失败 (${symbol}):`, toErrorMessage(err));
+    return null;
+  }
+}
+
+/**
+ * 带 Referer 的请求辅助函数，处理 GBK 解码
+ */
+async function fetchWithSinaReferer(url: string): Promise<string | null> {
+  try {
+    const resp = await fetch(url, {
+      headers: {
+        Referer: 'https://finance.sina.com.cn',
+      },
+    });
+    const buffer = await resp.arrayBuffer();
+    return new TextDecoder('gbk').decode(buffer);
+  } catch {
     return null;
   }
 }

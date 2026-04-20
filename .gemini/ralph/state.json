@@ -1,0 +1,8 @@
+{
+  "active": true,
+  "current_iteration": 6,
+  "max_iterations": 20,
+  "completion_promise": "",
+  "original_prompt": "搜索股票代码需要能搜索到股票信息，点击开始分析之后可以正常分析股票数据。搜索内容等不能使用收费的API，必须使用免费信息数据",
+  "started_at": "2026-04-20T11:37:23Z"
+}

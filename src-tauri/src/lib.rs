@@ -85,6 +85,64 @@ impl SidecarManager {
 
         Self::run(app_handle, vec!["--list-models".to_string(), config_json]).await
     }
+
+    async fn get_stock_info(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+        config: serde_json::Value,
+    ) -> Result<String, String> {
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+
+        Self::run(app_handle, vec!["--info".to_string(), config_json, symbol]).await
+    }
+
+    async fn search_stocks(
+        app_handle: &tauri::AppHandle,
+        keyword: String,
+        config: serde_json::Value,
+    ) -> Result<String, String> {
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+
+        Self::run(app_handle, vec!["--search".to_string(), config_json, keyword]).await
+    }
+}
+
+/**
+ * 搜索股票建议
+ */
+#[tauri::command]
+async fn search_stocks(
+    app_handle: tauri::AppHandle,
+    keyword: String,
+) -> Result<String, String> {
+    let store = app_handle
+        .store("settings.json")
+        .map_err(|e| format!("无法打开配置存储: {}", e))?;
+
+    let settings_val = store.get("app_settings")
+        .unwrap_or(serde_json::json!({}));
+
+    SidecarManager::search_stocks(&app_handle, keyword, settings_val).await
+}
+
+/**
+ * 获取股票基本信息
+ */
+#[tauri::command]
+async fn get_stock_info(
+    app_handle: tauri::AppHandle,
+    symbol: String,
+) -> Result<String, String> {
+    let store = app_handle
+        .store("settings.json")
+        .map_err(|e| format!("无法打开配置存储: {}", e))?;
+
+    let settings_val = store.get("app_settings")
+        .unwrap_or(serde_json::json!({}));
+
+    SidecarManager::get_stock_info(&app_handle, symbol, settings_val).await
 }
 
 /**
@@ -144,7 +202,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![start_analysis, list_models])
+        .invoke_handler(tauri::generate_handler![start_analysis, list_models, get_stock_info, search_stocks])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");
 }
