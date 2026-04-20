@@ -9,12 +9,12 @@ import { fetchStockInfo } from './stock-info';
 export async function getEnhancedSymbol(symbol: string): Promise<string> {
   const parsed = parseSymbol(symbol);
 
-  if ((parsed.chinaInfo || parsed.usInfo) && !parsed.displayName) {
+  // 仅针对 A 股纯代码输入进行增强（例如："601012" -> "隆基绿能601012"）
+  if (parsed.chinaInfo && !parsed.displayName) {
     try {
       const info = await fetchStockInfo(parsed);
       if (info?.name) {
-        const code = parsed.chinaInfo ? parsed.chinaInfo.code : parsed.usInfo!.symbol;
-        return `${info.name} ${code}`;
+        return `${info.name}${parsed.chinaInfo.code}`;
       }
     } catch {
       // 忽略获取失败，回退到原始输入

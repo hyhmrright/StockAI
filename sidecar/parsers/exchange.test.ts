@@ -93,4 +93,23 @@ describe("parseSymbol", () => {
     expect(parsed.rawInput).toBe("601012");
     expect(parsed.chinaInfo?.code).toBe("601012");
   });
+
+  test("支持显式前缀 (sh601012)", () => {
+    const parsed = parseSymbol("sh601012");
+    expect(parsed.chinaInfo?.sinaPrefix).toBe("sh");
+    expect(parsed.chinaInfo?.code).toBe("601012");
+  });
+
+  test("支持显式前缀 (gb_aapl)", () => {
+    const parsed = parseSymbol("gb_aapl");
+    expect(parsed.usInfo?.sinaPrefix).toBe("gb_");
+    expect(parsed.usInfo?.symbol).toBe("AAPL");
+  });
+
+  test("纯中文输入：识别为普通搜索词", () => {
+    const parsed = parseSymbol("苹果");
+    expect(parsed.chinaInfo).toBeUndefined();
+    expect(parsed.usInfo).toBeUndefined();
+    expect(parsed.rawInput).toBe("苹果");
+  });
 });

@@ -9,6 +9,8 @@ describe('searchStocks', () => {
     expect(item).toBeDefined();
     expect(item?.fullCode).toBe('sh601012');
     expect(item?.type).toBe('A股');
+    expect(item?.price).toBeDefined();
+    expect(typeof item?.price).toBe('number');
   });
 
   it('应能搜索美股 (AAPL)', async () => {
@@ -18,6 +20,8 @@ describe('searchStocks', () => {
     expect(item).toBeDefined();
     expect(item?.fullCode).toBe('gb_aapl');
     expect(item?.type).toBe('美股');
+    expect(item?.price).toBeDefined();
+    expect(typeof item?.price).toBe('number');
   });
 
   it('搜索短词应返回空数组', async () => {

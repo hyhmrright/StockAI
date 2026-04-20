@@ -2,6 +2,24 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.0] - 2026-04-20
+
+### Added
+
+- **实时搜索建议行情** — 搜索框输入时，下拉建议列表现已集成实时价格和涨跌幅展示。利用新浪财经批量行情接口，在用户输入的同时即刻反馈市场动向。
+- **智能搜索回退增强** — 在 `getStockInfo` 中增加了对名称搜索的支持。如果输入不是标准代码，系统将自动尝试搜索最匹配的股票代码并获取行情。
+
+### Changed
+
+- **搜索结果数据结构** — `StockSearchResult` 扩展了可选的 `price`、`change` 和 `changePercent` 字段。
+- **Sidecar 搜索逻辑** — `searchStocks` 现在并行抓取搜索建议与实时行情，并将数据合并后返回。
+- **UI 布局优化** — 搜索建议项采用两端对齐布局，显著提升视觉清晰度，支持红/绿涨跌颜色标识。
+
+### Fixed
+
+- **美股代码解析** — 优化了 `parseSymbol` 对美股代码的识别逻辑，支持更多种类的输入格式。
+- **冒烟测试稳定性** — 修正了冒烟测试中对未知 symbol 的验证逻辑，使其与当前代码的契约保持一致。
+
 ## [0.3.0] - 2026-04-17
 
 ### Changed (breaking internal refactor — no user-visible API changes)

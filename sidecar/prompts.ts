@@ -22,7 +22,10 @@ const FORMAT_INSTRUCTIONS = `必须返回以下 JSON 格式，且不包含 Markd
   "sentiment": "bullish" (看涨), "bearish" (看跌) 或 "neutral" (中性),
   "summary": "分析摘要，请包含新闻中提到的关键事实",
   "pros": ["利多理由"],
-  "cons": ["风险提示"]
+  "cons": ["风险提示"],
+  "sector": "该股票所属的大板块（例如：信息技术、消费品、工业等）",
+  "industry": "具体行业分类（例如：半导体、新能源、白酒等）",
+  "description": "基于你的训练知识和新闻，用一句话简要描述该公司的主营业务和市场地位"
 }`;
 
 /**

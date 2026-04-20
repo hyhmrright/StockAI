@@ -102,13 +102,31 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
                     onClick={() => handleSelect(item)}
                     className="px-4 py-3 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 flex items-center justify-between group"
                   >
-                    <div className="flex flex-col">
-                      <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{item.name}</span>
-                      <span className="text-xs text-gray-400">{item.code}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{item.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 text-gray-500 bg-white/5">
+                            {item.type}
+                          </span>
+                          <span className="text-xs text-gray-400 font-mono">{item.code}</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 text-gray-500 bg-white/5">
-                      {item.type}
-                    </span>
+
+                    {item.price !== undefined && (
+                      <div className="flex flex-col items-end shrink-0">
+                        <span className="text-sm font-mono font-bold text-white">
+                          {item.price.toFixed(2)}
+                        </span>
+                        <span className={`text-[10px] font-mono ${
+                          (item.changePercent ?? 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'
+                        }`}>
+                          {(item.changePercent ?? 0) >= 0 ? '+' : ''}
+                          {(item.changePercent ?? 0).toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

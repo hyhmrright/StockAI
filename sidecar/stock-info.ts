@@ -1,5 +1,6 @@
 import type { StockInfo } from '../shared/types';
-import type { ParsedSymbol } from './parsers/exchange';
+import { type ParsedSymbol, parseSymbol } from './parsers/exchange';
+import { searchStocks } from './search';
 import { toErrorMessage } from './utils';
 
 // 代码前缀 → 交易所名称
@@ -16,9 +17,7 @@ export function resolveExchangeName(prefix: string, code: string): string {
 }
 
 /**
- * 从新浪财经实时行情接口获取 A 股基本信息
- * 格式：var hq_str_sh688693="锴威特,20.44,20.32,...";
- * 字段 0=名称, 1=今开, 2=昨收, 3=当前价, ...
+ * 从新浪财经实时行情接口获取基本信息
  */
 export async function fetchStockInfo(parsed: ParsedSymbol): Promise<StockInfo | null> {
   if (parsed.chinaInfo) {
@@ -26,6 +25,17 @@ export async function fetchStockInfo(parsed: ParsedSymbol): Promise<StockInfo | 
   } else if (parsed.usInfo) {
     return fetchUSStockInfo(parsed);
   }
+
+  // 智能搜索回退：如果输入无法解析为标准代码，尝试通过名称搜索
+  const results = await searchStocks(parsed.rawInput);
+  if (results.length > 0) {
+    const bestMatch = results[0];
+    const newParsed = parseSymbol(bestMatch.fullCode || bestMatch.code);
+    if (newParsed.chinaInfo || newParsed.usInfo) {
+      return fetchStockInfo(newParsed);
+    }
+  }
+
   return null;
 }
 

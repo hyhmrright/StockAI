@@ -30,12 +30,34 @@ export interface ParsedSymbol {
 
 /**
  * 解析用户输入，提取股票名称与股票代码
- * 支持格式：纯代码 "688693"、纯名称 "AAPL"、混合 "锴威特688693"
+ * 支持格式：纯代码 "688693"、纯名称 "AAPL"、混合 "锴威特688693"、带前缀 "sh601012" / "gb_aapl"
  */
 export function parseSymbol(input: string): ParsedSymbol {
   const trimmed = input.trim();
   
-  // 1. 尝试识别 A 股
+  // 0. 尝试识别显式前缀（如 sh601012, gb_aapl）
+  const explicitMatch = trimmed.match(/^(sh|sz|bj|gb_)([a-z0-9.]+)/i);
+  if (explicitMatch) {
+    const prefix = explicitMatch[1].toLowerCase();
+    const coreSymbol = explicitMatch[2].toUpperCase();
+
+    if (prefix === 'gb_') {
+      return {
+        rawInput: trimmed,
+        usInfo: { symbol: coreSymbol, sinaPrefix: 'gb_' }
+      };
+    } else {
+      const chinaInfo = detectChinaStock(coreSymbol);
+      if (chinaInfo) {
+        return {
+          rawInput: trimmed,
+          chinaInfo: { ...chinaInfo, sinaPrefix: prefix }
+        };
+      }
+    }
+  }
+
+  // 1. 尝试识别 A 股（数字匹配）
   const chinaInfo = detectChinaStock(trimmed);
   if (chinaInfo) {
     // 提取 6 位代码前后的非数字文本作为显示名称

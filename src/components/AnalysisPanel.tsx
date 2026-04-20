@@ -38,6 +38,26 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ result }) => {
       {/* 股票信息卡片 */}
       {result?.stockInfo && <StockInfoCard info={result.stockInfo} />}
 
+      {/* 公司概况区 (AI 提取) */}
+      {result?.analysis.sector && (
+        <div className="mb-10">
+          <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">公司概况 (Profile)</h2>
+          <div className="p-5 bg-white/5 rounded-2xl border border-white/5 space-y-4">
+            <div className="flex gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20 font-medium">
+                {result.analysis.sector}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
+                {result.analysis.industry}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              {result.analysis.description}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 舆情概览区 */}
       <div className="mb-10">
         <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">舆情概览 (Sentiment)</h2>

@@ -33,6 +33,9 @@ export interface AIAnalysisResult {
   summary: string; // 简要总结
   pros: string[]; // 利多理由
   cons: string[]; // 利空/风险因素
+  sector?: string;      // 所属板块
+  industry?: string;    // 所属行业
+  description?: string; // 公司业务描述
 }
 
 /**
@@ -57,6 +60,9 @@ export interface StockSearchResult {
   code: string;
   type: string;     // 股票类型：A股、美股、港股等
   fullCode: string; // 完整带市场前缀的代码（用于新浪接口，如 sh601012, gb_aapl）
+  price?: number;          // 最新价
+  change?: number;         // 涨跌额
+  changePercent?: number;  // 涨跌幅 %
 }
 
 /**
