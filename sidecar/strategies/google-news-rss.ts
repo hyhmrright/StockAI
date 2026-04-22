@@ -11,6 +11,8 @@ import { parseSymbol } from '../parsers/exchange';
 export class GoogleNewsRSSStrategy implements ScrapeStrategy {
   readonly name = "Google News RSS";
 
+  constructor(private readonly _fetch: typeof globalThis.fetch = globalThis.fetch) {}
+
   async scrape(symbol: string, _ctx: ScrapeContext): Promise<StockNews[]> {
     const parsed = parseSymbol(symbol);
     const query = parsed.displayName
@@ -20,7 +22,10 @@ export class GoogleNewsRSSStrategy implements ScrapeStrategy {
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
 
     try {
-      const resp = await fetch(url);
+      const resp = await this._fetch(url);
+      if (!resp.ok) {
+        throw new Error(`HTTP 错误! 状态码: ${resp.status}`);
+      }
       const xml = await resp.text();
       return this.parse(xml);
     } catch (err) {

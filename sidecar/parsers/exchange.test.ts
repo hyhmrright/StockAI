@@ -112,4 +112,17 @@ describe("parseSymbol", () => {
     expect(parsed.usInfo).toBeUndefined();
     expect(parsed.rawInput).toBe("苹果");
   });
+
+  test("空字符串或 nullish 输入：返回空 rawInput 而不崩溃", () => {
+    const parsedEmpty = parseSymbol("");
+    expect(parsedEmpty.rawInput).toBe("");
+    
+    // @ts-ignore: 测试无效输入
+    const parsedNull = parseSymbol(null);
+    expect(parsedNull.rawInput).toBe("");
+    
+    // @ts-ignore: 测试无效输入
+    const parsedUndefined = parseSymbol(undefined);
+    expect(parsedUndefined.rawInput).toBe("");
+  });
 });

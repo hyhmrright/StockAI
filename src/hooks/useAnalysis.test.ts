@@ -1,42 +1,20 @@
 import { renderHook, act } from '@testing-library/react';
 import { useAnalysis } from './useAnalysis';
-import { startAnalysis as startAnalysisIpc } from '../lib/ipc';
 import { vi, describe, it, expect } from 'vitest';
-import { FullAnalysisResponse } from '../../shared/types';
-
-/**
- * 模拟 IPC 调用
- */
-vi.mock('../lib/ipc', () => ({
-  startAnalysis: vi.fn(),
-}));
-
-/**
- * 模拟分析响应工厂函数
- */
-function createMockAnalysisResponse(overrides: Partial<FullAnalysisResponse> = {}): FullAnalysisResponse {
-  return {
-    symbol: 'AAPL',
-    news: [
-      { title: '测试新闻', source: 'Test', date: '2025-01-01', content: '内容', url: 'http://test.com' }
-    ],
-    analysis: {
-      rating: 80,
-      sentiment: 'bullish',
-      summary: '看涨总结',
-      pros: ['利多'],
-      cons: ['利空']
-    },
-    ...overrides
-  };
-}
+import { createMockAnalysisResponse } from '../../sidecar/test-utils';
+import { AnalysisService } from '../lib/api';
 
 describe('useAnalysis Hook', () => {
+  const mockService: AnalysisService = {
+    startAnalysis: vi.fn(),
+    getStockInfo: vi.fn().mockResolvedValue(null),
+  };
+
   it('performAnalysis_ValidSymbol_TransitionsToCompleted', async () => {
     const symbol = 'TSLA';
-    (startAnalysisIpc as any).mockResolvedValue(createMockAnalysisResponse({ symbol }));
+    vi.mocked(mockService.startAnalysis).mockResolvedValue(createMockAnalysisResponse({ symbol }));
 
-    const { result } = renderHook(() => useAnalysis());
+    const { result } = renderHook(() => useAnalysis(mockService));
     
     await act(async () => {
       await result.current.performAnalysis(symbol);
@@ -52,9 +30,9 @@ describe('useAnalysis Hook', () => {
     ['EmptyNews', '未搜寻到相关新闻', '未搜寻到相关新闻'],
     ['NetworkError', '网络错误', '网络错误'],
   ])('performAnalysis_IPCThrows%s_TransitionsToErrorWithExpectedMessage', async (_, errorMsg, expectedSubStr) => {
-    (startAnalysisIpc as any).mockRejectedValue(new Error(errorMsg));
+    vi.mocked(mockService.startAnalysis).mockRejectedValue(new Error(errorMsg));
 
-    const { result } = renderHook(() => useAnalysis());
+    const { result } = renderHook(() => useAnalysis(mockService));
 
     await act(async () => {
       await result.current.performAnalysis('AAPL');
@@ -62,5 +40,38 @@ describe('useAnalysis Hook', () => {
 
     expect(result.current.step).toBe('error');
     expect(result.current.error).toContain(expectedSubStr);
+  });
+
+  it('performAnalysis_ConcurrentCalls_OnlyLatestResultWins', async () => {
+    // 模拟第一个请求较慢，第二个请求较快
+    let resolveFirst: (val: any) => void;
+    const firstPromise = new Promise((resolve) => { resolveFirst = resolve; });
+    
+    vi.mocked(mockService.startAnalysis).mockImplementation((symbol) => {
+      if (symbol === 'FIRST') return firstPromise;
+      return Promise.resolve(createMockAnalysisResponse({ symbol: 'SECOND' }));
+    });
+
+    const { result } = renderHook(() => useAnalysis(mockService));
+    
+    let p1: Promise<void>;
+    await act(async () => {
+      p1 = result.current.performAnalysis('FIRST');
+      // 立即触发第二个请求
+      await result.current.performAnalysis('SECOND');
+    });
+
+    // 此时第二个请求已完成
+    expect(result.current.result?.symbol).toBe('SECOND');
+    expect(result.current.step).toBe('completed');
+
+    // 现在完成第一个请求
+    await act(async () => {
+      resolveFirst!(createMockAnalysisResponse({ symbol: 'FIRST' }));
+      await p1!;
+    });
+
+    // 结果应该仍然是第二个请求的（'SECOND'），而不是被第一个请求覆盖
+    expect(result.current.result?.symbol).toBe('SECOND');
   });
 });

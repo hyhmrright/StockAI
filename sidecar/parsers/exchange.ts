@@ -33,6 +33,7 @@ export interface ParsedSymbol {
  * 支持格式：纯代码 "688693"、纯名称 "AAPL"、混合 "锴威特688693"、带前缀 "sh601012" / "gb_aapl"
  */
 export function parseSymbol(input: string): ParsedSymbol {
+  if (!input) return { rawInput: '' };
   const trimmed = input.trim();
   
   // 0. 尝试识别显式前缀（如 sh601012, gb_aapl）

@@ -8,6 +8,9 @@ import { getEnhancedSymbol as realEnhance } from './symbol';
 import { createProvider as realCreateProvider } from './providers/registry';
 import { toErrorMessage, logger } from './utils';
 
+/** 中性评分基准 */
+const NEUTRAL_RATING = 50;
+
 /** 测试注入点；生产不传。避开 bun:test 全局 mock.module 导致的跨文件状态泄漏。 */
 export interface AnalysisDeps {
   scrape?: typeof realScrape;
@@ -57,7 +60,7 @@ async function analyzeWithAI(
     const msg = toErrorMessage(error);
     logger.error(`AI 分析异常 (${symbol}): ${msg}`);
     return {
-      rating: 50,
+      rating: NEUTRAL_RATING,
       sentiment: 'neutral',
       summary: `AI 分析服务暂不可用（可能未配置 API Key 或网络异常）。真实新闻数据已抓取，请参考上方列表。\n详细错误: ${msg}`,
       pros: ["新闻抓取成功"],

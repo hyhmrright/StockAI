@@ -18,22 +18,22 @@ type ProviderFactory = (config: ProviderConfig) => AIProvider;
  */
 const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
   ollama: (cfg) => new OllamaProvider(
-    cfg.baseUrl || PROVIDER_PROFILES.ollama.baseUrl,
-    cfg.model   || PROVIDER_PROFILES.ollama.model,
+    cfg.baseUrl ?? PROVIDER_PROFILES.ollama.baseUrl,
+    cfg.model   ?? PROVIDER_PROFILES.ollama.model,
   ),
   anthropic: (cfg) => new AnthropicProvider(
     cfg.apiKey,
-    cfg.model || PROVIDER_PROFILES.anthropic.model,
+    cfg.model ?? PROVIDER_PROFILES.anthropic.model,
   ),
   deepseek: (cfg) => new OpenAIProvider(
     cfg.apiKey,
-    cfg.baseUrl || PROVIDER_PROFILES.deepseek.baseUrl,
-    cfg.model   || PROVIDER_PROFILES.deepseek.model,
+    cfg.baseUrl ?? PROVIDER_PROFILES.deepseek.baseUrl,
+    cfg.model   ?? PROVIDER_PROFILES.deepseek.model,
   ),
   openai: (cfg) => new OpenAIProvider(
     cfg.apiKey || process.env.OPENAI_API_KEY || '',
-    cfg.baseUrl || PROVIDER_PROFILES.openai.baseUrl,
-    cfg.model   || PROVIDER_PROFILES.openai.model,
+    cfg.baseUrl ?? PROVIDER_PROFILES.openai.baseUrl,
+    cfg.model   ?? PROVIDER_PROFILES.openai.model,
   ),
 };
 

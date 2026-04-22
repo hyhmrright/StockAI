@@ -13,11 +13,11 @@ describe("AI Prompt 分析逻辑", () => {
 
   test("buildAnalysisPrompt 应该生成包含股票代码和新闻标题的 Prompt", () => {
     const prompt = buildAnalysisPrompt(mockSymbol, mockNews);
-    expect(prompt).toContain("AAPL");
-    expect(prompt).toContain("Apple reports record Q3 earnings");
-    expect(prompt).toContain("iPhone sales slow down in China");
-    expect(prompt).toContain("JSON");
-    expect(prompt).toContain("资深金融分析师");
+    expect(prompt).toContain("AAPL", "Prompt 应包含股票代码");
+    expect(prompt).toContain("Apple reports record Q3 earnings", "Prompt 应包含第一条新闻标题");
+    expect(prompt).toContain("iPhone sales slow down in China", "Prompt 应包含第二条新闻标题");
+    expect(prompt).toContain("JSON", "Prompt 应包含格式要求说明");
+    expect(prompt).toContain("资深金融分析师", "Prompt 应包含角色设定");
   });
 
   test("buildAnalysisPrompt 应该支持自定义 contentLimit", () => {

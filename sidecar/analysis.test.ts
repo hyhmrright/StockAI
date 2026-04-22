@@ -1,18 +1,10 @@
 import { mock, describe, test, expect, beforeEach } from "bun:test";
 import type { StockNews, AIAnalysisResult, StockInfo } from "../shared/types";
 import { performFullAnalysis } from "./analysis";
+import { createMockNews, createMockAIResult } from "./test-utils";
 
-const DEFAULT_NEWS: StockNews[] = [
-  { title: "测试新闻", source: "Test", date: "2025-01-01", content: "内容", url: "http://test.com" },
-];
-
-const DEFAULT_ANALYSIS: AIAnalysisResult = {
-  rating: 80,
-  sentiment: "bullish",
-  summary: "看涨",
-  pros: ["利多"],
-  cons: ["利空"],
-};
+const DEFAULT_NEWS = [createMockNews()];
+const DEFAULT_ANALYSIS = createMockAIResult();
 
 /** 测试级依赖工厂——每个 test 构造独立 mocks，避免文件间 mock 状态泄漏 */
 function makeDeps(overrides?: {

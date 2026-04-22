@@ -2,6 +2,25 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.2] - 2026-04-23
+
+### Fixed
+
+- **Test runner collision (测试运行器冲突)** — Vitest config no longer includes `sidecar/**/*.test.ts`, preventing import resolution failures when vitest tried to process bun:test-flavored sidecar test files. Sidecar tests are now exclusively run by `bun test`.
+- **`--info` Chinese-name lookup regression (`--info` 中文名称查询回归)** — A guard that returned `ERR_INVALID_SYMBOL` when `parseSymbol` couldn't resolve a code was blocking `fetchStockInfo`'s smart-search fallback. Chinese company name queries (e.g. "安克创新") would always return `ERR_INVALID_SYMBOL` instead of performing a name search.
+- **BrowserManager retry after launch failure (浏览器启动失败后可重试)** — `pagePromise` is now cleared in the rejection handler, so subsequent `getPage()` calls can retry the launch instead of returning the same rejected promise indefinitely.
+- **Ollama empty-host fallback (Ollama 空地址回退)** — `handleListModels` now passes `undefined` instead of `''` to the Ollama SDK when no host is configured. An empty string caused malformed URL construction; `undefined` correctly triggers the SDK's built-in `localhost:11434` default.
+- **Provider registry non-null assertions (Provider 注册表非空断言)** — Replaced `!` assertions on `cfg.model` and `cfg.baseUrl` in `PROVIDER_FACTORIES` with `?? PROVIDER_PROFILES[x].model/baseUrl` fallbacks, restoring the explicit defaults that were inadvertently removed.
+- **Wrong error code in `handleInfo` test (测试中错误码断言有误)** — `cli-handlers.test.ts` was asserting `ERR_NOT_FOUND` for an empty-symbol call; corrected to `ERR_MISSING_PARAM`.
+
+### Changed
+
+- **GoogleNewsRSSStrategy fetch injection (GoogleNewsRSS 策略 fetch 依赖注入)** — Constructor now accepts an optional `fetch` implementation, enabling offline unit tests without `global.fetch` mutation and eliminating test-side global state pollution.
+- **`cli-handlers` factory pattern (`cli-handlers` 工厂模式)** — Refactored to `createHandlers(deps?)` for dependency injection, replacing module-level mocking with per-test handler instances.
+- **Lazy Chromium startup in deep mode (深度模式懒启动 Chromium)** — `enrichWithFullContent` now receives a `getPage` factory instead of a pre-resolved `Page`, deferring browser launch until the first article actually requires it. RSS-only paths with `deepMode=true` no longer spin up Chromium unnecessarily.
+- **BrowserManager safe shutdown (浏览器管理器安全关闭)** — `close()` now awaits any in-flight `pagePromise` before calling `browser.close()`, preventing zombie Chromium processes when shutdown races browser launch.
+- **Concurrent stock info + analysis (股票信息与分析并发执行)** — `useAnalysis` now fires `getStockInfo` and `startAnalysis` concurrently. The info fetch updates `partialInfo` as a side-effect, removing the sequential delay that previously blocked analysis startup.
+
 ## [0.4.1] - 2026-04-22
 
 ### Fixed

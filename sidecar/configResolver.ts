@@ -30,7 +30,7 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
   const rawProvider = obj.activeProvider ?? 'ollama';
   const provider: ProviderType = rawProvider in PROVIDER_PROFILES ? rawProvider as ProviderType : 'ollama';
   const providerCfg: Record<string, string> = obj.providerConfigs?.[provider] ?? {};
-  const defaults = PROVIDER_PROFILES[provider] ?? { baseUrl: '', model: '' };
+  const defaults = PROVIDER_PROFILES[provider];
 
   return {
     provider,
