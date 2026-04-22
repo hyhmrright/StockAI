@@ -9,7 +9,16 @@
     "core:default",
     "opener:default",
     "shell:default",
-    "shell:allow-execute",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "stockai-backend",
+          "sidecar": true,
+          "args": [{ "validator": ".*" }]
+        }
+      ]
+    },
     "shell:allow-spawn",
     "store:default"
   ]

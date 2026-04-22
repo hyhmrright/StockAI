@@ -35,14 +35,5 @@
       "../sidecar/stockai-backend"
     ]
   },
-  "plugins": {
-    "shell": {
-      "sidecar": [
-        {
-          "name": "stockai-backend",
-          "args": true
-        }
-      ]
-    }
-  }
+  "plugins": {}
 }
