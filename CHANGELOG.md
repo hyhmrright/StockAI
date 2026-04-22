@@ -2,6 +2,27 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.1] - 2026-04-22
+
+### Fixed
+
+- **AI provider empty response crash (AI 提供商空响应崩溃)** — OpenAI and Anthropic providers now check array length before accessing `choices[0]` / `content[0]`. Previously, an empty response from the API would throw an uncaught `TypeError`.
+- **Playwright silent navigation failure (Playwright 导航静默失败)** — `PlaywrightStrategy` now distinguishes `TimeoutError` (partial page load, continue parsing) from fatal navigation errors (DNS failure, connection refused). Fatal errors now return `[]` immediately instead of parsing an empty page.
+- **`list_models` IPC regression (list_models IPC 回归)** — Frontend was sending `base_url` (snake_case) to Tauri's `invoke()`, which requires camelCase `baseUrl`. This caused every "List Models" request to silently fail.
+- **API key leak in debug log (调试日志 API Key 泄漏)** — The sidecar's debug log at `/tmp/stockai-sidecar.log` was writing the full config including plaintext API keys on every invocation. The `apiKey` field is now redacted as `[REDACTED]`.
+- **Provider type coercion (Provider 类型强制转换)** — `resolveConfig` previously used `as ProviderType` cast without runtime validation. Now validates against `PROVIDER_PROFILES` keys, falling back to `'ollama'` for unknown values.
+- **Stock code regex false match (股票代码正则误匹配)** — `detectChinaStock` and the display-name extractor in `parseSymbol` now use `/(?<!\d)\d{6}(?!\d)/` (word-boundary lookahead/lookbehind) to avoid matching 7+ digit strings as valid 6-digit codes.
+- **Sidecar error format inconsistency (Sidecar 错误格式不一致)** — All `outputJson({ error: string })` paths in `index.ts` now emit the standard `{ error: { code, message } }` envelope, consistent with the main analysis flow.
+- **Browser fallback error masking (浏览器模式错误掩盖)** — The non-Tauri bridge fallback in `ipc.ts` now includes the original error reason in the thrown message, instead of replacing all network errors with a generic "test environment not ready" string.
+- **Config version check (配置版本检查)** — `_version` comparison now uses `String()` coercion on both sides, preventing a false mismatch when the stored value is an integer rather than a string.
+
+### Changed
+
+- **Build scripts (构建脚本)** — `dev` and `build` npm scripts now automatically compile the sidecar binary before starting Vite, eliminating the need to manually run `sidecar:build` after code changes.
+- **Settings deep merge (设置深度合并)** — `useSettings` now performs a per-provider deep merge of `providerConfigs` on load, so adding a new provider profile no longer wipes out saved API keys for other providers.
+- **Sidecar empty stdout handling (Sidecar 空输出处理)** — The Rust layer now returns a structured `{ "error": "..." }` JSON when sidecar stdout is empty, with the process exit code included for easier debugging.
+- **Ollama default host (Ollama 默认地址)** — Changed from `localhost:11434` to `127.0.0.1:11434` to avoid IPv6 resolution issues on some systems.
+
 ## [0.4.0] - 2026-04-20
 
 ### Added

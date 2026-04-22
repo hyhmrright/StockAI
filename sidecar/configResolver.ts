@@ -17,13 +17,18 @@ export interface ResolvedConfig {
 export function resolveConfig(raw: unknown): ResolvedConfig {
   const obj = raw as Record<string, any>;
 
-  if (obj._version !== CONFIG_VERSION) {
+  if (!obj || typeof obj !== 'object' || Object.keys(obj).length === 0) {
+    throw new Error("配置文件为空，请进入设置界面并保存配置后再试。");
+  }
+
+  if (String(obj._version) !== String(CONFIG_VERSION)) {
     throw new Error(
-      `配置格式版本不兼容（期望 "${CONFIG_VERSION}"，收到 "${obj._version ?? '无'}"）。请在设置界面重新保存配置。`
+      `配置格式版本不兼容（期望 "${CONFIG_VERSION}"，当前为 "${obj._version ?? '无'}"）。请点击右上角设置图标，重新保存模型配置以完成迁移。`
     );
   }
 
-  const provider = (obj.activeProvider ?? 'ollama') as ProviderType;
+  const rawProvider = obj.activeProvider ?? 'ollama';
+  const provider: ProviderType = rawProvider in PROVIDER_PROFILES ? rawProvider as ProviderType : 'ollama';
   const providerCfg: Record<string, string> = obj.providerConfigs?.[provider] ?? {};
   const defaults = PROVIDER_PROFILES[provider] ?? { baseUrl: '', model: '' };
 

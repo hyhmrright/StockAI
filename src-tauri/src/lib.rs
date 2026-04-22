@@ -33,11 +33,12 @@ impl SidecarManager {
             .map_err(|e| format!("无法找到 Sidecar: {}", e))?
             .args(&args);
 
-        let (mut rx, _child) = sidecar_command
+        let (mut rx, child) = sidecar_command
             .spawn()
             .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
 
         let mut last_line = String::new();
+        let mut exit_code = None;
         while let Some(event) = rx.recv().await {
             match event {
                 tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
@@ -48,15 +49,24 @@ impl SidecarManager {
                     }
                 }
                 tauri_plugin_shell::process::CommandEvent::Stderr(line) => {
-                    eprintln!("Sidecar Stderr: {}", String::from_utf8_lossy(&line));
+                    let s = String::from_utf8_lossy(&line);
+                    eprintln!("Sidecar Stderr: {}", s);
                 }
                 tauri_plugin_shell::process::CommandEvent::Terminated(status) => {
+                    exit_code = status.code;
                     println!("Sidecar 已终止，状态码: {:?}", status.code);
                 }
                 _ => {}
             }
         }
-        Ok(last_line)
+        // 显式丢弃 child 仅用于抑制警告，关键是让它活到循环结束
+        drop(child);
+        
+        if last_line.is_empty() {
+            Ok(format!(r#"{{"error":"分析服务无响应 (ExitCode: {:?})，请检查日志或 AI 模型配置后重试。"}}"#, exit_code))
+        } else {
+            Ok(last_line)
+        }
     }
 
     // Settings schema 由 Sidecar 的 resolveConfig 负责校验——避免 Rust/TS/Sidecar 三处重复定义。
@@ -68,12 +78,7 @@ impl SidecarManager {
         let config_json = serde_json::to_string(&config)
             .map_err(|e| format!("配置序列化失败: {}", e))?;
 
-        let result = Self::run(app_handle, vec![symbol, config_json]).await?;
-        if result.is_empty() {
-            Ok(EMPTY_STDOUT_RESPONSE.to_string())
-        } else {
-            Ok(result)
-        }
+        Self::run(app_handle, vec![symbol, config_json]).await
     }
 
     async fn list_models(

@@ -33,6 +33,9 @@ export class AnthropicProvider implements AIProvider {
         "Anthropic 请求超时"
       );
 
+      if (!response.content?.length) {
+        throw new Error('Anthropic 返回了空的 content 列表，无法提取分析结果');
+      }
       const block = response.content[0];
       const content = block.type === "text" ? block.text : "{}";
       return JSON.parse(content) as AIAnalysisResult;

@@ -35,6 +35,9 @@ export class OpenAIProvider implements AIProvider {
         response_format: { type: "json_object" }
       }, { timeout: PROVIDER_PROFILES.openai.timeout });
 
+      if (!response.choices?.length) {
+        throw new Error('OpenAI 返回了空的 choices 列表，无法提取分析结果');
+      }
       const content = response.choices[0].message.content || "{}";
       return JSON.parse(content) as AIAnalysisResult;
     } catch (error) {

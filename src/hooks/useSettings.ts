@@ -47,8 +47,25 @@ export function useSettings() {
 
         if (saved) {
           if (saved.activeProvider) {
-            // 已是新格式；若缺少 _version 则写回 store，确保 Rust 层读取时版本一致
-            const migrated = { ...DEFAULT_SETTINGS, ...saved, _version: CONFIG_VERSION };
+            // 已是新格式；执行深合并确保 providerConfigs 完整
+            const mergedConfigs = { ...DEFAULT_SETTINGS.providerConfigs };
+            if (saved.providerConfigs) {
+              for (const [p, cfg] of Object.entries(saved.providerConfigs)) {
+                const provider = p as ProviderType;
+                mergedConfigs[provider] = {
+                  ...DEFAULT_SETTINGS.providerConfigs[provider],
+                  ...(cfg as any)
+                };
+              }
+            }
+
+            const migrated = { 
+              ...DEFAULT_SETTINGS, 
+              ...saved, 
+              providerConfigs: mergedConfigs,
+              _version: CONFIG_VERSION 
+            };
+            
             if (saved._version !== CONFIG_VERSION) {
               await store.set("app_settings", migrated);
               await store.save();

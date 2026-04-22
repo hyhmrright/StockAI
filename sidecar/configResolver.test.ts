@@ -5,7 +5,7 @@ const validConfig = {
   _version: "2",
   activeProvider: "ollama",
   providerConfigs: {
-    ollama: { apiKey: "", baseUrl: "http://localhost:11434", model: "qwen3.5:9b" },
+    ollama: { apiKey: "", baseUrl: "http://127.0.0.1:11434", model: "qwen3.5:9b" },
   },
   deepMode: true,
 };
@@ -14,7 +14,7 @@ describe("resolveConfig", () => {
   test("版本匹配时正确解析配置", () => {
     const cfg = resolveConfig(validConfig);
     expect(cfg.provider).toBe("ollama");
-    expect(cfg.baseUrl).toBe("http://localhost:11434");
+    expect(cfg.baseUrl).toBe("http://127.0.0.1:11434");
     expect(cfg.modelName).toBe("qwen3.5:9b");
     expect(cfg.deepMode).toBe(true);
   });
@@ -41,7 +41,7 @@ describe("resolveConfig", () => {
 
   test("providerCfg 缺失时回退到 PROVIDER_PROFILES", () => {
     const cfg = resolveConfig({ ...validConfig, providerConfigs: {} });
-    expect(cfg.baseUrl).toBe("http://localhost:11434");
+    expect(cfg.baseUrl).toBe("http://127.0.0.1:11434");
     expect(cfg.modelName).toBe("qwen3.5:9b");
   });
 });

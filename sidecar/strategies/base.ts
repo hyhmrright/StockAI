@@ -1,3 +1,4 @@
+import { errors } from 'playwright-core';
 import type { Page } from 'playwright-core';
 import type { StockNews } from '../../shared/types';
 import { TIMEOUTS } from '../config';
@@ -33,12 +34,20 @@ export abstract class PlaywrightStrategy implements ScrapeStrategy {
     logger.info(`[${this.name}] 正在抓取 ${symbol} from ${url}`);
 
     try {
+      let navFailed = false;
       await page.goto(url, {
         waitUntil: this.getWaitUntil(),
         timeout: TIMEOUTS.pageNavigation,
       }).catch(err => {
-        logger.warn(`[${this.name}] 页面加载部分超时: ${toErrorMessage(err)}`);
+        if (err instanceof errors.TimeoutError) {
+          logger.warn(`[${this.name}] 页面加载超时，尝试解析已加载内容: ${toErrorMessage(err)}`);
+        } else {
+          logger.warn(`[${this.name}] 页面导航失败，跳过解析: ${toErrorMessage(err)}`);
+          navFailed = true;
+        }
       });
+
+      if (navFailed) return [];
 
       await page.waitForTimeout(TIMEOUTS.pageWait);
 

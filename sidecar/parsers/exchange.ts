@@ -61,7 +61,7 @@ export function parseSymbol(input: string): ParsedSymbol {
   const chinaInfo = detectChinaStock(trimmed);
   if (chinaInfo) {
     // 提取 6 位代码前后的非数字文本作为显示名称
-    const nameCandidate = trimmed.replace(/\d{6}/, '').trim();
+    const nameCandidate = trimmed.replace(/(?<!\d)\d{6}(?!\d)/, '').trim();
     return {
       rawInput: trimmed,
       displayName: nameCandidate || undefined,
@@ -91,7 +91,7 @@ export function parseSymbol(input: string): ParsedSymbol {
  * 返回 null 表示非 A 股，应按美股处理
  */
 export function detectChinaStock(symbol: string): ChinaStockInfo | null {
-  const match = symbol.match(/\d{6}/);
+  const match = symbol.match(/(?<!\d)\d{6}(?!\d)/);
   if (!match) return null;
 
   const code = match[0];

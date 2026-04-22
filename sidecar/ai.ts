@@ -1,6 +1,8 @@
 import type { AIAnalysisResult, StockNews } from '../shared/types';
 
-/** Provider 家族标识——工厂派发结果可被单测断言 */
+/** Provider 家族标识——工厂派发结果可被单测断言。
+ * deepseek 复用 OpenAI 兼容协议，其 Provider 实例的 kind 为 'openai'，故不在此列。
+ */
 export type ProviderKind = 'openai' | 'ollama' | 'anthropic';
 
 /**

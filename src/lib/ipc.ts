@@ -6,22 +6,26 @@ import { FullAnalysisResponse, ServiceResponse, StockInfo, StockSearchResult } f
  */
 export function parseServiceResponse<T>(raw: string): T {
   if (!raw || raw.trim() === '') {
-    throw new Error('分析服务无响应，请检查 AI 模型配置后重试。');
+    throw new Error('分析服务无响应，请检查 AI 模型配置或 Ollama 服务是否已启动。');
   }
 
-  const envelope = JSON.parse(raw) as ServiceResponse<T> & { error?: string };
+  let envelope: ServiceResponse<T> & { error?: any };
+  try {
+    envelope = JSON.parse(raw);
+  } catch (e) {
+    console.error("JSON 解析失败:", e, "原始数据:", raw);
+    throw new Error(`分析服务响应格式错误 (非 JSON)。请检查 Sidecar 运行状态。内容: ${raw.substring(0, 50)}...`);
+  }
 
-  // 兼容旧格式（Sidecar 早期版本直接返回带有 error 字段的 T）
+  // 处理旧格式或直接返回错误字符串的情况
   if (typeof envelope.error === 'string') {
     throw new Error(envelope.error);
   }
 
-  // 处理标准信封错误
-  if (envelope.error) {
-    const { code, message } = envelope.error;
-    // 可以在此处针对不同错误码进行特殊处理（如显示不同图标）
-    const prefix = code === 'ERR_SCRAPE_EMPTY' ? '🔍 ' : '⚠️ ';
-    throw new Error(`${prefix}${message}`);
+  // 处理标准信封错误 (error 为对象)
+  if (envelope.error && typeof envelope.error === 'object') {
+    const { message } = envelope.error;
+    throw new Error(message || '未知服务错误');
   }
 
   if (envelope.data === undefined) {
@@ -106,7 +110,7 @@ export async function startAnalysis(symbol: string): Promise<FullAnalysisRespons
       )) {
         throw e;
       }
-      throw new Error("自动化测试环境未就绪，无法获取真实数据。");
+      throw new Error(`自动化测试环境未就绪，无法获取真实数据。(原因: ${e instanceof Error ? e.message : String(e)})`);
     }
   }
 
@@ -127,8 +131,9 @@ export async function listModels(provider: string, baseUrl: string): Promise<str
     const data = parseServiceResponse<{ models: string[] }>(raw);
     return data.models || [];
   } catch (error) {
-    console.error("IPC 调用失败 (list_models):", error);
-    return [];
+    console.error(`IPC 调用失败 (list_models) [provider=${provider}, baseUrl=${baseUrl}]:`, error);
+    // 重新抛出错误，让 UI 能够捕获并显示具体的失败原因，而不是由于返回 [] 导致的“未发现可用模型”掩盖
+    throw error;
   }
 }
 

@@ -1,11 +1,12 @@
 {
   "name": "stockai",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "sidecar:build": "bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-aarch64-apple-darwin",
+    "dev": "bun run sidecar:build && vite",
+    "build": "bun run sidecar:build && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "test:ui": "vitest"
