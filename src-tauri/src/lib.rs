@@ -2,9 +2,6 @@ use tauri_plugin_shell::ShellExt;
 use tauri_plugin_store::StoreExt;
 use serde::{Deserialize, Serialize};
 
-// stdout 为空时的降级响应——提取为常量便于测试验证其格式正确性。
-const EMPTY_STDOUT_RESPONSE: &str =
-    r#"{"error":"分析服务无响应，请检查 AI 模型配置后重试。"}"#;
 
 /**
  * 模型列表查询配置
@@ -181,6 +178,9 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const EMPTY_STDOUT_RESPONSE: &str =
+        r#"{"error":"分析服务无响应，请检查 AI 模型配置后重试。"}"#;
 
     #[test]
     fn test_empty_stdout_fallback_is_valid_json_with_error_field() {
