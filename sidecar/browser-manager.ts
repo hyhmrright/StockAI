@@ -1,4 +1,4 @@
-import { chromium, Browser, BrowserContext, Page } from 'playwright-core';
+import { chromium, Browser, Page } from 'playwright-core';
 import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS } from './config';
 import { logger } from './utils';
 
