@@ -34,33 +34,38 @@ impl SidecarManager {
             .spawn()
             .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
 
-        let mut last_line = String::new();
+        let mut stdout_buffer = String::new();
+        let mut stderr_buffer = String::new();
         let mut exit_code = None;
+
         while let Some(event) = rx.recv().await {
             match event {
                 tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
                     let s = String::from_utf8_lossy(&line);
-                    let trimmed = s.trim();
-                    if !trimmed.is_empty() {
-                        last_line = trimmed.to_string();
-                    }
+                    stdout_buffer.push_str(&s);
                 }
                 tauri_plugin_shell::process::CommandEvent::Stderr(line) => {
                     let s = String::from_utf8_lossy(&line);
+                    stderr_buffer.push_str(&s);
                     eprintln!("Sidecar Stderr: {}", s);
                 }
                 tauri_plugin_shell::process::CommandEvent::Terminated(status) => {
                     exit_code = status.code;
-                    println!("Sidecar 已终止，状态码: {:?}", status.code);
                 }
                 _ => {}
             }
         }
-        // 显式丢弃 child 仅用于抑制警告，关键是让它活到循环结束
         drop(child);
         
+        let last_line = stdout_buffer.lines().last().unwrap_or("").trim().to_string();
+
         if last_line.is_empty() {
-            Ok(format!(r#"{{"error":"分析服务无响应 (ExitCode: {:?})，请检查日志或 AI 模型配置后重试。"}}"#, exit_code))
+            let err_msg = if stderr_buffer.is_empty() {
+                format!("分析服务无响应 (ExitCode: {:?})。请检查 Sidecar 是否已正确编译并赋予执行权限。", exit_code)
+            } else {
+                format!("分析服务崩溃 (ExitCode: {:?})。错误详情: {}", exit_code, stderr_buffer)
+            };
+            Ok(format!(r#"{{"error": {{"code": "ERR_SIDECAR", "message": {:?}}}"}}"#, err_msg))
         } else {
             Ok(last_line)
         }

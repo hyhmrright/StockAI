@@ -1,8 +1,76 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 /**
  * 从 unknown 类型的错误中安全提取消息字符串
  */
 export function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (error instanceof Error) {
+    return error.stack || error.message;
+  }
+  return String(error);
+}
+
+/**
+ * 紧急日志：直接写入文件，用于调试 Sidecar 启动问题
+ */
+export function logToFile(msg: string) {
+  try {
+    const logPath = path.join(process.cwd(), 'sidecar_debug.log');
+    const time = new Date().toISOString();
+    fs.appendFileSync(logPath, `[${time}] ${msg}\n`);
+  } catch (e) {
+    // 忽略日志写入错误
+  }
+}
+
+/**
+ * 标准化日志输出类
+ * 所有非结构化信息通过 stderr 输出，不干扰 stdout 的主数据通道
+ */
+export const logger = {
+  info(msg: string) {
+    console.error(`[SIDE-INFO] ${msg}`);
+    logToFile(`INFO: ${msg}`);
+  },
+  debug(msg: string) {
+    console.error(`[SIDE-DEBUG] ${msg}`);
+  },
+  warn(msg: string) {
+    console.error(`[SIDE-WARN] ${msg}`);
+    logToFile(`WARN: ${msg}`);
+  },
+  error(msg: string) {
+    console.error(`[SIDE-ERROR] ${msg}`);
+    logToFile(`ERROR: ${msg}`);
+  }
+};
+
+let _stdoutWritten = false;
+
+/**
+ * 标准化结果输出
+ * 协议约定：每个 Sidecar 进程只允许调用一次，输出单行 JSON 后退出。
+ */
+export function outputJson(data: unknown): void {
+  if (_stdoutWritten) {
+    logger.warn('[PROTOCOL] outputJson called more than once, second call ignored.');
+    return;
+  }
+  _stdoutWritten = true;
+  try {
+    const output = JSON.stringify(data);
+    // 使用 fs.writeSync(1, ...) 确保同步、无缓冲地写入 stdout (fd: 1)
+    fs.writeSync(1, output + '\n');
+    logToFile(`OUTPUT: ${output.substring(0, 100)}...`);
+  } catch (err) {
+    logger.error(`JSON 序列化失败: ${toErrorMessage(err)}`);
+  }
+}
+
+/** 仅供测试使用：重置写入防护状态 */
+export function _resetOutputGuard(): void {
+  _stdoutWritten = false;
 }
 
 /**
@@ -16,57 +84,6 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, message: string)
   });
 
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
-}
-
-/**
- * 标准化日志输出类
- * 所有非结构化信息通过 stderr 输出，不干扰 stdout 的主数据通道
- */
-export const logger = {
-  /** 一般信息 */
-  info(msg: string) {
-    console.error(`[SIDE-INFO] ${msg}`);
-  },
-  /** 调试信息 */
-  debug(msg: string) {
-    console.error(`[SIDE-DEBUG] ${msg}`);
-  },
-  /** 警告信息 */
-  warn(msg: string) {
-    console.error(`[SIDE-WARN] ${msg}`);
-  },
-  /** 异常信息 */
-  error(msg: string) {
-    console.error(`[SIDE-ERROR] ${msg}`);
-  }
-};
-
-let _stdoutWritten = false;
-
-/**
- * 标准化结果输出
- * 协议约定：每个 Sidecar 进程只允许调用一次，输出单行 JSON 后退出。
- * 如果多次调用，第二次调用将被忽略并记录警告（而非抛出异常导致进程崩溃）。
- */
-export function outputJson(data: unknown): void {
-  if (_stdoutWritten) {
-    logger.warn('[PROTOCOL] outputJson called more than once, second call ignored.');
-    return;
-  }
-  _stdoutWritten = true;
-  try {
-    const output = JSON.stringify(data);
-    process.stdout.write(output + '\n');
-    // 在某些环境下，stdout 缓冲区可能不会立即刷新
-    // 虽然 Node/Bun 的 stdout 通常在 TTY 下是同步的，但在管道下可能是异步的
-  } catch (err) {
-    logger.error(`JSON 序列化失败: ${toErrorMessage(err)}`);
-  }
-}
-
-/** 仅供测试使用：重置写入防护状态 */
-export function _resetOutputGuard(): void {
-  _stdoutWritten = false;
 }
 
 /** 返回当前日期的 ISO 字符串（YYYY-MM-DD） */

@@ -1,7 +1,7 @@
 {
   "name": "stockai",
   "private": true,
-  "version": "0.4.4",
+  "version": "0.4.5",
   "type": "module",
   "scripts": {
     "sidecar:build": "bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-aarch64-apple-darwin",

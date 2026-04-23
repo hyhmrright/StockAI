@@ -2,6 +2,14 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.5] - 2026-04-23
+
+### Fixed
+
+- **Sidecar 核心协议稳定性 (Critical)** — 改用 `fs.writeSync` 取代 `process.stdout.write`，确保 JSON 结果在进程退出前能够同步、不经过缓冲区地强制写入 stdout。解决了在部分环境下（如 Tauri 管道）因进程退出过快导致输出丢失的问题。
+- **Stderr 穿透调试** — 改进了 Rust 核心层对 Sidecar 错误流的处理，现在如果 Sidecar 崩溃，前端能直接看到具体的 Stderr 错误详情（包括堆栈信息），极大提升了排障效率。
+- **参数解析加固** — 优化了 Sidecar 的 `process.argv` 解析逻辑，兼容了不同环境（源码运行、Bun 编译二进制、Tauri Sidecar）下索引位置可能存在的偏差。
+
 ## [0.4.4] - 2026-04-23
 
 ### Fixed
