@@ -15,7 +15,7 @@
         {
           "name": "stockai-backend",
           "sidecar": true,
-          "args": [{ "validator": ".*" }]
+          "args": true
         }
       ]
     },
