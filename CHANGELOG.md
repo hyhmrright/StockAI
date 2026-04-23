@@ -2,6 +2,12 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.3] - 2026-04-23
+
+### Fixed
+
+- **App 启动崩溃 (tauri-plugin-shell v2.3.5 兼容性)** — `tauri-plugin-shell` v2.3.5 移除了 `plugins.shell.sidecar` 配置字段，导致 App 启动时 panic（`unknown field 'sidecar', expected 'open'`）。将 sidecar 允许列表迁移到 `capabilities/default.json` 的 scoped permission，并显式声明 `args: true` 以匹配原有的可变参数语义。
+
 ## [0.4.2] - 2026-04-23
 
 ### Fixed
