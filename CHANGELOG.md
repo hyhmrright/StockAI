@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.2] - 2026-04-23
+
+### Fixed
+
+- **Playwright 路径泄露终极解决方案 (Ultra-Robust Fix)** — 彻底解决了 `Cannot find module package.json` 错误。通过在打包前对 `node_modules` 中的 `playwright-core` 源码进行“手术级预处理”，强行中和了所有引起 Bun 编译器静态分析异常的 `require.resolve` 调用。
+- **构建链路优化** — 引入了“预修补 -> Esbuild 打包 -> Bundle 洗护 -> Bun 编译”的全全链条自动化脚本，确保生成的二进制文件在任何机器上均能稳定运行。
+
 ## [0.5.1] - 2026-04-23
 
 ### Fixed
