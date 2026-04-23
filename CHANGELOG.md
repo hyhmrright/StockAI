@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.8] - 2026-04-23
+
+### Fixed
+
+- **构建期路径泄露彻底修复 (Hotfix)** — 引入了双阶段构建流程（Bundle -> Patch -> Compile）。解决了 Bun 在 GitHub Action 环境下编译二进制时，会将构建机器的绝对路径（如 `/Users/runner/work/...`）硬编码到 Playwright 依赖中的问题。现在 Sidecar 二进制文件实现了真正的环境无关，彻底解决了在分析时提示“Cannot find module package.json”的错误。
+- **构建脚本自动化** — 新增了 `sidecar/build-script.ts`，统一了本地和 CI 环境下的 Sidecar 构建逻辑，确保发布版本的稳定性。
+
 ## [0.4.7] - 2026-04-23
 
 ### Fixed

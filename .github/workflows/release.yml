@@ -64,11 +64,10 @@ jobs:
 
       - name: Build sidecar binary
         shell: bash
-        run: |
-          bun build sidecar/index.ts \
-            --compile \
-            --target "${{ matrix.bun-target }}" \
-            --outfile "sidecar/${{ matrix.sidecar-name }}"
+        env:
+          BUN_TARGET: ${{ matrix.bun-target }}
+          OUTFILE: sidecar/${{ matrix.sidecar-name }}
+        run: bun sidecar/build-script.ts
 
       - name: Build and publish release
         uses: tauri-apps/tauri-action@v0
