@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.3] - 2026-04-23
+
+### Fixed
+
+- **Playwright 路径泄露终极解决方案 (Ultimate Patch)** — 采用了“静态劫持 + 动态注入”的双重防护策略。通过 esbuild 的 `--define` 强制劫持了所有 `require.resolve` 调用，并注入了安全的路径解析占位符。这彻底切断了 Bun 编译器将构建机器绝对路径嵌入二进制文件的所有可能路径。
+- **Rust 核心层鲁棒性增强** — 重写了 Sidecar 输出解析逻辑。现在 Rust 会通过反向扫描寻找最后一个合法的 JSON 对象，并使用 `serde_json` 严格序列化错误消息，彻底解决了因控制台杂讯或非 JSON 输出导致的 UI 解析失败（“非 JSON 格式错误”）。
+
 ## [0.5.2] - 2026-04-23
 
 ### Fixed

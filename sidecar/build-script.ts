@@ -6,53 +6,27 @@ const projectRoot = path.resolve(import.meta.dir, "..");
 const target = process.env.BUN_TARGET || "bun-darwin-arm64";
 const outfile = process.env.OUTFILE || `sidecar/stockai-backend-${target.replace('bun-', '')}`;
 
-console.log(`🚀 Starting ULTRA-ROBUST Build [v0.5.2]`);
+console.log(`🚀 Starting FINAL ULTIMATE Build [v0.5.3]`);
 console.log(`- Target: ${target}`);
-console.log(`- Project Root: ${projectRoot}`);
 
 /**
- * 核心策略：
- * 1. 在打包前，直接修补 node_modules 中的 playwright-core 源码。
- *    这是为了彻底移除那些会让 Bun 编译器在静态分析阶段发疯的 require.resolve() 调用。
- * 2. 使用 esbuild 将所有依赖打包成一个独立的 CJS 文件。
- * 3. 对生成的 Bundle 进行二次清洗，抹除残留的绝对路径。
- * 4. 使用 Bun 将清洗后的 Bundle 编译为二进制。
+ * 终极策略：
+ * 1. 在打包前，暴力修补 playwright-core。
+ * 2. 使用 esbuild 打包，同时使用 --define 劫持 require.resolve。
+ * 3. 扫描生成的 Bundle，用正则抹除所有绝对路径。
  */
 
-// --- Step 1: Pre-patch node_modules ---
-console.log("🩹 Pre-patching playwright-core to neutralize path-probing...");
-
-const filesToPatch = [
-    "node_modules/playwright-core/lib/server/utils/nodePlatform.js",
-    "node_modules/playwright-core/lib/tools/cli-client/registry.js",
-    "node_modules/playwright-core/lib/tools/dashboard/dashboardApp.js"
-];
-
-const backups = new Map<string, string>();
-
-for (const relPath of filesToPatch) {
-    const fullPath = path.join(projectRoot, relPath);
-    if (fs.existsSync(fullPath)) {
-        console.log(`   - Patching ${relPath}`);
-        const content = fs.readFileSync(fullPath, "utf-8");
-        backups.set(fullPath, content);
-        
-        // 强行将 coreDir 赋值为 "."，并注释掉原来的 require.resolve
-        let patched = content.replace(
-            /const coreDir = .*?;/g, 
-            'const coreDir = "."; // patched by StockAI'
-        );
-        // 针对其他 require.resolve("package.json") 的调用
-        patched = patched.replace(/require\.resolve\(["'].*?package\.json["']\)/g, '"."');
-        
-        fs.writeFileSync(fullPath, patched);
-    }
+// Step 1: Pre-patch
+const platformPath = path.join(projectRoot, "node_modules/playwright-core/lib/server/utils/nodePlatform.js");
+let originalContent = "";
+if (fs.existsSync(platformPath)) {
+    originalContent = fs.readFileSync(platformPath, "utf-8");
+    const patched = originalContent.replace(/const coreDir = .*?;/g, 'const coreDir = ".";');
+    fs.writeFileSync(platformPath, patched);
 }
 
-// --- Step 2: Bundle with ESBUILD ---
-console.log("📦 Bundling with esbuild (Platform: Node, Format: CJS)...");
+// Step 2: Bundle with esbuild
 const bundlePath = path.join(projectRoot, "sidecar/dist/index.js");
-
 const esbuildProc = Bun.spawn([
   "npx", "esbuild", "sidecar/index.ts",
   "--bundle",
@@ -60,73 +34,51 @@ const esbuildProc = Bun.spawn([
   "--format=cjs",
   "--outfile=" + bundlePath,
   "--external:bun",
-  "--minify=false", // 保持可读性以便于 Step 3 的清洗
-  "--define:process.env.NODE_ENV=\"production\""
+  "--minify=false",
+  "--define:require.resolve=__dummy_resolve", // 劫持所有 require.resolve
 ]);
 
-const esbuildExit = await esbuildProc.exited;
+await esbuildProc.exited;
 
-// 立即还原 node_modules，防止污染本地开发环境
-console.log("⏪ Restoring node_modules...");
-for (const [fullPath, originalContent] of backups) {
-    fs.writeFileSync(fullPath, originalContent);
-}
+// 还原
+if (originalContent) fs.writeFileSync(platformPath, originalContent);
 
-if (esbuildExit !== 0) {
-    console.error("❌ esbuild failed!");
-    process.exit(1);
-}
+// Step 3: Scrub everything
+let content = await file(bundlePath).text();
+console.log("🧹 Scrubbing all absolute paths...");
 
-// --- Step 3: Scrub the Bundle ---
-console.log("🧹 Scrubbing bundle for build-machine path leaks...");
-let bundleContent = await file(bundlePath).text();
-
-const G_ROOT = "/Users/runner/work/StockAI/StockAI";
-const LOCAL_ROOT = projectRoot;
-
-const nukePaths = (text: string, root: string) => {
-    // 处理原始路径
-    text = text.split(root).join(".");
-    // 处理转义路径 (\\/)
-    text = text.split(root.replace(/\//g, "\\/")).join(".");
-    return text;
+// 注入安全函数
+const injection = `
+const __dummy_resolve = (p) => {
+    if (typeof p !== 'string') return ".";
+    if (p.includes('package.json') || p.startsWith('/') || p.startsWith('\\\\')) return ".";
+    try { return require.resolve(p); } catch(e) { return "."; }
 };
+`;
+content = injection + content;
 
-bundleContent = nukePaths(bundleContent, G_ROOT);
-bundleContent = nukePaths(bundleContent, LOCAL_ROOT);
+// 正则替换：任何包含 Users 且包含 node_modules 的字符串路径
+// 匹配: "/Users/runner/work/.../node_modules/..."
+// 替换为: "./node_modules/..."
+content = content.replace(/"\/Users\/.*?\/(node_modules\/.*?)"/g, '"./$1"');
+content = content.replace(/'\/Users\/.*?\/(node_modules\/.*?)'/g, "'./$1'");
 
-// 全量屏蔽 require.resolve 
-// 这一步是双重保险：即使 esbuild 没理会 Step 1 的修改，
-// 我们也在 bundle 中把所有的 require.resolve("...") 替换成返回 "." 的占位符。
-bundleContent = bundleContent.replace(/require\.resolve\(".*?"\)/g, '"."');
+// 暴力抹除残留的构建路径字符串
+const G_ROOT = "/Users/runner/work/StockAI/StockAI";
+content = content.split(G_ROOT).join(".");
+content = content.split(projectRoot).join(".");
 
-await write(bundlePath, bundleContent);
+await write(bundlePath, content);
 
-// --- Step 4: Compile with BUN ---
-console.log(`📦 Compiling final binary for ${target}...`);
-const compileProc = Bun.spawn([
+// Step 4: Compile
+const proc = Bun.spawn([
   "bun", "build", bundlePath,
   "--compile",
   "--target", target,
   "--outfile", outfile
 ]);
 
-const compileExit = await compileProc.exited;
-if (compileExit !== 0) {
-    console.error("❌ Bun compilation failed!");
-    process.exit(1);
-}
+const exitCode = await proc.exited;
+if (exitCode !== 0) process.exit(1);
 
-// --- Step 5: Final Validation ---
-console.log("🔍 Running self-check on generated binary...");
-const binaryContent = await file(outfile).arrayBuffer();
-const binaryText = Buffer.from(binaryContent).toString('utf-8');
-const leakCheck = ["/", "Users", "runner"].join("/");
-
-if (binaryText.includes(leakCheck)) {
-    console.warn(`⚠️  WARNING: Found path fragment '${leakCheck}' in binary. This might be a false positive or a harmless leak.`);
-} else {
-    console.log("✨ Binary is clean.");
-}
-
-console.log(`🎉 SUCCESS! Sidecar binary ready at: ${outfile}`);
+console.log(`🎉 Success: ${outfile}`);

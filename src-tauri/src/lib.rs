@@ -57,17 +57,31 @@ impl SidecarManager {
         }
         drop(child);
         
-        let last_line = stdout_buffer.lines().last().unwrap_or("").trim().to_string();
+        // 查找最后一个完整的 JSON 对象
+        let last_json = stdout_buffer.lines()
+            .rev()
+            .map(|l| l.trim())
+            .find(|l| l.starts_with('{') && l.ends_with('}'))
+            .unwrap_or("")
+            .to_string();
 
-        if last_line.is_empty() {
+        if last_json.is_empty() {
             let err_msg = if stderr_buffer.is_empty() {
-                format!("分析服务无响应 (ExitCode: {:?})。请检查 Sidecar 是否已正确编译并赋予执行权限。", exit_code)
+                format!("分析服务无响应 (ExitCode: {:?})。请尝试重新构建 Sidecar。", exit_code)
             } else {
-                format!("分析服务崩溃 (ExitCode: {:?})。错误详情: {}", exit_code, stderr_buffer)
+                format!("分析服务异常 (ExitCode: {:?})。详情: {}", exit_code, stderr_buffer)
             };
-            Ok(format!(r#"{{"error": {{"code": "ERR_SIDECAR", "message": {:?}}}"}}"#, err_msg))
+            
+            // 使用 serde_json 安全序列化，防止特殊字符破坏 JSON 结构
+            let err_json = serde_json::json!({
+                "error": {
+                    "code": "ERR_SIDECAR",
+                    "message": err_msg
+                }
+            });
+            Ok(err_json.to_string())
         } else {
-            Ok(last_line)
+            Ok(last_json)
         }
     }
 
