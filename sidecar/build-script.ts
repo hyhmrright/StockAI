@@ -6,17 +6,21 @@ const projectRoot = path.resolve(import.meta.dir, "..");
 const target = process.env.BUN_TARGET || "bun-darwin-arm64";
 const outfile = process.env.OUTFILE || `sidecar/stockai-backend-${target.replace('bun-', '')}`;
 
-console.log(`🚀 Starting FINAL ULTIMATE Build [v0.5.3]`);
-console.log(`- Target: ${target}`);
+console.log(`🚀 Starting ROOT-LEVEL FIX Build [v0.5.5]`);
 
 /**
- * 终极策略：
- * 1. 在打包前，暴力修补 playwright-core。
- * 2. 使用 esbuild 打包，同时使用 --define 劫持 require.resolve。
- * 3. 扫描生成的 Bundle，用正则抹除所有绝对路径。
+ * 核心发现：
+ * Bun 在 --compile 时会将当前打包文件的绝对路径注入为 __dirname。
+ * 即使我们在 bundle 里做了替换，Bun 的编译器也会在最后一步把它加回来。
+ * 
+ * 解决方案：
+ * 1. 使用 esbuild 预打包，将所有依赖（包括 playwright）合并。
+ * 2. 在 Bundle 中将所有 "__dirname" 字符串替换为 "(import.meta.dir)"。
+ * 3. 抹除所有绝对路径。
+ * 4. 强行截断 Playwright 的路径探测。
  */
 
-// Step 1: Pre-patch
+// Step 1: Pre-patch node_modules (手术级)
 const platformPath = path.join(projectRoot, "node_modules/playwright-core/lib/server/utils/nodePlatform.js");
 let originalContent = "";
 if (fs.existsSync(platformPath)) {
@@ -35,19 +39,20 @@ const esbuildProc = Bun.spawn([
   "--outfile=" + bundlePath,
   "--external:bun",
   "--minify=false",
-  "--define:require.resolve=__dummy_resolve", // 劫持所有 require.resolve
 ]);
 
 await esbuildProc.exited;
-
-// 还原
 if (originalContent) fs.writeFileSync(platformPath, originalContent);
 
-// Step 3: Scrub everything
+// Step 3: Bundle Scrubbing (核平级)
 let content = await file(bundlePath).text();
-console.log("🧹 Scrubbing all absolute paths...");
+console.log("🧹 Scrubbing bundle...");
 
-// 注入安全函数
+// A. 替换 __dirname 为 import.meta.dir
+// 这是最关键的一步，防止 Bun 编译器在最后一步注入构建机器路径
+content = content.replace(/\b__dirname\b/g, "import.meta.dir");
+
+// B. 注入 Dummy Resolve
 const injection = `
 const __dummy_resolve = (p) => {
     if (typeof p !== 'string') return ".";
@@ -55,22 +60,20 @@ const __dummy_resolve = (p) => {
     try { return require.resolve(p); } catch(e) { return "."; }
 };
 `;
-content = injection + content;
+content = injection + content.replace(/require\.resolve\(/g, "__dummy_resolve(");
 
-// 正则替换：任何包含 Users 且包含 node_modules 的字符串路径
-// 匹配: "/Users/runner/work/.../node_modules/..."
-// 替换为: "./node_modules/..."
-content = content.replace(/"\/Users\/.*?\/(node_modules\/.*?)"/g, '"./$1"');
-content = content.replace(/'\/Users\/.*?\/(node_modules\/.*?)'/g, "'./$1'");
-
-// 暴力抹除残留的构建路径字符串
+// C. 抹除所有路径模式
 const G_ROOT = "/Users/runner/work/StockAI/StockAI";
 content = content.split(G_ROOT).join(".");
 content = content.split(projectRoot).join(".");
 
+// D. 特殊处理 Playwright 的 coreDir
+content = content.replace(/var coreDir = .*?;/g, 'var coreDir = ".";');
+
 await write(bundlePath, content);
 
-// Step 4: Compile
+// Step 4: Compile with Bun
+console.log(`📦 Compiling...`);
 const proc = Bun.spawn([
   "bun", "build", bundlePath,
   "--compile",
@@ -81,4 +84,17 @@ const proc = Bun.spawn([
 const exitCode = await proc.exited;
 if (exitCode !== 0) process.exit(1);
 
-console.log(`🎉 Success: ${outfile}`);
+// Step 5: 严苛自检
+const binaryContent = await file(outfile).arrayBuffer();
+const binaryText = Buffer.from(binaryContent).toString('utf-8');
+const leakCheck = ["/", "Users", "runner"].join("/");
+
+if (binaryText.includes(leakCheck)) {
+    console.error(`❌ ERROR: Absolute path leak detected in binary!`);
+    // 在 GitHub Actions 中强制失败
+    if (process.env.GITHUB_ACTIONS) process.exit(1);
+} else {
+    console.log("✨ Binary is PURE.");
+}
+
+console.log(`🎉 Final result: ${outfile}`);

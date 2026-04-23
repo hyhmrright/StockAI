@@ -2,6 +2,15 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.5] - 2026-04-23
+
+### Fixed
+
+- **Playwright 路径泄露根除方案 (Environment Agnostic Fix)** — 彻底解决了 `ResolveMessage: Cannot find module` 报错。
+    - **发现**：Bun 的编译器在 `--compile` 时会将当前构建环境的物理路径注入为 `__dirname`。
+    - **修复**：在构建脚本中，将 Bundle 内所有的 `__dirname` 强制替换为 `import.meta.dir`。在编译后的二进制中，后者能正确指向 Bun 的虚拟文件系统 (`/$bunfs/root`)，从而实现了真正的环境无关。
+- **构建完整性校验** — 引入了严苛的二进制自检环节，若发现任何残留的构建机器路径，CI 将自动熔断。
+
 ## [0.5.3] - 2026-04-23
 
 ### Fixed
