@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.0] - 2026-04-23
+
+### Fixed
+
+- **Playwright 路径泄露终极解决方案 (Nuclear Fix)** — 彻底重构了 Sidecar 构建流程。引入了“双阶段修补+编译前自检”机制。通过暴力字符串替换和代码截断，从二进制层面抹除了所有构建机器的绝对路径（如 `/Users/runner/...`），并将 Playwright 内部的目录查找逻辑强行重定向。
+- **构建安全自检** — 在 CI 流程中增加了二进制完整性校验，如果检测到任何残留的构建路径泄漏，构建将自动失败并报警，确保用户拿到的永远是“纯净”的、环境无关的程序。
+
 ## [0.4.9] - 2026-04-23
 
 ### Fixed
