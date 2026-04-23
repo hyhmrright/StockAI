@@ -2,6 +2,14 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.6] - 2026-04-23
+
+### Fixed
+
+- **Sidecar 启动稳健性 (Crucial)** — 引入了动态加载架构。错误拦截器现在作为程序运行的“绝对第一行”执行，所有重型业务逻辑（如 SDK 导入）均通过 `await import()` 延迟加载。这解决了因 top-level import 失败导致拦截器失效、进而产生“空 stderr”和“静默崩溃”的问题。
+- **参数匹配算法增强** — 重新设计了 `process.argv` 过滤算法，能够自动识别并跳过 Bun 运行时路径、二进制包内路径等干扰项，确保在 Sidecar 模式下 Action 和 Config 的定位 100% 准确。
+- **Stderr 全量透传** — Rust 侧现在会完整捕获并反馈 Sidecar 的 Stderr 信息，彻底终结了“分析服务无响应”这种含糊的错误提示。
+
 ## [0.4.5] - 2026-04-23
 
 ### Fixed

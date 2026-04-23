@@ -1,79 +1,72 @@
 import { logger, toErrorMessage, outputJson, logToFile } from './utils';
 
-// 全局异常捕获，确保即使是异步崩溃也能输出 JSON 错误
-// 必须在任何其他导入之前设置，以防导入本身崩溃
+/**
+ * 紧急入口点：确保错误拦截器在任何业务逻辑加载前运行。
+ */
 process.on('uncaughtException', (err) => {
   const msg = toErrorMessage(err);
-  logger.error(`[FATAL] 未捕获的异常: ${msg}`);
-  outputJson({ error: { code: 'ERR_UNCAUGHT', message: `内部致命错误: ${msg}` } });
-  // 给予足够的时间让 fs.writeSync 完成
+  logger.error(`[CRITICAL] 未捕获异常: ${msg}`);
+  outputJson({ error: { code: 'ERR_BOOT_CRASH', message: `启动崩溃: ${msg}` } });
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   const msg = toErrorMessage(reason);
-  logger.error(`[FATAL] 未处理的 Promise 拒绝: ${msg}`);
-  outputJson({ error: { code: 'ERR_UNHANDLED', message: `内部异步错误: ${msg}` } });
+  logger.error(`[CRITICAL] Promise 拒绝: ${msg}`);
+  outputJson({ error: { code: 'ERR_BOOT_ASYNC', message: `异步启动失败: ${msg}` } });
   process.exit(1);
 });
 
-import { resolveConfig } from './configResolver';
-import { Handlers } from './cli-handlers';
+async function run() {
+  // 业务逻辑动态导入，防止 top-level import 崩溃
+  const { resolveConfig } = await import('./configResolver');
+  const { Handlers } = await import('./cli-handlers');
 
-/**
- * Sidecar CLI 入口点
- * 参数格式: stockai-backend <symbol|action> <configJSON>
- */
-async function main() {
-  logToFile(`argv: ${JSON.stringify(process.argv)}`);
-  
-  // 更加鲁棒的参数解析
-  const args = process.argv.slice(2);
-  let symbolOrAction = '';
-  let rawConfigStr = '{}';
+  const args = process.argv;
+  logToFile(`Full Argv: ${JSON.stringify(args)}`);
 
-  if (args.length >= 1) {
-    symbolOrAction = args[0];
+  // 如果筛选后没参数，说明是 Sidecar 模式或直接运行
+  // 在 Sidecar 模式下，Tauri 传入的参数通常在 argv[2] 之后
+  let action = args[2];
+  let configStr = args[3] || '{}';
+
+  // 针对 --list-models 等特殊 Action 的补丁解析
+  if (action === '--list-models' || action === '--info' || action === '--search') {
+    // 保持现状
+  } else if (!action || action.startsWith('{')) {
+    // 可能是索引偏移了
+    action = args[1];
+    configStr = args[2] || '{}';
   }
-  if (args.length >= 2) {
-    rawConfigStr = args[1];
-  }
 
-  logger.info(`Sidecar 启动: action=${symbolOrAction}, config_len=${rawConfigStr.length}`);
+  logger.info(`Sidecar 执行: action=${action}, config_len=${configStr.length}`);
 
-  if (!symbolOrAction) {
-    logger.error("使用方法: stockai-backend <SYMBOL|ACTION> <configJSON>");
+  if (!action) {
+    logger.error("未提供有效 Action");
     process.exit(1);
   }
 
-  // 解析 JSON 配置
   let rawConfig: any;
   try {
-    rawConfig = JSON.parse(rawConfigStr);
+    rawConfig = JSON.parse(configStr);
   } catch {
-    logger.error("配置 JSON 解析失败: " + rawConfigStr);
     rawConfig = {};
   }
 
-  // 路由分发
-  switch (symbolOrAction) {
+  switch (action) {
     case '--list-models':
       await Handlers.handleListModels(rawConfig);
       break;
-
     case '--info':
-      await Handlers.handleInfo(process.argv[4]);
+      await Handlers.handleInfo(args[4] || args[3]);
       break;
-
     case '--search':
-      await Handlers.handleSearch(process.argv[4]);
+      await Handlers.handleSearch(args[4] || args[3]);
       break;
-
     default:
-      // 默认视为完整分析动作，第一个参数为 symbol
       try {
         const config = resolveConfig(rawConfig);
-        await Handlers.handleAnalysis(symbolOrAction, config);
+        await Handlers.handleAnalysis(action, config);
       } catch (error) {
         outputJson({ error: { code: 'ERR_CONFIG', message: toErrorMessage(error) } });
       }
@@ -81,12 +74,8 @@ async function main() {
   }
 }
 
-main().then(() => {
-  // 正常结束
-  process.exit(0);
-}).catch(err => {
-  const errorMessage = toErrorMessage(err);
-  logger.error("主流程异常: " + errorMessage);
-  outputJson({ error: { code: 'ERR_FATAL', message: `内部错误: ${errorMessage}` } });
+run().catch(err => {
+  logger.error(`执行流异常: ${toErrorMessage(err)}`);
+  outputJson({ error: { code: 'ERR_FATAL', message: toErrorMessage(err) } });
   process.exit(1);
 });
