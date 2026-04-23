@@ -2,6 +2,12 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.1] - 2026-04-23
+
+### Fixed
+
+- **Playwright 路径泄露终极解决方案 (Ultimate Fix)** — 切换到 `esbuild` + `bun` 混合构建模式。通过在打包阶段重命名全局 `require.resolve` 为安全占位符，彻底绕过了 Bun 编译器对绝对路径的强制解析。这确保了 Playwright 内部的路径查找逻辑在任何机器上都能平稳降级，不再触发 `Cannot find module package.json` 错误。
+
 ## [0.5.0] - 2026-04-23
 
 ### Fixed

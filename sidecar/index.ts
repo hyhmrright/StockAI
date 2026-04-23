@@ -17,24 +17,24 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
+// 强制静态导入以确保 Bun Bundler 能够追踪并包含依赖
+// 虽然我们下面使用了动态 import() 来保证启动稳定性，
+// 但静态引用能确保这些模块被打包进二进制。
+import "playwright-core";
+
 async function run() {
-  // 业务逻辑动态导入，防止 top-level import 崩溃
   const { resolveConfig } = await import('./configResolver');
   const { Handlers } = await import('./cli-handlers');
 
   const args = process.argv;
   logToFile(`Full Argv: ${JSON.stringify(args)}`);
 
-  // 如果筛选后没参数，说明是 Sidecar 模式或直接运行
-  // 在 Sidecar 模式下，Tauri 传入的参数通常在 argv[2] 之后
   let action = args[2];
   let configStr = args[3] || '{}';
 
-  // 针对 --list-models 等特殊 Action 的补丁解析
   if (action === '--list-models' || action === '--info' || action === '--search') {
-    // 保持现状
+    // ok
   } else if (!action || action.startsWith('{')) {
-    // 可能是索引偏移了
     action = args[1];
     configStr = args[2] || '{}';
   }
