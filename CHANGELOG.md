@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.9] - 2026-04-23
+
+### Fixed
+
+- **Playwright 路径硬编码终极修复 (Critical)** — 针对 Bun 编译器在处理 `require.resolve` 时的过度优化进行了深度修补。在构建阶段，通过自动化脚本暴力截断了 Playwright 内部用于定位自身目录的反射逻辑，将其强制重定向为环境无关的相对路径。这彻底消除了在用户机器上运行分析时因找不到构建机器路径而导致的崩溃。
+- **构建脚本鲁棒性增强** — 优化了 `build-script.ts` 的正则匹配逻辑，确保能够捕获并中和所有被 Bun 转换后的 `__require.resolve` 绝对路径。
+
 ## [0.4.8] - 2026-04-23
 
 ### Fixed
