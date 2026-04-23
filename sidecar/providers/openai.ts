@@ -3,7 +3,7 @@ import type { AIAnalysisResult, StockNews } from "../../shared/types";
 import type { AIProvider, ProviderKind } from "../ai";
 import { PROVIDER_PROFILES } from "../config";
 import { buildAnalysisPrompt, SYSTEM_PROMPT } from "../prompts";
-import { toErrorMessage, logger } from "../utils";
+import { toErrorMessage, logger, parseJsonFromAi } from "../utils";
 
 /**
  * OpenAI 提供者实现
@@ -39,7 +39,7 @@ export class OpenAIProvider implements AIProvider {
         throw new Error('OpenAI 返回了空的 choices 列表，无法提取分析结果');
       }
       const content = response.choices[0].message.content || "{}";
-      return JSON.parse(content) as AIAnalysisResult;
+      return parseJsonFromAi<AIAnalysisResult>(content);
     } catch (error) {
       logger.error(`OpenAI 分析出错: ${toErrorMessage(error)}`);
       throw new Error(`OpenAI 分析失败: ${toErrorMessage(error)}`);

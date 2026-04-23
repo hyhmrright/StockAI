@@ -170,6 +170,7 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
         .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
     let settings_val = store.get("app_settings")
+        .filter(|v| !v.is_null())
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
     SidecarManager::run_analysis(&app_handle, symbol, settings_val).await

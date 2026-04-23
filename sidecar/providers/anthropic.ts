@@ -3,7 +3,7 @@ import type { AIAnalysisResult, StockNews } from "../../shared/types";
 import type { AIProvider, ProviderKind } from "../ai";
 import { PROVIDER_PROFILES } from "../config";
 import { buildAnalysisPrompt, SYSTEM_PROMPT } from "../prompts";
-import { toErrorMessage, withTimeout, logger } from "../utils";
+import { toErrorMessage, withTimeout, logger, parseJsonFromAi } from "../utils";
 
 /**
  * Anthropic Claude 提供者实现
@@ -38,7 +38,7 @@ export class AnthropicProvider implements AIProvider {
       }
       const block = response.content[0];
       const content = block.type === "text" ? block.text : "{}";
-      return JSON.parse(content) as AIAnalysisResult;
+      return parseJsonFromAi<AIAnalysisResult>(content);
     } catch (error) {
       logger.error(`Anthropic 分析出错: ${toErrorMessage(error)}`);
       throw new Error(`Anthropic 分析失败: ${toErrorMessage(error)}`);

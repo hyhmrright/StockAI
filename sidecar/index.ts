@@ -2,6 +2,21 @@ import { logger, toErrorMessage, outputJson } from './utils';
 import { resolveConfig } from './configResolver';
 import { Handlers } from './cli-handlers';
 
+// 全局异常捕获，确保即使是异步崩溃也能输出 JSON 错误
+process.on('uncaughtException', (err) => {
+  const msg = toErrorMessage(err);
+  logger.error(`[FATAL] 未捕获的异常: ${msg}`);
+  outputJson({ error: { code: 'ERR_UNCAUGHT', message: `内部致命错误: ${msg}` } });
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  const msg = toErrorMessage(reason);
+  logger.error(`[FATAL] 未处理的 Promise 拒绝: ${msg}`);
+  outputJson({ error: { code: 'ERR_UNHANDLED', message: `内部异步错误: ${msg}` } });
+  process.exit(1);
+});
+
 /**
  * Sidecar CLI 入口点
  * 参数格式: stockai-backend <symbol|action> <configJSON>
@@ -9,6 +24,8 @@ import { Handlers } from './cli-handlers';
 async function main() {
   const symbolOrAction = process.argv[2];
   const rawConfigStr = process.argv[3] || '{}';
+
+  logger.info(`Sidecar 启动: action=${symbolOrAction}, args_count=${process.argv.length}`);
 
   if (!symbolOrAction) {
     logger.error("使用方法: stockai-backend <SYMBOL|ACTION> <configJSON>");
@@ -48,13 +65,14 @@ async function main() {
       }
       break;
   }
-
-  process.exit(0);
 }
 
-main().catch(err => {
+main().then(() => {
+  // 正常结束，给予极短时间让 stdout 缓冲区刷新（Bun 的 stdout.write 有时在 pipeline 中是非阻塞的）
+  setTimeout(() => process.exit(0), 10);
+}).catch(err => {
   const errorMessage = toErrorMessage(err);
-  logger.error("致命错误: " + errorMessage);
+  logger.error("主流程异常: " + errorMessage);
   outputJson({ error: { code: 'ERR_FATAL', message: `内部错误: ${errorMessage}` } });
-  process.exit(1);
+  setTimeout(() => process.exit(1), 10);
 });

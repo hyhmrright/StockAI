@@ -1,6 +1,5 @@
-import { Ollama } from 'ollama';
 import { performFullAnalysis } from './analysis';
-import { toErrorMessage, outputJson } from './utils';
+import { toErrorMessage, outputJson, withTimeout, logger } from './utils';
 import { ResolvedConfig } from './configResolver';
 import { DEFAULT_OPENAI_MODELS } from './config';
 
@@ -23,20 +22,32 @@ export function createHandlers(deps: HandlerDeps = {}) {
     async handleListModels(rawConfig: RawConfig) {
       try {
         const provider = rawConfig.provider || 'ollama';
-        // undefined 让 Ollama SDK 回退到 localhost:11434；'' 会构造畸形 URL
         const baseUrl = rawConfig.baseUrl || rawConfig.base_url || undefined;
 
         if (provider === 'ollama') {
+          logger.info(`正在连接 Ollama 服务: ${baseUrl ?? 'default'}`);
+          // 动态导入以避免启动时的依赖加载问题
+          const { Ollama } = await import('ollama');
           const ollama = new Ollama({ host: baseUrl });
-          const list = await ollama.list();
+
+          // 给列表查询也加一个超时，防止无响应挂起
+          const list = await withTimeout(
+            ollama.list(),
+            10_000,
+            "获取 Ollama 模型列表超时，请检查服务是否响应"
+          );
+
           out({ data: { models: list.models.map(m => m.name) } });
         } else {
           out({ data: { models: DEFAULT_OPENAI_MODELS } });
         }
       } catch (error) {
-        out({ error: { code: 'ERR_LIST_MODELS', message: toErrorMessage(error) } });
+        const msg = toErrorMessage(error);
+        logger.error(`获取模型列表失败: ${msg}`);
+        out({ error: { code: 'ERR_LIST_MODELS', message: msg } });
       }
     },
+
 
     async handleInfo(symbol: string) {
       if (!symbol) {
