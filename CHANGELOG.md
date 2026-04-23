@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.4.7] - 2026-04-23
+
+### Fixed
+
+- **依赖链深度解耦 (Critical)** — 对 `cli-handlers.ts` 进行了重构，将所有业务 Handler 的导入（如分析引擎、抓取器）全部改为函数内部的动态 `import()`。这确保了在执行“获取模型列表”等轻量任务时，完全不会触发对 Playwright 或分析引擎的加载，从而彻底避免了因浏览器环境缺失导致的启动错误。
+- **构建路径硬编码修复** — 解决了 Bun 编译过程中因静态分析导致的构建环境路径（GitHub Runner 路径）泄露到二进制文件的问题。
+
 ## [0.4.6] - 2026-04-23
 
 ### Fixed

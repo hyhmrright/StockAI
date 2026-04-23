@@ -1,6 +1,4 @@
-import { performFullAnalysis } from './analysis';
 import { toErrorMessage, outputJson, withTimeout, logger } from './utils';
-import { ResolvedConfig } from './configResolver';
 import { DEFAULT_OPENAI_MODELS } from './config';
 
 export interface RawConfig {
@@ -11,14 +9,15 @@ export interface RawConfig {
 
 interface HandlerDeps {
   _out?: typeof outputJson;
-  _analyze?: typeof performFullAnalysis;
 }
 
 export function createHandlers(deps: HandlerDeps = {}) {
   const out = deps._out ?? outputJson;
-  const analyze = deps._analyze ?? performFullAnalysis;
 
   return {
+    /**
+     * 获取模型列表 - 仅依赖 ollama，不触发 playwright 加载
+     */
     async handleListModels(rawConfig: RawConfig) {
       try {
         const provider = rawConfig.provider || 'ollama';
@@ -26,11 +25,9 @@ export function createHandlers(deps: HandlerDeps = {}) {
 
         if (provider === 'ollama') {
           logger.info(`正在连接 Ollama 服务: ${baseUrl ?? 'default'}`);
-          // 动态导入以避免启动时的依赖加载问题
           const { Ollama } = await import('ollama');
           const ollama = new Ollama({ host: baseUrl });
 
-          // 给列表查询也加一个超时，防止无响应挂起
           const list = await withTimeout(
             ollama.list(),
             10_000,
@@ -48,7 +45,9 @@ export function createHandlers(deps: HandlerDeps = {}) {
       }
     },
 
-
+    /**
+     * 获取股票信息
+     */
     async handleInfo(symbol: string) {
       if (!symbol) {
         out({ error: { code: 'ERR_MISSING_PARAM', message: '未提供股票代码' } });
@@ -69,6 +68,9 @@ export function createHandlers(deps: HandlerDeps = {}) {
       }
     },
 
+    /**
+     * 搜索股票
+     */
     async handleSearch(keyword: string) {
       if (!keyword) {
         out({ data: [] });
@@ -83,9 +85,13 @@ export function createHandlers(deps: HandlerDeps = {}) {
       }
     },
 
-    async handleAnalysis(symbol: string, config: ResolvedConfig) {
+    /**
+     * 执行完整分析 - 此处才会触发 playwright 相关的 scraper 加载
+     */
+    async handleAnalysis(symbol: string, config: any) {
       try {
-        const result = await analyze(symbol, config.provider, {
+        const { performFullAnalysis } = await import('./analysis');
+        const result = await performFullAnalysis(symbol, config.provider, {
           apiKey: config.apiKey,
           baseUrl: config.baseUrl,
           model: config.modelName,
