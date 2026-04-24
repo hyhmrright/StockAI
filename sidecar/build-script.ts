@@ -99,6 +99,25 @@ const proc = Bun.spawn([
 const exitCode = await proc.exited;
 if (exitCode !== 0) process.exit(1);
 
+// Proactive ad-hoc signing for macOS
+if (process.platform === 'darwin') {
+  console.log("🍎 macOS detected: Performing proactive ad-hoc signing...");
+  const entitlementsPath = path.join(projectRoot, "src-tauri/Entitlements.plist");
+  const signProc = Bun.spawn([
+    "codesign", "--force",
+    "--options", "runtime",
+    "--entitlements", entitlementsPath,
+    "--sign", "-",
+    outfile
+  ]);
+  const signExitCode = await signProc.exited;
+  if (signExitCode !== 0) {
+    console.error("❌ Sidecar signing failed.");
+    process.exit(1);
+  }
+  console.log("✅ Sidecar ad-hoc signed with JIT entitlements.");
+}
+
 // Step 5: Copy browsers.json to the same directory as the binary
 // 这确保 Playwright 在运行时能找到版本定义文件
 // 对于 Tauri 来说，这会被打包到 Resources 目录中
