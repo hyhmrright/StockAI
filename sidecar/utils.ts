@@ -1,5 +1,16 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { tmpdir } from 'os';
+
+/**
+ * 获取当前执行二进制文件所在的目录
+ * 在 Bun --compile 编译后的二进制中，Bun.main 是可执行文件的绝对路径
+ */
+export function getExecutableDir(): string {
+  // @ts-ignore - Bun.main is available at runtime in Bun
+  const mainPath = Bun.main;
+  return path.dirname(mainPath);
+}
 
 /**
  * 从 unknown 类型的错误中安全提取消息字符串
@@ -13,14 +24,27 @@ export function toErrorMessage(error: unknown): string {
 
 /**
  * 紧急日志：直接写入文件，用于调试 Sidecar 启动问题
+ * 优先使用可执行文件目录，如果不可写则使用系统临时目录
  */
 export function logToFile(msg: string) {
   try {
-    const logPath = path.join(process.cwd(), 'sidecar_debug.log');
     const time = new Date().toISOString();
-    fs.appendFileSync(logPath, `[${time}] ${msg}\n`);
+    const logMsg = `[${time}] ${msg}\n`;
+    
+    // 尝试在可执行文件同级写日志 (便于调试)
+    const exeDir = getExecutableDir();
+    const primaryLogPath = path.join(exeDir, 'sidecar_debug.log');
+    
+    try {
+      fs.appendFileSync(primaryLogPath, logMsg);
+      return;
+    } catch (e) {
+      // 如果不可写，尝试临时目录
+      const fallbackLogPath = path.join(tmpdir(), 'stockai_sidecar_debug.log');
+      fs.appendFileSync(fallbackLogPath, logMsg);
+    }
   } catch (e) {
-    // 忽略日志写入错误
+    // 彻底忽略日志写入错误
   }
 }
 

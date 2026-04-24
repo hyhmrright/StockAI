@@ -40,9 +40,7 @@
     "externalBin": [
       "bin/stockai-backend"
     ],
-    "resources": [
-      "bin/browsers.json"
-    ]
+    "resources": []
   },
   "plugins": {}
 }

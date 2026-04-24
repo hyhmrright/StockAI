@@ -78,19 +78,36 @@ jobs:
         run: |
           mkdir -p src-tauri/bin
           bun sidecar/build-script.ts
+          # 根本性修复：清除所有可能导致 Damaged 错误的扩展属性
+          xattr -cr src-tauri/bin/${{ matrix.sidecar-name }} || true
 
-      - name: Audit Sidecar Purity
+      - name: Verify Sidecar Integrity & Signature
         shell: bash
         run: |
           BINARY="src-tauri/bin/${{ matrix.sidecar-name }}"
-          echo "🔍 Auditing $BINARY for absolute path leaks..."
-          # 我们允许 Bun 运行时内部的一些路径，但严禁泄露项目或 runner 路径
-          if grep -oaE "/Users/runner/work/StockAI/StockAI|/Users/hyh/code/StockAI" "$BINARY"; then
-            echo "❌ CRITICAL: Sidecar contains absolute project paths!"
-            grep -oaE "/Users/runner/work/StockAI/StockAI|/Users/hyh/code/StockAI" "$BINARY" | head -n 5
+          bun scripts/verify-bundle.ts "$BINARY"
+
+      - name: Sidecar Self-Check
+        shell: bash
+        run: |
+          BINARY="src-tauri/bin/${{ matrix.sidecar-name }}"
+          echo "🚀 Running Sidecar Self-Check..."
+          chmod +x "$BINARY"
+          
+          # 检查二进制依赖 (macOS)
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            echo "📚 Dependencies (otool -L):"
+            otool -L "$BINARY"
+          fi
+
+          # 运行检查，如果失败则打印调试信息并退出
+          if ! "$BINARY" --check; then
+            echo "❌ CRITICAL: Sidecar self-check failed!"
+            echo "💡 Debugging info:"
+            ls -la src-tauri/bin/
             exit 1
           fi
-          echo "✅ Sidecar purity verified (No project path leaks)."
+          echo "✅ Sidecar self-check passed."
 
       - name: Check Signing Secrets
         shell: bash
@@ -144,3 +161,39 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Verify Bundle Integrity (macOS)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          echo "🔍 Searching for generated DMG..."
+          DMG_PATH=$(find src-tauri/target -name "StockAI_*_aarch64.dmg" | head -n 1)
+          if [ -z "$DMG_PATH" ]; then
+            echo "❌ DMG not found in target directory!"
+            ls -R src-tauri/target
+            exit 1
+          fi
+          echo "✅ Found DMG: $DMG_PATH"
+
+          echo "📂 Mounting DMG..."
+          hdiutil attach "$DMG_PATH" -mountpoint /tmp/stockai_mnt
+
+          echo "🔍 Verifying Gatekeeper status (spctl)..."
+          spctl --assess --verbose /tmp/stockai_mnt/StockAI.app
+
+          echo "🖋️ Checking App and Sidecar signature deep..."
+          codesign -vvv --deep --strict /tmp/stockai_mnt/StockAI.app
+
+          echo "🧪 Verifying Sidecar Entitlements..."
+          # 寻找内部的 Sidecar
+          SIDECAR_PATH=$(find /tmp/stockai_mnt/StockAI.app -name "stockai-backend*" | head -n 1)
+          if [ -n "$SIDECAR_PATH" ]; then
+            echo "✅ Found internal sidecar: $SIDECAR_PATH"
+            codesign -d --entitlements :- "$SIDECAR_PATH" | grep "com.apple.security.cs.allow-jit"
+          else
+            echo "⚠️ Could not find internal sidecar to verify entitlements!"
+          fi
+
+          echo "📤 Detaching DMG..."
+          hdiutil detach /tmp/stockai_mnt
+          echo "✨ Bundle integrity verified successfully."

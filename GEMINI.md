@@ -106,11 +106,12 @@ bun install
 bun tauri dev
 ```
 
-### 测试指令：
-*   **前端测试 (Vitest)**: `bunx vitest run`
-*   **Sidecar 测试 (Bun)**: `cd sidecar && bun test`
-*   **Rust 测试 (Cargo)**: `cd src-tauri && cargo test`
-*   **集成冒烟测试**: `bun scripts/smoke-test.ts`
+### macOS 发布核查清单 (Release Checklist)
+1.  **签名密钥**: 确保 GitHub Secrets 中包含 `APPLE_CERTIFICATE` (Base64), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`。
+2.  **Sidecar 纯度**: 运行 `bun sidecar/build-script.ts` 并观察是否输出 "Binary is PURE"。CI 阶段会自动进行审计。
+3.  **权限配置**: 检查 `src-tauri/Entitlements.plist` 是否包含 `com.apple.security.cs.disable-library-validation` (Playwright 所需)。
+4.  **本地验证**: 构建后运行 `bun scripts/verify-bundle.ts <path>` 确保无路径泄露且资源完整。
+5.  **公证状态**: 发布后如遇“已损坏”提示，检查 CI 日志中 `notarytool` 的输出，确保公证成功。
 
 ---
 
