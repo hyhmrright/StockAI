@@ -46,6 +46,13 @@ export const logger = {
 let _stdoutWritten = false;
 
 /**
+ * 仅用于测试：重置输出守护锁，允许在一个进程生命周期内多次输出 JSON
+ */
+export function _resetOutputGuard(): void {
+  _stdoutWritten = false;
+}
+
+/**
  * 标准化结果输出
  * 采用 fs.writeSync 确保同步、无缓冲地写入 stdout (fd: 1)
  */

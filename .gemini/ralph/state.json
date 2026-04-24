@@ -1,0 +1,8 @@
+{
+  "active": true,
+  "current_iteration": 6,
+  "max_iterations": 50,
+  "completion_promise": "",
+  "original_prompt": "去bun、github、Tauri等这个仓库相关技术的官网，从根本解决所有问题。不要只停留在表面，我需要你解决问题之后测试一遍，确保github CI生成的StockAI_*_aarch64.dmg这个程序不会出问题",
+  "started_at": "2026-04-23T16:19:48Z"
+}

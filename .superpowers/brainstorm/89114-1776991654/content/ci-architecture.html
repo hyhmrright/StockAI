@@ -1,0 +1,59 @@
+<h2>CI 构建架构优化</h2>
+<p class="subtitle">解决生产环境 Sidecar 失效与 DMG 打包缺失问题</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">当前状态 (存在风险)</div>
+    <div class="mockup-body">
+      <ul style="color: #ff4d4f; font-weight: bold;">
+        <li>❌ 仅使用 bun build --compile (忽略补丁)</li>
+        <li>❌ 缺失 browsers.json 路径处理</li>
+        <li>❌ 绝对路径泄露 (runner 路径泄露到二进制)</li>
+        <li>❌ 缺失 DMG 打包 (tauri-action --no-bundle)</li>
+      </ul>
+      <div class="placeholder" style="height: 100px; background: #fff1f0; border: 1px dashed #ff4d4f;">
+        <p style="text-align: center; color: #ff4d4f; margin-top: 30px;">构建产物在用户电脑上极大概率无法运行</p>
+      </div>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">提议方案 (鲁棒性修复)</div>
+    <div class="mockup-body">
+      <ul style="color: #52c41a; font-weight: bold;">
+        <li>✅ 使用 sidecar/build-script.ts 执行补丁构建</li>
+        <li>✅ 动态注入目标平台 (BUN_TARGET)</li>
+        <li>✅ 自动包含 browsers.json 并处理路径</li>
+        <li>✅ 开启 DMG/Installer 打包流程</li>
+      </ul>
+      <div class="placeholder" style="height: 100px; background: #f6ffed; border: 1px dashed #52c41a;">
+        <p style="text-align: center; color: #52c41a; margin-top: 30px;">生成可直接分发的 StockAI_*_aarch64.dmg</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>核心改动：</h3>
+  <ol>
+    <li><b>ci.yml:</b> 将原本的 <code>bun build</code> 替换为调用 <code>sidecar/build-script.ts</code>。</li>
+    <li><b>sidecar/build-script.ts:</b> 修改为接受环境变量动态决定 Target Triple。</li>
+    <li><b>tauri-action:</b> 移除 <code>--no-bundle</code>，确保触发 DMG 生成。</li>
+  </ol>
+</div>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="align_ci" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>对齐 CI 与构建脚本</h3>
+      <p>确保 CI 使用与本地开发一致的 robust 构建逻辑</p>
+    </div>
+  </div>
+  <div class="option" data-choice="enable_dmg" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>启用 DMG 生成</h3>
+      <p>确保 CI 产出完整的安装包而非仅有二进制</p>
+    </div>
+  </div>
+</div>

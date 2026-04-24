@@ -45,17 +45,19 @@ jobs:
         shell: bash
         run: |
           TARGET_TRIPLE=$(rustc -Vv | grep host | cut -d ' ' -f 2)
-          bun build ./sidecar/index.ts --compile --outfile "./sidecar/stockai-backend-$TARGET_TRIPLE"
+          mkdir -p src-tauri/bin
+          bun build ./sidecar/index.ts --compile --outfile "src-tauri/bin/stockai-backend-$TARGET_TRIPLE"
 
       - name: Build sidecar (windows)
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
           $triple = (rustc -Vv | Select-String "host:").ToString().Split(" ")[1]
-          bun build ./sidecar/index.ts --compile --outfile "sidecar/stockai-backend-$triple.exe"
+          if (!(Test-Path src-tauri/bin)) { New-Item -ItemType Directory -Path src-tauri/bin }
+          bun build ./sidecar/index.ts --compile --outfile "src-tauri/bin/stockai-backend-$triple.exe"
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
