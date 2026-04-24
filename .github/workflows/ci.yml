@@ -40,21 +40,30 @@ jobs:
       - name: Run sidecar unit tests
         run: cd sidecar && bun test ai.test.ts strategies/parsers.test.ts
 
-      - name: Build sidecar (unix)
-        if: matrix.platform != 'windows-latest'
+      - name: Build sidecar
         shell: bash
         run: |
           TARGET_TRIPLE=$(rustc -Vv | grep host | cut -d ' ' -f 2)
-          mkdir -p src-tauri/bin
-          bun build ./sidecar/index.ts --compile --outfile "src-tauri/bin/stockai-backend-$TARGET_TRIPLE"
+          # 设置 OUTFILE 以适配 build-script.ts
+          export OUTFILE="src-tauri/bin/stockai-backend-$TARGET_TRIPLE"
+          # 设置 BUN_TARGET (适配 macos aarch64 等)
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            export BUN_TARGET="bun-darwin-arm64"
+          elif [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            export BUN_TARGET="bun-windows-x64"
+            export OUTFILE="$OUTFILE.exe"
+          else
+            export BUN_TARGET="bun-linux-x64"
+          fi
+          bun sidecar/build-script.ts
 
-      - name: Build sidecar (windows)
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
+      - name: Verify Sidecar
+        shell: bash
         run: |
-          $triple = (rustc -Vv | Select-String "host:").ToString().Split(" ")[1]
-          if (!(Test-Path src-tauri/bin)) { New-Item -ItemType Directory -Path src-tauri/bin }
-          bun build ./sidecar/index.ts --compile --outfile "src-tauri/bin/stockai-backend-$triple.exe"
+          TARGET_TRIPLE=$(rustc -Vv | grep host | cut -d ' ' -f 2)
+          BINARY="src-tauri/bin/stockai-backend-$TARGET_TRIPLE"
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then BINARY="$BINARY.exe"; fi
+          bun scripts/verify-bundle.ts "$BINARY"
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v2
