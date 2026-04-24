@@ -99,23 +99,27 @@ const proc = Bun.spawn([
 const exitCode = await proc.exited;
 if (exitCode !== 0) process.exit(1);
 
-// Proactive ad-hoc signing for macOS
+// Proactive signing for macOS
 if (process.platform === 'darwin') {
-  console.log("🍎 macOS detected: Performing proactive ad-hoc signing...");
+  const signingIdentity = process.env.APPLE_SIGNING_IDENTITY || "-";
+  console.log(`🍎 macOS detected: Performing proactive signing with identity: ${signingIdentity}`);
+  
   const entitlementsPath = path.join(projectRoot, "src-tauri/Entitlements.plist");
-  const signProc = Bun.spawn([
+  const signArgs = [
     "codesign", "--force",
     "--options", "runtime",
     "--entitlements", entitlementsPath,
-    "--sign", "-",
+    "--sign", signingIdentity,
     outfile
-  ]);
+  ];
+  
+  const signProc = Bun.spawn(signArgs);
   const signExitCode = await signProc.exited;
   if (signExitCode !== 0) {
-    console.error("❌ Sidecar signing failed.");
+    console.error(`❌ Sidecar signing failed with exit code ${signExitCode}.`);
     process.exit(1);
   }
-  console.log("✅ Sidecar ad-hoc signed with JIT entitlements.");
+  console.log(`✅ Sidecar signed successfully (${signingIdentity === "-" ? "ad-hoc" : "identity-based"}).`);
 }
 
 // Step 5: Copy browsers.json to the same directory as the binary
