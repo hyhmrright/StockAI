@@ -66,13 +66,21 @@ jobs:
         shell: bash
         env:
           BUN_TARGET: ${{ matrix.bun-target }}
-          OUTFILE: sidecar/${{ matrix.sidecar-name }}
-        run: bun sidecar/build-script.ts
+          OUTFILE: src-tauri/bin/${{ matrix.sidecar-name }}
+        run: |
+          mkdir -p src-tauri/bin
+          bun sidecar/build-script.ts
 
       - name: Build and publish release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"
