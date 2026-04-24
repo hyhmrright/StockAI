@@ -31,8 +31,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "macOS": {
+      "entitlements": "./Entitlements.plist",
+      "signingIdentity": null,
+      "minimumSystemVersion": "10.13"
+    },
     "externalBin": [
-      "../sidecar/stockai-backend"
+      "bin/stockai-backend"
+    ],
+    "resources": [
+      "bin/browsers.json"
     ]
   },
   "plugins": {}
