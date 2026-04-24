@@ -123,22 +123,34 @@ if (fs.existsSync(browsersJsonPath)) {
 // Step 6: 严苛完整性自检 (Integrity Check)
 const binaryContent = await file(outfile).arrayBuffer();
 const binaryText = Buffer.from(binaryContent).toString('utf-8');
-const forbiddenStrings = ["/Users/", "/runner/", "/work/"];
+
+// 我们只关心项目路径泄露。Bun 运行时内部可能包含它自己的构建机器路径 (如 /Users/administrator/...)，这些是可以接受的。
+const forbiddenPatterns = [
+    projectRoot,
+    "/Users/runner/work/StockAI/StockAI",
+    "/Users/hyh/code/StockAI"
+];
 let hasLeak = false;
 
-console.log("🔍 Running integrity check for path leaks...");
-for (const forbidden of forbiddenStrings) {
-    if (binaryText.includes(forbidden)) {
-        console.error(`❌ CRITICAL FAILURE: Forbidden string "${forbidden}" detected in binary! Path leak risk.`);
+console.log("🔍 Running integrity check for project path leaks...");
+for (const pattern of forbiddenPatterns) {
+    if (pattern && pattern.length > 5 && binaryText.includes(pattern)) {
+        console.error(`❌ CRITICAL FAILURE: Project path pattern "${pattern}" detected in binary!`);
         hasLeak = true;
     }
 }
 
+// 额外的启发式检查：如果包含 /Users/ 且包含 StockAI，则极大概率是泄露
+if (binaryText.includes("/Users/") && binaryText.includes("/StockAI/")) {
+    console.error(`❌ CRITICAL FAILURE: Potential project path leak detected (/Users/.../StockAI/...)`);
+    hasLeak = true;
+}
+
 if (hasLeak) {
-    console.error("🚨 Build failed: Binary contains absolute path leaks.");
+    console.error("🚨 Build failed: Binary contains absolute project path leaks.");
     process.exit(1);
 }
 
-console.log("✨ Binary is PURE (No absolute path leaks found).");
+console.log("✨ Binary is PURE (No project path leaks found).");
 
 console.log(`🎉 Final result: ${outfile}`);
