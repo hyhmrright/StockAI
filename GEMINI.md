@@ -61,6 +61,25 @@ bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-x86_64-un
 
 ---
 
+## macOS Release Checklist
+
+1.  **Entitlements Verification**: Ensure `src-tauri/Entitlements.plist` contains the `com.apple.security.cs.disable-library-validation` key set to `true` to allow the Sidecar to be loaded.
+2.  **GitHub Actions Secrets**: Verify that the following 6 secrets are configured for notarization:
+    *   `APPLE_ID`
+    *   `APPLE_PASSWORD`
+    *   `APPLE_TEAM_ID`
+    *   `APPLE_CERTIFICATE`
+    *   `APPLE_CERTIFICATE_PASSWORD`
+    *   `APPLE_SIGNING_IDENTITY`
+3.  **Local Build Purity**: Run `bun sidecar/build-script.ts` locally to ensure the sidecar can be compiled without errors.
+4.  **Bundle Verification**: Use `bun scripts/verify-bundle.ts` to check the final artifact structure and sidecar path.
+5.  **Quarantine Handling**: If notarization is skipped during local testing, clear quarantine bits using:
+    ```bash
+    xattr -rd com.apple.quarantine StockAI.app
+    ```
+
+---
+
 # GEMINI 上下文 (简体中文)
 
 ## 项目概览
@@ -109,3 +128,22 @@ bun tauri dev
 ### 测试驱动：
 *   **逻辑解耦**: 解析逻辑放在 `sidecar/parsers/`（`html.ts` / `exchange.ts`），与网络层分离，离线单元测试位于 `sidecar/parsers/*.test.ts`。
 *   **状态验证**: 对核心 Hook (`useAnalysis`) 进行状态流转测试。
+
+---
+
+## macOS 发布检查清单
+
+1.  **权利文件 (Entitlements) 验证**: 确保 `src-tauri/Entitlements.plist` 包含 `com.apple.security.cs.disable-library-validation` 键并设置为 `true`，以允许加载 Sidecar。
+2.  **GitHub Actions 密钥**: 验证 GitHub 仓库中是否已配置以下 6 个用于公证的 Secrets:
+    *   `APPLE_ID`
+    *   `APPLE_PASSWORD`
+    *   `APPLE_TEAM_ID`
+    *   `APPLE_CERTIFICATE`
+    *   `APPLE_CERTIFICATE_PASSWORD`
+    *   `APPLE_SIGNING_IDENTITY`
+3.  **本地构建纯净度**: 在本地运行 `bun sidecar/build-script.ts` 以确保 Sidecar 可以正常编译。
+4.  **安装包验证**: 使用 `bun scripts/verify-bundle.ts` 检查最终生成的应用程序包结构和 Sidecar 位置是否正确。
+5.  **隔离位处理**: 如果在本地测试时跳过了公证，请使用以下命令清除隔离位：
+    ```bash
+    xattr -rd com.apple.quarantine StockAI.app
+    ```
