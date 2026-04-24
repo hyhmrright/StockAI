@@ -68,11 +68,16 @@ const pathsToScrub = [
     projectRoot.replace(/\//g, "\\\\"),
     "/Users/runner/work/StockAI/StockAI",
     "/Users/runner/work",
-    "Users/runner/work"
+    "Users/runner/work",
+    path.dirname(projectRoot),
+    "/Users/hyh" // Local dev path scrubbing
 ];
 
+console.log("🧼 Applying aggressive scrubbing...");
 for (const p of pathsToScrub) {
-    content = content.split(p).join(".");
+    if (p && p.length > 2) {
+        content = content.split(p).join(".");
+    }
 }
 
 // D. 特殊处理 Playwright 的 coreDir
@@ -121,15 +126,19 @@ const binaryText = Buffer.from(binaryContent).toString('utf-8');
 const forbiddenStrings = ["/Users/", "/runner/", "/work/"];
 let hasLeak = false;
 
+console.log("🔍 Running integrity check for path leaks...");
 for (const forbidden of forbiddenStrings) {
     if (binaryText.includes(forbidden)) {
-        console.warn(`⚠️ WARNING: Forbidden string "${forbidden}" detected in binary! Path leak risk.`);
+        console.error(`❌ CRITICAL FAILURE: Forbidden string "${forbidden}" detected in binary! Path leak risk.`);
         hasLeak = true;
     }
 }
 
-if (!hasLeak) {
-    console.log("✨ Binary is PURE (No absolute path leaks found).");
+if (hasLeak) {
+    console.error("🚨 Build failed: Binary contains absolute path leaks.");
+    process.exit(1);
 }
+
+console.log("✨ Binary is PURE (No absolute path leaks found).");
 
 console.log(`🎉 Final result: ${outfile}`);
