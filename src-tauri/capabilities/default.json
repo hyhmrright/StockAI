@@ -13,7 +13,7 @@
       "identifier": "shell:allow-execute",
       "allow": [
         {
-          "name": "stockai-backend",
+          "name": "bin/stockai-backend",
           "sidecar": true,
           "args": true
         }

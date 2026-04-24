@@ -26,7 +26,7 @@ impl SidecarManager {
     ) -> Result<String, String> {
         let sidecar_command = app_handle
             .shell()
-            .sidecar("stockai-backend")
+            .sidecar("bin/stockai-backend")
             .map_err(|e| format!("无法找到 Sidecar: {}", e))?
             .args(&args);
 

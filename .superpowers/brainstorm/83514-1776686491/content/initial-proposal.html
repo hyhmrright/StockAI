@@ -1,0 +1,62 @@
+<h2>股票搜索与分析优化</h2>
+<p class="subtitle">基于免费数据源的增强方案</p>
+
+<div class="mockup">
+  <div class="mockup-header">预览: 实时行情图表 (TradingView)</div>
+  <div class="mockup-body">
+    <div style="background: #131722; color: #d1d4dc; padding: 20px; border-radius: 4px; font-family: sans-serif;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <div>
+          <span style="font-size: 24px; font-weight: bold;">AAPL</span>
+          <span style="margin-left: 10px; color: #868993;">Apple Inc.</span>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 24px; color: #089981;">170.33</div>
+          <div style="font-size: 14px; color: #089981;">+1.25 (0.74%)</div>
+        </div>
+      </div>
+      <div style="height: 200px; border-bottom: 1px solid #2a2e39; display: flex; align-items: flex-end; gap: 2px;">
+        <!-- 简单的 K 线模拟 -->
+        <div style="flex: 1; height: 40%; background: #f23645;"></div>
+        <div style="flex: 1; height: 60%; background: #089981;"></div>
+        <div style="flex: 1; height: 50%; background: #089981;"></div>
+        <div style="flex: 1; height: 80%; background: #089981;"></div>
+        <div style="flex: 1; height: 70%; background: #f23645;"></div>
+        <div style="flex: 1; height: 90%; background: #089981;"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-top: 10px; color: #868993; font-size: 12px;">
+        <span>SSE:601012</span>
+        <span>SSE:600519</span>
+        <span>NASDAQ:AAPL</span>
+        <span>NYSE:TSLA</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>确认优化方向</h3>
+  <p>我注意到项目中已有一份关于 <b>股票搜索与分析优化</b> 的设计方案。该方案重点包括：</p>
+  <ul>
+    <li><b>搜索增强</b>：支持 sh/sz 前缀，解决“苹果”搜不到 AAPL 的模糊搜索。</li>
+    <li><b>深度分析</b>：在 AI Prompt 中加入“公司概况”提取。</li>
+    <li><b>图表集成</b>：嵌入 TradingView 免费小部件。</li>
+  </ul>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="follow-spec" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>遵循既有设计方案</h3>
+      <p>按照 docs 目录下的优化设计方案执行，确保功能闭环。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="custom-needs" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>我有其他特定需求</h3>
+      <p>在既有方案基础上进行调整，或有完全不同的实现想法。</p>
+    </div>
+  </div>
+</div>
