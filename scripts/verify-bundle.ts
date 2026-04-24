@@ -22,12 +22,18 @@ function verifyBundle() {
     
     // 我们检查这些敏感字符串
     const sensitivePatterns = [
-      { pattern: "/Users/runner", description: "CI 运行路径 (GitHub Actions)" },
-      { pattern: "/Users/", description: "用户目录路径" },
-      { pattern: "StockAI", description: "项目源码路径关键字" },
+      { pattern: "/Users/runner/work/StockAI/StockAI", description: "CI 源码路径" },
+      { pattern: "/Users/hyh/code/StockAI", description: "本地开发路径" },
+      { pattern: "StockAI/", description: "项目路径片段" },
     ];
 
     let foundLeak = false;
+
+    // 启发式检查：如果包含 /Users/ 且包含 StockAI，则极大概率是泄露
+    if (buffer.indexOf(Buffer.from("/Users/")) !== -1 && buffer.indexOf(Buffer.from("/StockAI/")) !== -1) {
+        console.error("❌ 发现潜在项目路径泄露 (/Users/.../StockAI/...)");
+        foundLeak = true;
+    }
 
     for (const item of sensitivePatterns) {
       const patternBuffer = Buffer.from(item.pattern);
@@ -40,10 +46,10 @@ function verifyBundle() {
         
         count++;
         if (count === 1) {
-          console.warn(`⚠️ 发现潜在路径泄露 [${item.description}]: "${item.pattern}"`);
+          console.warn(`⚠️ 发现项目特有路径泄露 [${item.description}]: "${item.pattern}"`);
         }
         
-        // 仅显示前 3 个位置的上下文，避免输出过多
+        // 仅显示前 3 个位置的上下文
         if (count <= 3) {
           const contextStart = Math.max(0, index - 30);
           const contextEnd = Math.min(buffer.length, index + 50);
@@ -59,6 +65,11 @@ function verifyBundle() {
       if (count > 3) {
         console.warn(`   ... 还有 ${count - 3} 处相同的泄露`);
       }
+    }
+
+    // 检查是否存在 Bun 的内部路径作为对照信息（不作为失败条件）
+    if (buffer.indexOf(Buffer.from("/Users/administrator/Library/Services/buildkite-agent")) !== -1) {
+      console.log("ℹ️ 检测到 Bun 运行时内部构建路径 (正常现象)");
     }
 
     if (!foundLeak) {
