@@ -34,6 +34,7 @@
     "macOS": {
       "entitlements": "./Entitlements.plist",
       "signingIdentity": null,
+      "hardenedRuntime": true,
       "minimumSystemVersion": "10.13"
     },
     "externalBin": [

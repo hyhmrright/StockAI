@@ -74,9 +74,40 @@ jobs:
         env:
           BUN_TARGET: ${{ matrix.bun-target }}
           OUTFILE: src-tauri/bin/${{ matrix.sidecar-name }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           mkdir -p src-tauri/bin
           bun sidecar/build-script.ts
+
+      - name: Audit Sidecar Purity
+        shell: bash
+        run: |
+          BINARY="src-tauri/bin/${{ matrix.sidecar-name }}"
+          echo "🔍 Auditing $BINARY for absolute path leaks..."
+          # 我们允许 Bun 运行时内部的一些路径，但严禁泄露项目或 runner 路径
+          if grep -oaE "/Users/runner/work/StockAI/StockAI|/Users/hyh/code/StockAI" "$BINARY"; then
+            echo "❌ CRITICAL: Sidecar contains absolute project paths!"
+            grep -oaE "/Users/runner/work/StockAI/StockAI|/Users/hyh/code/StockAI" "$BINARY" | head -n 5
+            exit 1
+          fi
+          echo "✅ Sidecar purity verified (No project path leaks)."
+
+      - name: Check Signing Secrets
+        shell: bash
+        run: |
+          SIGNING_READY=true
+          if [ -z "${{ secrets.APPLE_CERTIFICATE }}" ]; then echo "⚠️ APPLE_CERTIFICATE missing"; SIGNING_READY=false; fi
+          if [ -z "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" ]; then echo "⚠️ APPLE_CERTIFICATE_PASSWORD missing"; SIGNING_READY=false; fi
+          if [ -z "${{ secrets.APPLE_SIGNING_IDENTITY }}" ]; then echo "⚠️ APPLE_SIGNING_IDENTITY missing"; SIGNING_READY=false; fi
+          if [ -z "${{ secrets.APPLE_ID }}" ]; then echo "⚠️ APPLE_ID missing"; SIGNING_READY=false; fi
+          if [ -z "${{ secrets.APPLE_PASSWORD }}" ]; then echo "⚠️ APPLE_PASSWORD missing"; SIGNING_READY=false; fi
+          if [ -z "${{ secrets.APPLE_TEAM_ID }}" ]; then echo "⚠️ APPLE_TEAM_ID missing"; SIGNING_READY=false; fi
+          
+          if [ "$SIGNING_READY" = true ]; then
+            echo "✅ All macOS signing secrets are present. Pipeline will attempt signing and notarization."
+          else
+            echo "❌ Signing secrets incomplete. macOS build will be unsigned and may be marked as 'damaged'."
+          fi
 
       - name: Build and publish release
         uses: tauri-apps/tauri-action@v2
@@ -101,12 +132,6 @@ jobs:
             | macOS (Apple Silicon) | `.dmg` file ending in `aarch64` |
             | Windows | `.msi` (recommended) or `.exe` installer |
             | Linux (Ubuntu / Debian) | `.deb` package |
-
-            ### macOS
-            If Gatekeeper blocks the app on first launch, run:
-            ```bash
-            xattr -cr /Applications/StockAI.app
-            ```
 
             ### Windows
             If SmartScreen warns you, click **More info → Run anyway**.
