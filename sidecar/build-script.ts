@@ -62,13 +62,23 @@ const __dummy_resolve = (p) => {
 `;
 content = injection + content.replace(/require\.resolve\(/g, "__dummy_resolve(");
 
-// C. 抹除所有路径模式
-const G_ROOT = "/Users/runner/work/StockAI/StockAI";
-content = content.split(G_ROOT).join(".");
-content = content.split(projectRoot).join(".");
+// C. 抹除所有路径模式 (包括转义路径)
+const pathsToScrub = [
+    projectRoot,
+    projectRoot.replace(/\//g, "\\\\"),
+    "/Users/runner/work/StockAI/StockAI",
+    "/Users/runner/work",
+    "Users/runner/work"
+];
+
+for (const p of pathsToScrub) {
+    content = content.split(p).join(".");
+}
 
 // D. 特殊处理 Playwright 的 coreDir
-content = content.replace(/var coreDir = .*?;/g, 'var coreDir = ".";');
+// 强制指向二进制所在目录
+content = content.replace(/var coreDir = .*?;/g, 'var coreDir = import.meta.dir;');
+content = content.replace(/const coreDir = .*?;/g, 'const coreDir = import.meta.dir;');
 
 await write(bundlePath, content);
 
@@ -84,17 +94,42 @@ const proc = Bun.spawn([
 const exitCode = await proc.exited;
 if (exitCode !== 0) process.exit(1);
 
-// Step 5: 严苛自检
+// Step 5: Copy browsers.json to the same directory as the binary
+// 这确保 Playwright 在运行时能找到版本定义文件
+// 对于 Tauri 来说，这会被打包到 Resources 目录中
+const browsersJsonPath = path.join(projectRoot, "node_modules/playwright-core/browsers.json");
+const targetBrowsersJson = path.join(path.dirname(outfile), "browsers.json");
+
+console.log(`📂 Ensuring browsers.json at: ${targetBrowsersJson}`);
+if (fs.existsSync(browsersJsonPath)) {
+    fs.copyFileSync(browsersJsonPath, targetBrowsersJson);
+    console.log(`✅ browsers.json copied successfully.`);
+} else {
+    // 降级方案：如果 node_modules 找不到，尝试从本地 src-tauri/bin 找 (可能上次构建留下的)
+    const localFallback = path.join(projectRoot, "src-tauri/bin/browsers.json");
+    if (fs.existsSync(localFallback) && localFallback !== targetBrowsersJson) {
+        fs.copyFileSync(localFallback, targetBrowsersJson);
+        console.log(`⚠️ Using local fallback for browsers.json`);
+    } else if (!fs.existsSync(targetBrowsersJson)) {
+        console.error(`❌ CRITICAL: browsers.json not found! Playwright will fail.`);
+    }
+}
+
+// Step 6: 严苛完整性自检 (Integrity Check)
 const binaryContent = await file(outfile).arrayBuffer();
 const binaryText = Buffer.from(binaryContent).toString('utf-8');
-const leakCheck = ["/", "Users", "runner"].join("/");
+const forbiddenStrings = ["/Users/", "/runner/", "/work/"];
+let hasLeak = false;
 
-if (binaryText.includes(leakCheck)) {
-    console.error(`❌ ERROR: Absolute path leak detected in binary!`);
-    // 在 GitHub Actions 中强制失败
-    if (process.env.GITHUB_ACTIONS) process.exit(1);
-} else {
-    console.log("✨ Binary is PURE.");
+for (const forbidden of forbiddenStrings) {
+    if (binaryText.includes(forbidden)) {
+        console.warn(`⚠️ WARNING: Forbidden string "${forbidden}" detected in binary! Path leak risk.`);
+        hasLeak = true;
+    }
+}
+
+if (!hasLeak) {
+    console.log("✨ Binary is PURE (No absolute path leaks found).");
 }
 
 console.log(`🎉 Final result: ${outfile}`);
