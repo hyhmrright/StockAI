@@ -130,7 +130,7 @@ jobs:
         if: matrix.platform == 'macos-latest'
         shell: bash
         run: |
-          echo "🧹 Performing deep cleanup of extended attributes..."
+          echo "🧹 Cleaning up attributes for signing..."
           find . -type f -exec xattr -c {} \; || true
 
       - name: Build and publish release
