@@ -126,6 +126,13 @@ jobs:
             echo "❌ Signing secrets incomplete. macOS build will be unsigned and may be marked as 'damaged'."
           fi
 
+      - name: Deep Cleanup of Extended Attributes
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          echo "🧹 Performing deep cleanup of extended attributes..."
+          find . -type f -exec xattr -c {} \; || true
+
       - name: Build and publish release
         uses: tauri-apps/tauri-action@v2
         env:
