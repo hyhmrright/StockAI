@@ -44,7 +44,14 @@ async function build() {
         "--outfile", outfile
     ];
 
-    const proc = Bun.spawn(buildArgs, { stdout: "inherit", stderr: "inherit" });
+    const proc = Bun.spawn(buildArgs, { 
+        stdout: "inherit", 
+        stderr: "inherit",
+        env: {
+            ...process.env,
+            BUN_NO_CODESIGN_MACHO_BINARY: "1"
+        }
+    });
     const exitCode = await proc.exited;
 
     if (exitCode !== 0) {
