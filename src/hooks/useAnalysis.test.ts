@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useAnalysis } from './useAnalysis';
 import { vi, describe, it, expect } from 'vitest';
-import { createMockAnalysisResponse } from '../../sidecar/test-utils';
+import { createMockAnalysisResponse } from '../../shared/test-utils';
 import { AnalysisService } from '../lib/api';
 
 describe('useAnalysis Hook', () => {

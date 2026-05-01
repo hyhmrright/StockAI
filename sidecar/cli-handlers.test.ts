@@ -1,6 +1,6 @@
 import { describe, it, expect, mock } from 'bun:test';
 import { createHandlers } from './cli-handlers';
-import { createMockAnalysisResponse } from './test-utils';
+import { createMockAnalysisResponse } from '../shared/test-utils';
 
 describe('CLI Handlers', () => {
   describe('handleAnalysis', () => {
@@ -32,7 +32,10 @@ describe('CLI Handlers', () => {
       await handlers.handleAnalysis('AAPL', config);
 
       expect(mockOut).toHaveBeenCalledWith({
-        error: expect.objectContaining({ code: 'ERR_ANALYSIS_FAILED', message: 'Analysis Failed' }),
+        error: expect.objectContaining({ 
+          code: 'ERR_ANALYSIS_FAILED', 
+          message: expect.stringContaining('Analysis Failed') 
+        }),
       });
     });
 

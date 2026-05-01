@@ -35,16 +35,29 @@ export function parseServiceResponse<T>(raw: string): T {
   return envelope.data;
 }
 
+const MOCK_DATA = {
+  stocks: [
+    { name: "苹果公司", code: "AAPL", type: "美股", fullCode: "gb_aapl" },
+    { name: "隆基绿能", code: "601012", type: "A股", fullCode: "sh601012" }
+  ] as StockSearchResult[],
+  stockInfo: {
+    name: "苹果公司",
+    code: "AAPL",
+    exchange: "NASDAQ",
+    market: "美股",
+    price: 180.5,
+    change: 2.5,
+    changePercent: 1.4,
+    currency: "USD"
+  } as StockInfo,
+  models: ["gpt-4o", "gpt-4o-mini", "ollama-dev"]
+};
+
 /**
  * 搜索股票建议
  */
 export async function searchStocks(keyword: string): Promise<StockSearchResult[]> {
-  if (!isTauri()) {
-    return [
-      { name: "苹果公司", code: "AAPL", type: "美股", fullCode: "gb_aapl" },
-      { name: "隆基绿能", code: "601012", type: "A股", fullCode: "sh601012" }
-    ];
-  }
+  if (!isTauri()) return MOCK_DATA.stocks;
 
   try {
     const raw = await invoke<string>("search_stocks", { keyword });
@@ -59,18 +72,7 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
  * 获取股票基本信息
  */
 export async function getStockInfo(symbol: string): Promise<StockInfo> {
-  if (!isTauri()) {
-    return {
-      name: "苹果公司",
-      code: "AAPL",
-      exchange: "NASDAQ",
-      market: "美股",
-      price: 180.5,
-      change: 2.5,
-      changePercent: 1.4,
-      currency: "USD"
-    };
-  }
+  if (!isTauri()) return MOCK_DATA.stockInfo;
 
   const raw = await invoke<string>("get_stock_info", { symbol });
   return parseServiceResponse<StockInfo>(raw);
@@ -122,9 +124,7 @@ export async function startAnalysis(symbol: string): Promise<FullAnalysisRespons
  * 获取可用模型列表
  */
 export async function listModels(provider: string, baseUrl: string): Promise<string[]> {
-  if (!isTauri()) {
-    return ["gpt-4o", "gpt-4o-mini", "ollama-dev"];
-  }
+  if (!isTauri()) return MOCK_DATA.models;
 
   try {
     const raw = await invoke<string>("list_models", { provider, baseUrl });

@@ -46,53 +46,30 @@ export function useSettings() {
         const saved = await store.get<any>("app_settings");
 
         if (saved) {
-          if (saved.activeProvider) {
-            // 已是新格式；执行深合并确保 providerConfigs 完整
-            const mergedConfigs = { ...DEFAULT_SETTINGS.providerConfigs };
-            if (saved.providerConfigs) {
-              for (const [p, cfg] of Object.entries(saved.providerConfigs)) {
-                const provider = p as ProviderType;
-                mergedConfigs[provider] = {
-                  ...DEFAULT_SETTINGS.providerConfigs[provider],
-                  ...(cfg as any)
-                };
-              }
+          // 执行深合并确保 providerConfigs 完整
+          const mergedConfigs = { ...DEFAULT_SETTINGS.providerConfigs };
+          if (saved.providerConfigs) {
+            for (const [p, cfg] of Object.entries(saved.providerConfigs)) {
+              const provider = p as ProviderType;
+              mergedConfigs[provider] = {
+                ...DEFAULT_SETTINGS.providerConfigs[provider],
+                ...(cfg as any)
+              };
             }
+          }
 
-            const migrated = { 
-              ...DEFAULT_SETTINGS, 
-              ...saved, 
-              providerConfigs: mergedConfigs,
-              _version: CONFIG_VERSION 
-            };
-            
-            if (saved._version !== CONFIG_VERSION) {
-              await store.set("app_settings", migrated);
-              await store.save();
-            }
-            setSettings(migrated);
-          } else {
-            // v0.1.x 旧格式（扁平结构）→ 新格式迁移。
-            // TODO(v0.4.0): 确认无 v0.1.x 直升用户后可删除此分支。
-            const oldProvider: ProviderType = (saved.provider ?? "openai") as ProviderType;
-            const migrated: Settings = {
-              ...DEFAULT_SETTINGS,
-              _version: CONFIG_VERSION,
-              activeProvider: oldProvider,
-              autoAnalyze: saved.autoAnalyze ?? true,
-              deepMode: saved.deepMode ?? true,
-              providerConfigs: {
-                [oldProvider]: {
-                  apiKey: saved.apiKey ?? "",
-                  baseUrl: saved.baseUrl ?? PROVIDER_PROFILES[oldProvider].baseUrl,
-                  model: saved.aiModel ?? PROVIDER_PROFILES[oldProvider].model,
-                },
-              },
-            };
+          const migrated = { 
+            ...DEFAULT_SETTINGS, 
+            ...saved, 
+            providerConfigs: mergedConfigs,
+            _version: CONFIG_VERSION 
+          };
+          
+          if (saved._version !== CONFIG_VERSION) {
             await store.set("app_settings", migrated);
             await store.save();
-            setSettings(migrated);
           }
+          setSettings(migrated);
         }
       } catch (error) {
         console.error("加载设置失败:", error);

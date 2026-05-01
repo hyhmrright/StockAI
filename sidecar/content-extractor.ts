@@ -39,7 +39,7 @@ function heuristicContentExtraction(): string {
     .filter(({ pCount }) => pCount > 3)
     .sort((a, b) => b.pCount - a.pCount || b.len - a.len);
 
-  return scored[0] ? scored[0].div.innerHTML : document.body.innerHTML;
+  return scored[0] ? scored[0].div.innerHTML : (document.body ? document.body.innerHTML : "");
 }
 
 /**
