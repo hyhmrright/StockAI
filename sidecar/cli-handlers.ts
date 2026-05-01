@@ -1,5 +1,6 @@
 import { toErrorMessage, outputJson, withTimeout, logger } from './utils';
 import { DEFAULT_OPENAI_MODELS } from './config';
+import type { performFullAnalysis as AnalysisFn } from './analysis';
 
 export interface RawConfig {
   provider?: string;
@@ -9,6 +10,7 @@ export interface RawConfig {
 
 interface HandlerDeps {
   _out?: typeof outputJson;
+  _analyze?: typeof AnalysisFn;
 }
 
 export function createHandlers(deps: HandlerDeps = {}) {
@@ -90,8 +92,8 @@ export function createHandlers(deps: HandlerDeps = {}) {
      */
     async handleAnalysis(symbol: string, config: any) {
       try {
-        const { performFullAnalysis } = await import('./analysis');
-        const result = await performFullAnalysis(symbol, config.provider, {
+        const analyze = deps._analyze ?? (await import('./analysis')).performFullAnalysis;
+        const result = await analyze(symbol, config.provider, {
           apiKey: config.apiKey,
           baseUrl: config.baseUrl,
           model: config.modelName,

@@ -133,6 +133,7 @@ async function fetchWithSinaReferer(url: string): Promise<string | null> {
         Referer: 'https://finance.sina.com.cn',
       },
     });
+    if (!resp.ok) return null;
     const buffer = await resp.arrayBuffer();
     return new TextDecoder('gbk').decode(buffer);
   } catch {

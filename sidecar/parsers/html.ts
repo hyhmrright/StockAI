@@ -108,11 +108,12 @@ export async function parseGoogleNews(html: string, baseUrl: string = "https://w
   );
 
   // 映射为 StockNews 格式，并限制数量
+  const MIN_TITLE_LENGTH = 15; // 标题最小长度启发值
   return links
     .filter(link => link.lines.length >= 2)
     .slice(0, 5)
     .map(link => ({
-      title: link.lines.find(l => l.length > 15) || link.lines[1] || link.lines[0], 
+      title: link.lines.find(l => l.length > MIN_TITLE_LENGTH) || link.lines[1] || link.lines[0], 
       source: link.lines[0],
       date: link.lines[link.lines.length - 1],
       content: "",

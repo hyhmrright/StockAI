@@ -1,4 +1,4 @@
-import type { FullAnalysisResponse, StockInfo, StockNews, AIAnalysisResult } from '../shared/types';
+import type { FullAnalysisResponse, StockInfo, StockNews, AIAnalysisResult } from './types';
 
 /**
  * 模拟新闻数据工厂

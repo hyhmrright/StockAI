@@ -3,7 +3,6 @@ import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS } from './config';
 import { logger, toErrorMessage, getExecutableDir } from './utils';
 import * as path from 'path';
 import * as fs from 'fs';
-import { tmpdir } from 'os';
 
 /**
  * 浏览器生命周期管理器
@@ -51,10 +50,14 @@ export class BrowserManager {
       }
 
       const context = await this.browser.newContext(BROWSER_CONTEXT_DEFAULTS);
-      return context.newPage();
-    })().catch(err => {
+      return await context.newPage();
+    })().catch(async (err) => {
       // 启动失败时清空缓存，允许下次调用重试
       this.pagePromise = null;
+      if (this.browser) {
+        await this.browser.close().catch(() => {});
+        this.browser = null;
+      }
       throw err;
     });
 
@@ -63,61 +66,30 @@ export class BrowserManager {
 
   /**
    * 设置 Playwright 寻找 browsers.json 的路径
-   * 适配 Tauri 2.0 打包后的目录结构，并支持 Bun 嵌入式文件系统
+   * 适配 Tauri 2.0 打包后的目录结构
    */
   private async setupPlaywrightResources(): Promise<void> {
     const exeDir = getExecutableDir();
     
     // 可能存在 browsers.json 的路径列表 (按优先级)
     const candidates = [
-      path.join(exeDir, 'browsers.json'), // 与 Sidecar 二进制同级
-      path.join(exeDir, '../Resources/browsers.json'), // macOS 标准资源路径 (Sidecar 在 MacOS/)
+      path.join(exeDir, '../../Resources/browsers.json'), // Tauri 2.0: Sidecar 在 Contents/MacOS/bin/ → Resources/
+      path.join(exeDir, '../browsers.json'), // macOS 兼容: Sidecar 在 Contents/MacOS/ → browsers.json 在 Contents/
+      path.join(exeDir, 'browsers.json'), // 与 Sidecar 二进制同级（本地构建兜底）
       path.join(exeDir, 'resources/browsers.json'), // Windows/Linux 子目录
-      path.join(exeDir, '../browsers.json'), // macOS 兜底
-      path.join(process.cwd(), 'src-tauri/bin/browsers.json'), // 开发模式
-      path.join(process.cwd(), 'browsers.json'), // 根目录兜底
+      path.join(process.cwd(), 'sidecar/browsers.json'), // 开发模式
     ];
 
     logger.debug(`扫描 browsers.json 候选路径...`);
     for (const p of candidates) {
       if (fs.existsSync(p)) {
         const browsersDir = path.dirname(p);
-        logger.info(`✅ 找到外部 browsers.json: ${p}`);
+        logger.info(`✅ 找到 browsers.json: ${p}`);
         process.env.PLAYWRIGHT_BROWSERS_PATH = browsersDir;
         return;
       }
     }
     
-    // 关键修复：如果都没找到，尝试从 Bun 嵌入的文件系统中提取
-    // 这是解决 macOS "Damaged" 错误和资源找不到问题的核心方案
-    try {
-      // 调试：尝试不同的可能路径
-      const possibleEmbeddedPaths = [
-        "$bunfs/sidecar/browsers.json",
-        "$bunfs/browsers.json"
-      ];
-      
-      for (const ep of possibleEmbeddedPaths) {
-        // @ts-ignore
-        const embeddedFile = Bun.file(ep);
-        if (await embeddedFile.exists()) {
-          logger.info(`📦 检测到嵌入式资源 (${ep})，正在准备提取...`);
-          const tempResDir = path.join(tmpdir(), 'stockai-resources');
-          if (!fs.existsSync(tempResDir)) fs.mkdirSync(tempResDir, { recursive: true });
-          
-          const targetPath = path.join(tempResDir, 'browsers.json');
-          const content = await embeddedFile.arrayBuffer();
-          fs.writeFileSync(targetPath, Buffer.from(content));
-          
-          logger.info(`✅ 已将嵌入式资源提取至: ${targetPath}`);
-          process.env.PLAYWRIGHT_BROWSERS_PATH = tempResDir;
-          return;
-        }
-      }
-    } catch (e) {
-      logger.debug(`嵌入式资源探测异常: ${toErrorMessage(e)}`);
-    }
-
     logger.warn("⚠️ 未能在任何已知路径下找到 browsers.json。Playwright 可能会启动失败。");
   }
 

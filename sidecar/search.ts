@@ -96,6 +96,11 @@ async function enrichWithQuotes(results: StockSearchResult[]): Promise<void> {
     const resp = await fetch(url, {
       headers: { 'Referer': 'https://finance.sina.com.cn' }
     });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP 错误! 状态码: ${resp.status}`);
+    }
+
     const buffer = await resp.arrayBuffer();
     const text = new TextDecoder('gbk').decode(buffer);
 

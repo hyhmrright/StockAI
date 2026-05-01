@@ -1,7 +1,7 @@
 import { mock, describe, test, expect, beforeEach } from "bun:test";
 import type { StockNews, AIAnalysisResult, StockInfo } from "../shared/types";
 import { performFullAnalysis } from "./analysis";
-import { createMockNews, createMockAIResult } from "./test-utils";
+import { createMockNews, createMockAIResult } from "../shared/test-utils";
 
 const DEFAULT_NEWS = [createMockNews()];
 const DEFAULT_ANALYSIS = createMockAIResult();

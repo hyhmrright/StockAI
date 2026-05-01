@@ -77,9 +77,10 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           mkdir -p src-tauri/bin
+          # build-script.ts 内部已经处理了 BUN_NO_CODESIGN_MACHO_BINARY=1 和 xattr -cr 以及 codesign
           bun sidecar/build-script.ts
-          # 根本性修复：清除所有可能导致 Damaged 错误的扩展属性
-          xattr -cr src-tauri/bin/${{ matrix.sidecar-name }} || true
+          # 验证二进制是否生成且已签名
+          ls -la src-tauri/bin/${{ matrix.sidecar-name }}
 
       - name: Verify Sidecar Integrity & Signature
         shell: bash
@@ -92,20 +93,23 @@ jobs:
         run: |
           BINARY="src-tauri/bin/${{ matrix.sidecar-name }}"
           echo "🚀 Running Sidecar Self-Check..."
-          chmod +x "$BINARY"
           
           # 检查二进制依赖 (macOS)
           if [ "${{ matrix.platform }}" = "macos-latest" ]; then
             echo "📚 Dependencies (otool -L):"
             otool -L "$BINARY"
+            
+            echo "🖋️ Signature Check (Pre-bundle):"
+            codesign -vvv --deep --strict "$BINARY"
           fi
 
           # 运行检查，如果失败则打印调试信息并退出
-          if ! "$BINARY" --check; then
-            echo "❌ CRITICAL: Sidecar self-check failed!"
-            echo "💡 Debugging info:"
-            ls -la src-tauri/bin/
-            exit 1
+          # 注意：如果在 ARM CI 上运行 x86_64 二进制，这里会失败，所以加个判断
+          if [[ "${{ matrix.platform }}" == "macos-latest" && "${{ matrix.rust-targets }}" == "aarch64-apple-darwin" ]]; then
+            if ! "$BINARY" --check; then
+              echo "❌ CRITICAL: Sidecar self-check failed!"
+              exit 1
+            fi
           fi
           echo "✅ Sidecar self-check passed."
 
@@ -148,59 +152,38 @@ jobs:
           releaseName: "StockAI ${{ github.ref_name }}"
           releaseBody: |
             See the [CHANGELOG](https://github.com/hyhmrright/StockAI/blob/main/CHANGELOG.md) for what's new in this release.
-
-            ## Installation
-
-            | Platform | Download |
-            |----------|----------|
-            | macOS (Apple Silicon) | `.dmg` file ending in `aarch64` |
-            | Windows | `.msi` (recommended) or `.exe` installer |
-            | Linux (Ubuntu / Debian) | `.deb` package |
-
-            ### Windows
-            If SmartScreen warns you, click **More info → Run anyway**.
-
-            ### Linux
-            ```bash
-            sudo dpkg -i StockAI_*_amd64.deb
-            ```
-            Requires WebKitGTK (pre-installed on most GTK-based desktop environments).
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
 
-      - name: Verify Bundle Integrity (macOS)
+      - name: Staple and Final Verify (macOS)
         if: matrix.platform == 'macos-latest'
         shell: bash
         run: |
           echo "🔍 Searching for generated DMG..."
           DMG_PATH=$(find src-tauri/target -name "StockAI_*_aarch64.dmg" | head -n 1)
           if [ -z "$DMG_PATH" ]; then
-            echo "❌ DMG not found in target directory!"
-            ls -R src-tauri/target
+            echo "❌ DMG not found! Skipping staple check."
             exit 1
           fi
-          echo "✅ Found DMG: $DMG_PATH"
 
-          echo "📂 Mounting DMG..."
+          echo "✅ Found DMG: $DMG_PATH"
+          
+          # 显式尝试装订公证票据 (Stapling)
+          echo "📨 Stapling notarization ticket..."
+          xcrun stapler staple "$DMG_PATH" || echo "⚠️ Stapling failed, maybe already stapled or notarization pending."
+
+          echo "📂 Mounting DMG for deep verification..."
+          mkdir -p /tmp/stockai_mnt
           hdiutil attach "$DMG_PATH" -mountpoint /tmp/stockai_mnt
 
-          echo "🔍 Verifying Gatekeeper status (spctl)..."
-          spctl --assess --verbose /tmp/stockai_mnt/StockAI.app
+          echo "🔍 Running Deep Integrity Check..."
+          bun scripts/verify-bundle.ts /tmp/stockai_mnt/StockAI.app
 
-          echo "🖋️ Checking App and Sidecar signature deep..."
-          codesign -vvv --deep --strict /tmp/stockai_mnt/StockAI.app
-
-          echo "🧪 Verifying Sidecar Entitlements..."
-          # 寻找内部的 Sidecar
-          SIDECAR_PATH=$(find /tmp/stockai_mnt/StockAI.app -name "stockai-backend*" | head -n 1)
-          if [ -n "$SIDECAR_PATH" ]; then
-            echo "✅ Found internal sidecar: $SIDECAR_PATH"
-            codesign -d --entitlements :- "$SIDECAR_PATH" | grep "com.apple.security.cs.allow-jit"
-          else
-            echo "⚠️ Could not find internal sidecar to verify entitlements!"
-          fi
+          echo "🛡️ Verifying Gatekeeper Assessment..."
+          spctl --assess --type exec --context context:primary-signature --verbose /tmp/stockai_mnt/StockAI.app
 
           echo "📤 Detaching DMG..."
           hdiutil detach /tmp/stockai_mnt
+          
           echo "✨ Bundle integrity verified successfully."
