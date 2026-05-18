@@ -22,13 +22,13 @@ const Dashboard: React.FC = () => {
   const { step, loading, error, result, partialInfo, performAnalysis } = useAnalysis();
   const { settings } = useSettings();
 
+  // 优先使用完整分析结果中的股票信息；尚未到位时回退到并发抓取的快照
+  const displayInfo = result?.stockInfo || partialInfo;
+
   // 获取当前步骤的描述文字
   function getStepLabel(): string {
     switch (step) {
-      case 'fetching_info': return '正在查询股票基本信息...';
-      case 'scraping': return '正在抓取实时新闻...';
-      case 'extracting': return '正在提取新闻正文...';
-      case 'analyzing': return 'AI 正在深度分析市场情绪...';
+      case 'scraping': return '正在抓取并分析实时数据...';
       default: return '正在实时分析数据...';
     }
   }
@@ -86,27 +86,25 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* 实时股票信息展示 */}
-          {(partialInfo || result?.stockInfo) && (
-            <StockInfoCard info={(result?.stockInfo || partialInfo)!} />
-          )}
-          
+          {displayInfo && <StockInfoCard info={displayInfo} />}
+
           {/* 注入 PriceChart 组件 */}
           <PriceChart symbol={currentSymbol} />
-          
+
           {/* 指标展示区 */}
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
               <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">最新价格 (Price)</div>
               <div className="text-2xl font-mono font-bold text-emerald-400">
-                {(result?.stockInfo || partialInfo)?.price?.toFixed(2) || '暂无数据'}
-                <span className="text-sm ml-2 text-gray-500">{(result?.stockInfo || partialInfo)?.currency}</span>
+                {displayInfo?.price?.toFixed(2) || '暂无数据'}
+                <span className="text-sm ml-2 text-gray-500">{displayInfo?.currency}</span>
               </div>
             </div>
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
               <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">涨跌幅 (Change)</div>
-              <div className={`text-2xl font-mono font-bold ${((result?.stockInfo || partialInfo)?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {((result?.stockInfo || partialInfo)?.changePercent ?? 0) >= 0 ? '+' : ''}
-                {(result?.stockInfo || partialInfo)?.changePercent?.toFixed(2) || '0.00'}%
+              <div className={`text-2xl font-mono font-bold ${(displayInfo?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {(displayInfo?.changePercent ?? 0) >= 0 ? '+' : ''}
+                {displayInfo?.changePercent?.toFixed(2) || '0.00'}%
               </div>
             </div>
           </div>

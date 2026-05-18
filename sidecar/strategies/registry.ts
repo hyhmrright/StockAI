@@ -17,6 +17,6 @@ export class StrategyRegistry {
   ];
 
   static getStrategies(): ScrapeStrategy[] {
-    return this.strategies;
+    return [...this.strategies];
   }
 }

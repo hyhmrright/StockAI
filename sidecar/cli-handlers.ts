@@ -1,6 +1,8 @@
 import { toErrorMessage, outputJson, withTimeout, logger } from './utils';
 import { DEFAULT_OPENAI_MODELS } from './config';
 import type { performFullAnalysis as AnalysisFn } from './analysis';
+import { ScrapeEmptyError } from './analysis';
+import type { ResolvedConfig } from './configResolver';
 
 export interface RawConfig {
   provider?: string;
@@ -90,7 +92,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
     /**
      * 执行完整分析 - 此处才会触发 playwright 相关的 scraper 加载
      */
-    async handleAnalysis(symbol: string, config: any) {
+    async handleAnalysis(symbol: string, config: ResolvedConfig) {
       try {
         const analyze = deps._analyze ?? (await import('./analysis')).performFullAnalysis;
         const result = await analyze(symbol, config.provider, {
@@ -101,11 +103,10 @@ export function createHandlers(deps: HandlerDeps = {}) {
         });
         out({ data: result });
       } catch (error) {
-        const errorMessage = toErrorMessage(error);
         out({
           error: {
-            code: errorMessage.includes('未搜寻到') ? 'ERR_SCRAPE_EMPTY' : 'ERR_ANALYSIS_FAILED',
-            message: errorMessage,
+            code: error instanceof ScrapeEmptyError ? 'ERR_SCRAPE_EMPTY' : 'ERR_ANALYSIS_FAILED',
+            message: toErrorMessage(error),
           },
         });
       }

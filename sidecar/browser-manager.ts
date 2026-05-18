@@ -1,4 +1,4 @@
-import { chromium, Browser, Page } from 'playwright-core';
+import { chromium, Browser, BrowserContext, Page } from 'playwright-core';
 import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS } from './config';
 import { logger, toErrorMessage, getExecutableDir } from './utils';
 import * as path from 'path';
@@ -11,6 +11,7 @@ import * as fs from 'fs';
  */
 export class BrowserManager {
   private browser: Browser | null = null;
+  private context: BrowserContext | null = null;
   private pagePromise: Promise<Page> | null = null;
 
   /**
@@ -49,11 +50,15 @@ export class BrowserManager {
         }
       }
 
-      const context = await this.browser.newContext(BROWSER_CONTEXT_DEFAULTS);
-      return await context.newPage();
+      this.context = await this.browser.newContext(BROWSER_CONTEXT_DEFAULTS);
+      return await this.context.newPage();
     })().catch(async (err) => {
       // 启动失败时清空缓存，允许下次调用重试
       this.pagePromise = null;
+      if (this.context) {
+        await this.context.close().catch(() => {});
+        this.context = null;
+      }
       if (this.browser) {
         await this.browser.close().catch(() => {});
         this.browser = null;
@@ -137,6 +142,10 @@ export class BrowserManager {
   async close(): Promise<void> {
     if (this.pagePromise) {
       try { await this.pagePromise; } catch { /* 忽略启动期间的错误 */ }
+    }
+    if (this.context) {
+      await this.context.close().catch(() => {});
+      this.context = null;
     }
     if (this.browser) {
       await this.browser.close();

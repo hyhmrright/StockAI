@@ -1,5 +1,6 @@
 import { describe, it, expect, mock } from 'bun:test';
 import { createHandlers } from './cli-handlers';
+import { ScrapeEmptyError } from './analysis';
 import { createMockAnalysisResponse } from '../shared/test-utils';
 
 describe('CLI Handlers', () => {
@@ -41,7 +42,7 @@ describe('CLI Handlers', () => {
 
     it('抓取为空时应该返回 ERR_SCRAPE_EMPTY', async () => {
       const mockOut = mock(() => {});
-      const mockAnalyze = mock(async () => { throw new Error('未搜寻到股票相关新闻'); });
+      const mockAnalyze = mock(async () => { throw new ScrapeEmptyError('未搜寻到股票相关新闻'); });
 
       const handlers = createHandlers({ _out: mockOut, _analyze: mockAnalyze });
       const config = { provider: 'openai' as any, apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };

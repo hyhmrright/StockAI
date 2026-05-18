@@ -209,8 +209,11 @@ export function parseGoogleNewsSearch(html: string, symbol: string): StockNews[]
     }
   }
 
-  return links.slice(0, 8).map((url, i) => ({
-    title: titles[i] ?? `${symbol} 相关新闻 ${i + 1}`,
+  const pairedLinks = links.slice(0, 8);
+  // titles 和 links 来自不同正则，仅在数量完全一致时才可能对齐，否则全部使用占位标题
+  const titlesAligned = titles.length === pairedLinks.length;
+  return pairedLinks.map((url, i) => ({
+    title: titlesAligned ? titles[i] : `${symbol} 相关新闻 ${i + 1}`,
     source: extractDomain(url),
     date: todayISO(),
     content: '',
