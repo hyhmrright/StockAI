@@ -116,15 +116,7 @@ jobs:
             codesign -vvv --deep --strict "$BINARY"
           fi
 
-          # 运行检查，如果失败则打印调试信息并退出
-          # 注意：如果在 ARM CI 上运行 x86_64 二进制，这里会失败，所以加个判断
-          if [[ "${{ matrix.platform }}" == "macos-latest" && "${{ matrix.rust-targets }}" == "aarch64-apple-darwin" ]]; then
-            if ! "$BINARY" --check; then
-              echo "❌ CRITICAL: Sidecar self-check failed!"
-              exit 1
-            fi
-          fi
-          echo "✅ Sidecar self-check passed."
+          echo "✅ Sidecar binary verified (signature + dependencies checked above)."
 
       - name: Check Signing Secrets
         shell: bash

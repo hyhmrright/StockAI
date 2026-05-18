@@ -38,11 +38,7 @@
       "minimumSystemVersion": "10.13"
     },
     "externalBin": [
-      "bin/stockai-backend",
-      "bin/stockai-backend-aarch64-apple-darwin",
-      "bin/stockai-backend-x86_64-apple-darwin",
-      "bin/stockai-backend-x86_64-unknown-linux-gnu",
-      "bin/stockai-backend-x86_64-pc-windows-msvc.exe"
+      "bin/stockai-backend"
     ],
     "resources": [
       "../sidecar/browsers.json"
