@@ -62,8 +62,21 @@ jobs:
       - name: Install frontend dependencies
         run: bun install
 
-      - name: Import Apple Certificate
+      - name: Check macOS signing availability
+        id: check-signing
         if: matrix.platform == 'macos-latest'
+        run: |
+          if [ -n "$APPLE_CERT" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ APPLE_CERTIFICATE not configured, skipping code signing"
+          fi
+        env:
+          APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE }}
+
+      - name: Import Apple Certificate
+        if: matrix.platform == 'macos-latest' && steps.check-signing.outputs.available == 'true'
         uses: apple-actions/import-codesign-certs@v3
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
@@ -157,7 +170,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Staple and Final Verify (macOS)
-        if: matrix.platform == 'macos-latest'
+        if: matrix.platform == 'macos-latest' && steps.check-signing.outputs.available == 'true'
         shell: bash
         run: |
           echo "🔍 Searching for generated DMG..."
