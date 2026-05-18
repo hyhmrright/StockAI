@@ -2,6 +2,22 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.6] - 2026-05-18
+
+### Fixed
+
+- **macOS 签名与公证 (Critical)** — 彻底解决了 macOS 用户下载 DMG 后提示"应用已损坏"的问题。引入了完整的 CI 签名链路（Apple 证书导入 → ad-hoc 签名 → notarization），并在构建后对 Sidecar 二进制进行主动签名。同时新增了二进制完整性校验脚本，防止构建路径泄漏。
+- **HTTP 错误响应处理** — 搜索接口在收到 4xx/5xx 响应时不再继续解析无效数据，直接返回空结果。
+- **Playwright 浏览器资源泄漏** — 浏览器上下文（BrowserContext）现在在错误恢复路径中也能被正确关闭，彻底修复了上下文泄漏问题。
+- **JSON 输出协议健壮性** — `outputJson` 改为先完成序列化（捕获异常后输出合法的 error JSON），再标记写入状态，确保 Tauri 端始终能解析到有效响应。
+- **无限递归风险消除** — 港股等不支持类型触发搜索回退时，不再重入 `fetchStockInfo`，改为直接分发到具体实现函数，彻底消除栈溢出风险。
+- **类型安全加固** — CLI handler 的 config 参数从 `any` 改为强类型 `ResolvedConfig`，消除 IPC 边界类型擦除。
+
+### Changed
+
+- **构建脚本优化** — 禁用 Bun 自动签名，改由 CI 统一管理，避免签名冲突。
+- **属性清理** — 在 macOS 签名前自动清理扩展属性（`xattr -cr`），防止 Gatekeeper 拒绝已下载的文件。
+
 ## [0.5.5] - 2026-04-23
 
 ### Fixed
