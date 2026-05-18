@@ -138,7 +138,7 @@ jobs:
           find . -type f -exec xattr -c {} \; || true
 
       - name: Build and publish release
-        uses: tauri-apps/tauri-action@v2
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
