@@ -7,6 +7,7 @@
     "sidecar:build": "mkdir -p src-tauri/bin && OUTFILE=src-tauri/bin/stockai-backend-aarch64-apple-darwin bun sidecar/build-script.ts",
     "dev": "bun run sidecar:build && vite",
     "build": "bun run sidecar:build && tsc && vite build",
+    "build:frontend": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "test:ui": "vitest"
