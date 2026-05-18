@@ -142,14 +142,29 @@ jobs:
           echo "🧹 Cleaning up attributes for signing..."
           find . -type f -exec xattr -c {} \; || true
 
-      - name: Build and publish release
+      - name: Build and publish release (signed)
+        if: matrix.platform != 'macos-latest' || steps.check-signing.outputs.available == 'true'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
-          APPLE_ID: ${{ steps.check-signing.outputs.available == 'true' && secrets.APPLE_ID || '' }}
-          APPLE_PASSWORD: ${{ steps.check-signing.outputs.available == 'true' && secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ steps.check-signing.outputs.available == 'true' && secrets.APPLE_TEAM_ID || '' }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "StockAI ${{ github.ref_name }}"
+          releaseBody: |
+            See the [CHANGELOG](https://github.com/hyhmrright/StockAI/blob/main/CHANGELOG.md) for what's new in this release.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: Build and publish release (unsigned macOS)
+        if: matrix.platform == 'macos-latest' && steps.check-signing.outputs.available != 'true'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"
