@@ -11,6 +11,14 @@ import { toErrorMessage, logger } from './utils';
 /** 中性评分基准 */
 const NEUTRAL_RATING = 50;
 
+/** 未抓到新闻时抛出，供 cli-handlers 识别并映射到 ERR_SCRAPE_EMPTY 错误码 */
+export class ScrapeEmptyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ScrapeEmptyError';
+  }
+}
+
 /** 测试注入点；生产不传。避开 bun:test 全局 mock.module 导致的跨文件状态泄漏。 */
 export interface AnalysisDeps {
   scrape?: typeof realScrape;
@@ -88,7 +96,7 @@ export async function performFullAnalysis(
   const { stockInfo, news } = await fetchMarketData(symbol, config.deepMode ?? true, resolved);
 
   if (news.length === 0) {
-    throw new Error(`未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`);
+    throw new ScrapeEmptyError(`未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`);
   }
 
   const analysis = await analyzeWithAI(symbol, news, providerType, config, resolved.createProvider);

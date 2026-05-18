@@ -7,8 +7,8 @@ import { tmpdir } from 'os';
  * 在 Bun --compile 编译后的二进制中，Bun.main 是可执行文件的绝对路径
  */
 export function getExecutableDir(): string {
-  // @ts-ignore - Bun.main is available at runtime in Bun
-  const mainPath = Bun.main;
+  // @ts-ignore - Bun.main 在编译后的二进制中可用；测试环境回退到 process.argv[1]
+  const mainPath = (typeof Bun !== 'undefined' && Bun.main) ? Bun.main : process.argv[1];
   return path.dirname(mainPath);
 }
 
@@ -17,7 +17,7 @@ export function getExecutableDir(): string {
  */
 export function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    return error.stack || error.message;
+    return error.message;
   }
   return String(error);
 }
@@ -81,16 +81,20 @@ export function _resetOutputGuard(): void {
  * 采用 fs.writeSync 确保同步、无缓冲地写入 stdout (fd: 1)
  */
 export function outputJson(data: unknown): void {
-  if (_stdoutWritten) return;
-  _stdoutWritten = true;
-  try {
-    const output = JSON.stringify(data);
-    fs.writeSync(1, output + '\n');
-  } catch (err) {
-    const msg = `JSON 序列化失败: ${toErrorMessage(err)}`;
-    console.error(`[SIDE-ERROR] ${msg}`);
-    logToFile(msg);
+  if (_stdoutWritten) {
+    throw new Error('[PROTOCOL] outputJson 只能调用一次，检测到重复写入');
   }
+  let output: string;
+  try {
+    output = JSON.stringify(data);
+  } catch (err) {
+    const msg = toErrorMessage(err);
+    logToFile(`JSON 序列化失败: ${msg}`);
+    // 序列化失败时仍写出有效的错误 JSON，确保 Tauri 端能解析响应
+    output = JSON.stringify({ error: { code: 'ERR_SERIALIZE', message: `JSON 序列化失败: ${msg}` } });
+  }
+  _stdoutWritten = true;
+  process.stdout.write(output + '\n');
 }
 
 /**

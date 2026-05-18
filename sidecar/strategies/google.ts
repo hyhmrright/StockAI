@@ -20,7 +20,7 @@ export class GoogleStrategy extends PlaywrightStrategy {
     if (china) {
       ticker = `${china.code}:${china.googleSuffix}`;
     } else if (/^[A-Za-z0-9]+$/.test(symbol)) {
-      ticker = `${symbol}:NASDAQ`;
+      ticker = symbol; // Google Finance 可自行识别交易所，避免硬编码 NASDAQ 导致 NYSE 股票 URL 失效
     }
     
     return `https://www.google.com/finance/quote/${ticker}`;

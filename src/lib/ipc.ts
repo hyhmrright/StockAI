@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { FullAnalysisResponse, ServiceResponse, StockInfo, StockSearchResult } from "../../shared/types";
 
 /**
@@ -96,24 +96,27 @@ export function parseAnalysisResponse(raw: string): FullAnalysisResponse {
  */
 export async function startAnalysis(symbol: string): Promise<FullAnalysisResponse> {
   if (!isTauri()) {
-    console.warn("浏览器测试模式: 尝试通过 3001 桥接器获取真实数据。");
-    try {
-      const resp = await fetch('http://localhost:3001/invoke', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cmd: 'start_analysis', args: { symbol } })
-      });
-      return parseAnalysisResponse(await resp.text());
-    } catch (e) {
-      if (e instanceof Error && (
-        e.message.includes('分析服务无响应') ||
-        e.message.includes('分析结果格式异常') ||
-        e.message.includes('版本不兼容')
-      )) {
-        throw e;
+    if (import.meta.env.DEV) {
+      console.warn("浏览器开发模式: 尝试通过 3001 桥接器获取真实数据。");
+      try {
+        const resp = await fetch('http://localhost:3001/invoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cmd: 'start_analysis', args: { symbol } })
+        });
+        return parseAnalysisResponse(await resp.text());
+      } catch (e) {
+        if (e instanceof Error && (
+          e.message.includes('分析服务无响应') ||
+          e.message.includes('分析结果格式异常') ||
+          e.message.includes('版本不兼容')
+        )) {
+          throw e;
+        }
+        throw new Error(`开发桥接器未就绪，请先启动 bun scripts/sidecar-bridge.ts。(原因: ${e instanceof Error ? e.message : String(e)})`);
       }
-      throw new Error(`自动化测试环境未就绪，无法获取真实数据。(原因: ${e instanceof Error ? e.message : String(e)})`);
     }
+    throw new Error('此功能仅在 Tauri 桌面应用中可用。');
   }
 
   const raw = await invoke<string>("start_analysis", { symbol });
@@ -137,7 +140,3 @@ export async function listModels(provider: string, baseUrl: string): Promise<str
   }
 }
 
-/**
- * 判断当前是否运行在 Tauri 环境
- */
-const isTauri = () => !!(window as any).__TAURI_INTERNALS__;

@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { FullAnalysisResponse, StockInfo } from '../../shared/types';
 import { AnalysisService, ipcAnalysisService } from '../lib/api';
 
-export type AnalysisStep = 'idle' | 'fetching_info' | 'scraping' | 'extracting' | 'analyzing' | 'completed' | 'error';
+export type AnalysisStep = 'idle' | 'scraping' | 'completed' | 'error';
 
 /**
  * 股票分析 Hook
@@ -60,7 +60,7 @@ export function useAnalysis(service: AnalysisService = ipcAnalysisService) {
 
   return {
     step,
-    loading: step !== 'idle' && step !== 'completed' && step !== 'error',
+    loading: step === 'scraping',
     error,
     result,
     partialInfo,

@@ -1,7 +1,7 @@
 import type { StockInfo } from '../shared/types';
 import { type ParsedSymbol, parseSymbol } from './parsers/exchange';
 import { searchStocks } from './search';
-import { toErrorMessage } from './utils';
+import { toErrorMessage, logger } from './utils';
 
 // 代码前缀 → 交易所名称
 const EXCHANGE_NAME: Record<string, string> = {
@@ -26,14 +26,12 @@ export async function fetchStockInfo(parsed: ParsedSymbol): Promise<StockInfo | 
     return fetchUSStockInfo(parsed);
   }
 
-  // 智能搜索回退：如果输入无法解析为标准代码，尝试通过名称搜索
+  // 智能搜索回退：仅尝试一次，直接分发到具体函数，避免无界递归（港股等不支持类型不再重入）
   const results = await searchStocks(parsed.rawInput);
   if (results.length > 0) {
-    const bestMatch = results[0];
-    const newParsed = parseSymbol(bestMatch.fullCode || bestMatch.code);
-    if (newParsed.chinaInfo || newParsed.usInfo) {
-      return fetchStockInfo(newParsed);
-    }
+    const newParsed = parseSymbol(results[0].fullCode || results[0].code);
+    if (newParsed.chinaInfo) return fetchChinaStockInfo(newParsed);
+    if (newParsed.usInfo) return fetchUSStockInfo(newParsed);
   }
 
   return null;
@@ -77,7 +75,7 @@ async function fetchChinaStockInfo(parsed: ParsedSymbol): Promise<StockInfo | nu
       currency: 'CNY',
     };
   } catch (err) {
-    console.error(`fetchChinaStockInfo 失败 (${code}):`, toErrorMessage(err));
+    logger.error(`fetchChinaStockInfo 失败 (${code}): ${toErrorMessage(err)}`);
     return null;
   }
 }
@@ -118,7 +116,7 @@ async function fetchUSStockInfo(parsed: ParsedSymbol): Promise<StockInfo | null>
       currency: 'USD',
     };
   } catch (err) {
-    console.error(`fetchUSStockInfo 失败 (${symbol}):`, toErrorMessage(err));
+    logger.error(`fetchUSStockInfo 失败 (${symbol}): ${toErrorMessage(err)}`);
     return null;
   }
 }

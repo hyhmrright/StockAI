@@ -200,13 +200,15 @@ mod tests {
     use super::*;
 
     const EMPTY_STDOUT_RESPONSE: &str =
-        r#"{"error":"分析服务无响应，请检查 AI 模型配置后重试。"}"#;
+        r#"{"error":{"code":"ERR_SIDECAR","message":"分析服务无响应 (ExitCode: None)。请尝试重新构建 Sidecar。"}}"#;
 
     #[test]
     fn test_empty_stdout_fallback_is_valid_json_with_error_field() {
         let v: serde_json::Value = serde_json::from_str(EMPTY_STDOUT_RESPONSE)
             .expect("EMPTY_STDOUT_RESPONSE 必须是合法 JSON");
-        assert!(v.get("error").is_some(), "fallback 必须包含 error 字段");
+        let err = v.get("error").expect("fallback 必须包含 error 字段");
+        assert!(err.get("code").is_some(), "error 必须包含 code 字段");
+        assert!(err.get("message").is_some(), "error 必须包含 message 字段");
     }
 
     #[test]

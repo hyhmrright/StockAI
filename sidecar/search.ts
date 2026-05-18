@@ -16,7 +16,10 @@ const TYPE_MAP: Record<string, { label: string; prefix: string }> = {
  * @param keyword 关键词（代码或拼音/名称）
  */
 export async function searchStocks(keyword: string): Promise<StockSearchResult[]> {
-  if (!keyword || keyword.length < 2) return [];
+  const trimmed = keyword.trim();
+  // 单个 CJK 字符是有意义的搜索词（如"苹"→苹果），但单个 ASCII 字符噪声太大
+  const isSingleCJK = trimmed.length === 1 && /[一-鿿㐀-䶿]/.test(trimmed);
+  if (!trimmed || (!isSingleCJK && trimmed.length < 2)) return [];
 
   // 新浪搜索建议接口，type=11,12(A股),31(港股),41(美股)
   const url = `https://suggest3.sinajs.cn/suggest/type=11,12,31,41&key=${encodeURIComponent(keyword)}`;
@@ -27,7 +30,9 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
         'Referer': 'https://finance.sina.com.cn',
       }
     });
-    
+
+    if (!resp.ok) return [];
+
     const buffer = await resp.arrayBuffer();
     const text = new TextDecoder('gbk').decode(buffer);
 
