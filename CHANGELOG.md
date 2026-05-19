@@ -2,6 +2,12 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.8] - 2026-05-19
+
+### Added
+
+- **Zhipu AI GLM support** — GLM-5.1 is now available as an AI provider. Uses the OpenAI-compatible endpoint (`open.bigmodel.cn/api/paas/v4`); configure your API key in Settings → Model Service → GLM. Other GLM variants (`glm-4.7`, `glm-4.6v`) can be set manually in the model name field.
+
 ## [0.5.7] - 2026-05-19
 
 ### Fixed
