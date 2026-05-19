@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.7] - 2026-05-19
+
+### Fixed
+
+- **Stock search & info broken** — The sidecar argument parser was reading `config_json` as the symbol/keyword for `--info` and `--search` commands (off-by-one: `args[idx+1]` instead of `args[idx+2]`). Stock search results and the stock info panel now work correctly.
+- **DeepSeek API endpoint updated** — Default base URL changed from `https://api.deepseek.com/v1` to `https://api.deepseek.com` per the current official documentation. Default model updated from `deepseek-chat` (scheduled for deprecation 2026-07-24) to `deepseek-v4-pro`.
+
 ## [0.5.6] - 2026-05-18
 
 ### Fixed
