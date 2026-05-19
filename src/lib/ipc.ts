@@ -119,8 +119,14 @@ export async function startAnalysis(symbol: string): Promise<FullAnalysisRespons
     throw new Error('此功能仅在 Tauri 桌面应用中可用。');
   }
 
-  const raw = await invoke<string>("start_analysis", { symbol });
-  return parseAnalysisResponse(raw);
+  try {
+    const raw = await invoke<string>("start_analysis", { symbol });
+    return parseAnalysisResponse(raw);
+  } catch (error) {
+    // Tauri 在 Rust 返回 Err(String) 时抛出字符串而非 Error，统一包装以保证调用方始终收到 Error 实例
+    if (error instanceof Error) throw error;
+    throw new Error(typeof error === 'string' ? error : String(error));
+  }
 }
 
 /**
