@@ -17,6 +17,7 @@ export const PROVIDER_PROFILES: Record<ProviderType, ProviderProfile> = {
   ollama:    { baseUrl: 'http://127.0.0.1:11434',      model: 'qwen3.5:9b',                   contentLimit:  800, timeout: 120_000 },
   anthropic: { baseUrl: 'https://api.anthropic.com',   model: 'claude-3-5-sonnet-20241022',   contentLimit: 1500, timeout:  90_000 },
   deepseek:  { baseUrl: 'https://api.deepseek.com',    model: 'deepseek-v4-pro',              contentLimit: 1000, timeout:  60_000 },
+  glm:       { baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.1',             contentLimit: 1000, timeout:  60_000 },
 };
 
 /** 默认设置对象 */

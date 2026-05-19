@@ -30,6 +30,11 @@ const PROVIDER_FACTORIES: Record<string, ProviderFactory> = {
     cfg.baseUrl ?? PROVIDER_PROFILES.deepseek.baseUrl,
     cfg.model   ?? PROVIDER_PROFILES.deepseek.model,
   ),
+  glm: (cfg) => new OpenAIProvider(
+    cfg.apiKey,
+    cfg.baseUrl ?? PROVIDER_PROFILES.glm.baseUrl,
+    cfg.model   ?? PROVIDER_PROFILES.glm.model,
+  ),
   openai: (cfg) => new OpenAIProvider(
     cfg.apiKey || process.env.OPENAI_API_KEY || '',
     cfg.baseUrl ?? PROVIDER_PROFILES.openai.baseUrl,

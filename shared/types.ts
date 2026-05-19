@@ -11,7 +11,7 @@ export interface ServiceResponse<T> {
 }
 
 /** AI 服务提供商类型 */
-export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek";
+export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek" | "glm";
 
 /**
  * 股票新闻数据接口
