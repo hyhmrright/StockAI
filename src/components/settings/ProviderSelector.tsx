@@ -17,7 +17,8 @@ const PROVIDER_META: Record<ProviderType, { label: string; icon: string; descrip
   openai:    { label: "OpenAI",    icon: "🤖", description: "GPT-4o, GPT-4-turbo 等" },
   ollama:    { label: "Ollama",    icon: "🦙", description: "本地模型，qwen / llama 等" },
   anthropic: { label: "Anthropic", icon: "🔷", description: "Claude 3.5 Sonnet 等" },
-  deepseek:  { label: "DeepSeek",  icon: "🐋", description: "DeepSeek Chat / Coder 等" },
+  deepseek:  { label: "DeepSeek",  icon: "🐋", description: "DeepSeek V4 Pro / Flash" },
+  glm:       { label: "GLM",       icon: "🧠", description: "Zhipu AI GLM-5.1 等" },
 };
 
 const PROVIDERS = Object.keys(PROVIDER_META) as ProviderType[];
