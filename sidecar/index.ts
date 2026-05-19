@@ -64,11 +64,13 @@ async function run() {
   } else if (isInfo) {
     action = '--info';
     const idx = args.indexOf('--info');
-    actionParam = args[idx + 1];
+    // Rust 传参顺序: ["--info", config_json, symbol]，跳过 config_json
+    actionParam = args[idx + 2];
   } else if (isSearch) {
     action = '--search';
     const idx = args.indexOf('--search');
-    actionParam = args[idx + 1];
+    // Rust 传参顺序: ["--search", config_json, keyword]，跳过 config_json
+    actionParam = args[idx + 2];
   } else {
     // 默认为分析模式: [binary] [symbol] [config_json]
     const possibleJson = args.find(a => a.startsWith('{'));
