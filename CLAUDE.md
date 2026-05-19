@@ -30,8 +30,11 @@ cd sidecar && bun test scraper.integration.ts
 # Rust tests
 cd src-tauri && cargo test
 
-# Build Sidecar binary (macOS ARM64)
-bun build sidecar/index.ts --compile --outfile sidecar/stockai-backend-aarch64-apple-darwin
+# Build Sidecar binary (cross-platform, via build-script)
+BUN_TARGET=bun-darwin-arm64 OUTFILE=src-tauri/bin/stockai-backend-aarch64-apple-darwin bun sidecar/build-script.ts
+
+# Verify sidecar bundle integrity
+bun scripts/verify-bundle.ts src-tauri/bin/stockai-backend-aarch64-apple-darwin
 
 # Integration smoke test
 bun scripts/smoke-test.ts
@@ -51,7 +54,7 @@ The Rust layer does exactly two things:
 
 **Config field mapping** (frontend → Rust → Sidecar):
 Rust 层将 `AppConfig` 序列化为 JSON 字符串，作为 Sidecar 的第二个 CLI 参数传递。
-Sidecar 通过 `JSON.parse(process.argv[3])` 解析，字段为 camelCase：
+Sidecar 通过 `args.find(a => a.startsWith('{'))` 灵活定位 JSON 配置参数，经 `configResolver.ts` 的 `resolveConfig()` 解析和版本校验（`_version` 字段不匹配时抛出，提示用户重新保存配置）。字段为 camelCase：
 `{ provider, apiKey, baseUrl, modelName, deepMode }`
 前端 Settings 字段 `provider` 类型定义在 `shared/types.ts` 的 `ProviderType`：
 `"openai" | "ollama" | "anthropic" | "deepseek"`（deepseek 走 OpenAI 兼容协议）。
@@ -75,4 +78,4 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 ## Workflow
 
 - Pre-push 钩子 (`lefthook.yml`) 跑 `tsc --noEmit` 与 `cargo check`。
-- 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun scripts/sidecar-bridge.ts`（:3001 HTTP 端点）。
+- 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun sidecar/sidecar-bridge.ts`（:3001 HTTP 端点）。
