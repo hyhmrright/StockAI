@@ -16,7 +16,7 @@ export const PROVIDER_PROFILES: Record<ProviderType, ProviderProfile> = {
   openai:    { baseUrl: 'https://api.openai.com/v1',   model: 'gpt-4o',                       contentLimit: 1000, timeout:  60_000 },
   ollama:    { baseUrl: 'http://127.0.0.1:11434',      model: 'qwen3.5:9b',                   contentLimit:  800, timeout: 120_000 },
   anthropic: { baseUrl: 'https://api.anthropic.com',   model: 'claude-3-5-sonnet-20241022',   contentLimit: 1500, timeout:  90_000 },
-  deepseek:  { baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat',                contentLimit: 1000, timeout:  60_000 },
+  deepseek:  { baseUrl: 'https://api.deepseek.com',    model: 'deepseek-v4-pro',              contentLimit: 1000, timeout:  60_000 },
 };
 
 /** 默认设置对象 */
