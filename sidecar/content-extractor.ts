@@ -48,6 +48,21 @@ function heuristicContentExtraction(): string {
 export async function extractFullContent(page: Page, url: string): Promise<string> {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUTS.contentExtraction });
+    
+    // 修复极其隐蔽的 Google News RSS 重定向拦截 Bug：
+    // Google RSS 返回的 URL 为 news.google.com/rss/articles/... 中转页面。
+    // domcontentloaded 在中转页面过早返回，导致提取出的仅为跳转提示空壳。
+    // 必须使用中文注释，且等待浏览器成功跳转至真正的新闻目标站点再执行内容提取。
+    if (url.includes('news.google.com')) {
+      try {
+        await page.waitForFunction(() => {
+          return !window.location.hostname.includes('google.com');
+        }, { timeout: 8000 });
+      } catch (e) {
+        // 超时静默降级：如遇特殊网络状况，仍尝试解析已加载的当前页
+      }
+    }
+
     const html = await page.evaluate(heuristicContentExtraction);
     return html ? htmlToMarkdown(html) : "";
   } catch (error) {
