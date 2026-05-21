@@ -2,6 +2,12 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.10] - 2026-05-21
+
+### Fixed
+
+- **Sidecar 启动失败** — 修复 Tauri v2 sidecar 路径解析错误，导致分析功能和模型列表均报"No such file or directory (os error 2)"。根因：`tauri-build` 复制 sidecar 时剥掉了 `bin/` 路径前缀，但运行时调用仍带前缀，查找路径不存在。现已对齐两侧路径。
+
 ## [0.5.9] - 2026-05-21
 
 ### Changed
