@@ -57,7 +57,8 @@ Rust 层将 `AppConfig` 序列化为 JSON 字符串，作为 Sidecar 的第二�
 Sidecar 通过 `args.find(a => a.startsWith('{'))` 灵活定位 JSON 配置参数，经 `configResolver.ts` 的 `resolveConfig()` 解析和版本校验（`_version` 字段不匹配时抛出，提示用户重新保存配置）。字段为 camelCase：
 `{ provider, apiKey, baseUrl, modelName, deepMode }`
 前端 Settings 字段 `provider` 类型定义在 `shared/types.ts` 的 `ProviderType`：
-`"openai" | "ollama" | "anthropic" | "deepseek"`（deepseek 走 OpenAI 兼容协议）。
+`"openai" | "ollama" | "anthropic" | "deepseek" | "glm"`。
+`deepseek` 与 `glm` 均走 OpenAI 兼容协议，在 `providers/registry.ts` 的工厂表中复用 `OpenAIProvider`，仅 `baseUrl`/`model` 默认值不同（集中在 `sidecar/config.ts` 的 `PROVIDER_PROFILES`）。
 
 ### 3. Sidecar (`sidecar/`)
 A Bun process that reads JSON config from `process.argv[3]` and runs a two-step pipeline:
@@ -72,7 +73,7 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 - **Component size**: UI component files must stay under 200 lines; extract complex logic into hooks.
 - **Test decoupling**: 解析逻辑放在 `sidecar/parsers/` 目录（`exchange.ts` / `html.ts`），与网络层分离，离线测试见 `parsers/*.test.ts`。
 - **Adding a scrape strategy**: 实现 `sidecar/strategies/base.ts` 的 `ScrapeStrategy`（纯 RSS / fetch 策略可直接实现；若需 Chromium，继承 `PlaywrightStrategy`），然后在 `sidecar/strategies/registry.ts` 的 `StrategyRegistry.strategies` 里追加一行。注意顺序：能跳过 Chromium 的策略尽量排前。
-- **Adding an AI provider**: Implement the `AIProvider` interface (defined in `sidecar/ai.ts`) in a new file under `sidecar/providers/`, then register it in `providers/registry.ts` 的 `createProvider()` 工厂函数中。
+- **Adding an AI provider**: 若新 Provider 兼容 OpenAI 协议（如 deepseek/glm），只需在 `sidecar/config.ts` 的 `PROVIDER_PROFILES` 加默认值，再在 `providers/registry.ts` 的 `PROVIDER_FACTORIES` 表里追加一行复用 `OpenAIProvider`；协议不兼容时，在 `sidecar/providers/` 下新建文件实现 `AIProvider` 接口（`sidecar/ai.ts`）。最后同步更新 `shared/types.ts` 的 `ProviderType`。
 - Sidecar stderr is for debug logging (Tauri pipes it to the terminal); stdout must only contain the final JSON output.
 
 ## Workflow
