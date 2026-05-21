@@ -1,4 +1,3 @@
-import { errors } from 'playwright-core';
 import type { Page } from 'playwright-core';
 import type { StockNews } from '../../shared/types';
 import { TIMEOUTS } from '../config';
@@ -29,7 +28,15 @@ export abstract class PlaywrightStrategy implements ScrapeStrategy {
   abstract readonly name: string;
 
   async scrape(symbol: string, ctx: ScrapeContext): Promise<StockNews[]> {
-    const page = await ctx.getPage();
+    let page: Page;
+    try {
+      page = await ctx.getPage();
+    } catch (err) {
+      // playwright-core 在 Bun --compile 二进制中可能因路径问题加载失败，
+      // 此处捕获后直接跳过，让 RSS 等纯 fetch 策略继续工作。
+      logger.warn(`[${this.name}] 无法初始化浏览器，跳过此策略: ${toErrorMessage(err)}`);
+      return [];
+    }
     const url = this.getUrl(symbol);
     logger.info(`[${this.name}] 正在抓取 ${symbol} from ${url}`);
 
@@ -39,7 +46,7 @@ export abstract class PlaywrightStrategy implements ScrapeStrategy {
         waitUntil: this.getWaitUntil(),
         timeout: TIMEOUTS.pageNavigation,
       }).catch(err => {
-        if (err instanceof errors.TimeoutError) {
+        if (err instanceof Error && err.name === 'TimeoutError') {
           logger.warn(`[${this.name}] 页面加载超时，尝试解析已加载内容: ${toErrorMessage(err)}`);
         } else {
           logger.warn(`[${this.name}] 页面导航失败，跳过解析: ${toErrorMessage(err)}`);
