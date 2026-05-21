@@ -2,6 +2,12 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.12] - 2026-05-21
+
+### Fixed
+
+- **K 线图不显示** — 修复 CSP 缺少 `frame-src` 导致 TradingView K 线 Widget 被浏览器拦截的问题。
+
 ## [0.5.11] - 2026-05-21
 
 ### Fixed
