@@ -105,7 +105,17 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 - ...
 ```
 
-### 3. 打 Tag 触发 CI
+### 3. 确认 main 分支 CI 全绿
+
+打 tag 前，必须确认 `main` 分支的所有 CI checks 均已通过：
+
+```bash
+gh run list --branch main --limit 5
+```
+
+若最新 run 状态不是 `completed / success`，**禁止打 tag**。找到失败的 job、修复后重新推送，等 CI 再次全绿后再继续。
+
+### 4. 打 Tag 触发 Release CI
 
 ```bash
 git tag vx.y.z
