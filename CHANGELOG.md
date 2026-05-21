@@ -2,6 +2,12 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.11] - 2026-05-21
+
+### Fixed
+
+- **分析服务异常 (ExitCode: Some(1))** — 修复 Bun `--compile` 二进制中 `playwright-core` 因 CJS `__dirname` 烘焙为 CI 机器绝对路径而导致 sidecar 启动即崩溃的问题。根因：静态 `import "playwright-core"` 使模块在 sidecar 启动时立即求值，找不到 CI 路径下的 `package.json`，所有操作（包括不需要浏览器的"获取模型列表"）均报错。修复方式：将 playwright-core 改为在真正需要浏览器时才动态加载，RSS 抓取路径和模型列表等功能不受影响，Playwright 策略在加载失败时优雅降级（跳过）。
+
 ## [0.5.10] - 2026-05-21
 
 ### Fixed
