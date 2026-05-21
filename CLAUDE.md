@@ -80,3 +80,55 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 
 - Pre-push 钩子 (`lefthook.yml`) 跑 `tsc --noEmit` 与 `cargo check`。
 - 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun sidecar/sidecar-bridge.ts`（:3001 HTTP 端点）。
+
+## Release Checklist
+
+发版时必须按顺序完成以下所有步骤，缺一不可：
+
+### 1. 版本号同步（4 个文件）
+
+| 文件 | 字段 |
+|------|------|
+| `src-tauri/tauri.conf.json` | `version` |
+| `src-tauri/Cargo.toml` | `version`（`[package]` 段） |
+| `package.json` | `version` |
+| `sidecar/package.json` | `version` |
+
+### 2. CHANGELOG.md
+
+在文件顶部插入新版本条目，格式：
+
+```
+## [x.y.z] - YYYY-MM-DD
+
+### Added / Fixed / Changed
+- ...
+```
+
+### 3. 打 Tag 触发 CI
+
+```bash
+git tag vx.y.z
+git push origin vx.y.z
+```
+
+CI（`release.yml`）会自动构建三平台产物并创建 **Draft Release**。
+
+### 4. 发布 GitHub Release
+
+CI 完成后，进入 GitHub → Releases → 编辑 Draft：
+- **Release title**：`StockAI vx.y.z`
+- **Release notes**：将 CHANGELOG.md 对应版本的条目内容粘贴进去（不只是链接）
+- 确认产物（`.dmg` / `.deb` / `.msi`）已全部上传
+- 点击 **Publish release**
+
+### 5. 更新 GitHub 仓库 About
+
+进入 GitHub → 仓库首页 → 右上角齿轮（Edit repository details）：
+- **Description**：保持简短（≤ 100 字符），若有功能新增需同步更新
+- **Website**：如有新的 landing page 或文档地址，一并更新
+- **Topics**：若版本引入了新技术/新平台支持，追加对应 topic
+
+### 6. 更新 GitHub Labels（按需）
+
+若本版本引入了新的 issue 类型或工作流（如新增某 provider 的专属 bug 分类），进入 GitHub → Issues → Labels 添加对应标签。常规版本可跳过此步。
