@@ -2,6 +2,13 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.5.9] - 2026-05-21
+
+### Changed
+
+- **Release workflow documented** — Added comprehensive release checklist to CLAUDE.md, covering version sync, CHANGELOG formatting, CI gate (all checks must pass before tagging), GitHub Release notes, About section, and Labels.
+- **GLM provider documented** — CLAUDE.md now documents the GLM provider and the OpenAI-compatibility pattern for adding new providers.
+
 ## [0.5.8] - 2026-05-19
 
 ### Added
