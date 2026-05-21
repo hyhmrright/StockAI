@@ -1,4 +1,4 @@
-import { chromium, Browser, BrowserContext, Page } from 'playwright-core';
+import type { Browser, BrowserContext, Page } from 'playwright-core';
 import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS } from './config';
 import { logger, toErrorMessage, getExecutableDir } from './utils';
 import * as path from 'path';
@@ -23,27 +23,32 @@ export class BrowserManager {
 
     this.pagePromise = (async () => {
       logger.info("首次需要浏览器，准备启动...");
-      
+
+      // 延迟加载 playwright-core：Bun --compile 下 CJS 模块的 __dirname 会烘焙为构建机绝对路径，
+      // 静态导入会在 sidecar 启动时立即崩溃；动态导入将错误推迟到真正需要浏览器时，
+      // 使 RSS 等纯 fetch 策略不受影响。
+      const { chromium } = await import('playwright-core');
+
       // 1. 设置 Playwright 资源目录（browsers.json 所在位置）
       await this.setupPlaywrightResources();
 
       // 2. 尝试启动
       try {
-        this.browser = await chromium.launch({ 
-          headless: true, 
-          args: BROWSER_LAUNCH_ARGS 
+        this.browser = await chromium.launch({
+          headless: true,
+          args: BROWSER_LAUNCH_ARGS
         });
       } catch (err) {
         logger.warn(`默认浏览器启动失败: ${toErrorMessage(err)}。尝试寻找系统浏览器...`);
-        
+
         // 3. 回退：寻找系统浏览器
         const executablePath = this.findSystemBrowser();
         if (executablePath) {
           logger.info(`找到系统浏览器: ${executablePath}，尝试使用...`);
-          this.browser = await chromium.launch({ 
+          this.browser = await chromium.launch({
             executablePath,
-            headless: true, 
-            args: BROWSER_LAUNCH_ARGS 
+            headless: true,
+            args: BROWSER_LAUNCH_ARGS
           });
         } else {
           throw new Error("无法找到可用浏览器 (默认与系统浏览器均不可用)。请检查环境。");

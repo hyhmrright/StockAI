@@ -17,11 +17,6 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-// 强制静态导入以确保 Bun Bundler 能够追踪并包含依赖
-// 虽然我们下面使用了动态 import() 来保证启动稳定性，
-// 但静态引用能确保这些模块被打包进二进制。
-import "playwright-core";
-
 async function run() {
   const args = process.argv;
   logToFile(`Full Argv: ${JSON.stringify(args)}`);
