@@ -156,7 +156,7 @@ jobs:
           releaseName: "StockAI ${{ github.ref_name }}"
           releaseBody: |
             See the [CHANGELOG](https://github.com/hyhmrright/StockAI/blob/main/CHANGELOG.md) for what's new in this release.
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
@@ -170,7 +170,7 @@ jobs:
           releaseName: "StockAI ${{ github.ref_name }}"
           releaseBody: |
             See the [CHANGELOG](https://github.com/hyhmrright/StockAI/blob/main/CHANGELOG.md) for what's new in this release.
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
