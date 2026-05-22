@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ChartCanvas from "./ChartCanvas";
+import SubChart from "./SubChart";
 import QuoteHeader from "./QuoteHeader";
 import Toolbar from "./Toolbar";
 import CrosshairTooltip from "./CrosshairTooltip";
@@ -71,6 +72,7 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
           market={market}
           logScale={config.logScale}
           showMA={config.showMA}
+          showBoll={config.subIndicator === "boll"}
           prevClose={quote?.prevClose}
           currentPrice={quote?.price}
           onCrosshair={setCrosshair}
@@ -82,6 +84,7 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
           maValues={crosshairMA}
         />
       </div>
+      <SubChart data={data} indicator={config.subIndicator} market={market} />
     </div>
   );
 };
