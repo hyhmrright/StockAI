@@ -8,6 +8,7 @@ import {
   type UTCTimestamp,
   ColorType,
   CrosshairMode,
+  PriceScaleMode,
 } from "lightweight-charts";
 import type { KlinePoint } from "../../../shared/types";
 import { upColor, downColor } from "../../lib/market-hours";
@@ -25,6 +26,10 @@ const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, on
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const crosshairCbRef = useRef(onCrosshair);
+
+  // 让 ref 始终持有最新的 onCrosshair，避免被 effect 闭包"锁定"
+  useEffect(() => { crosshairCbRef.current = onCrosshair; }, [onCrosshair]);
 
   // 创建图表 — 仅在首次挂载时执行
   useEffect(() => {
@@ -60,25 +65,25 @@ const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, on
     candleRef.current = candle;
     volumeRef.current = volume;
 
-    // 十字光标订阅
-    if (onCrosshair) {
-      chart.subscribeCrosshairMove((param) => {
-        if (!param.time || !param.seriesData.get(candle)) {
-          onCrosshair(null);
-          return;
-        }
-        const cd = param.seriesData.get(candle) as CandlestickData;
-        const vd = param.seriesData.get(volume) as HistogramData | undefined;
-        onCrosshair({
-          time: cd.time as number,
-          open: cd.open,
-          high: cd.high,
-          low: cd.low,
-          close: cd.close,
-          volume: vd?.value ?? 0,
-        });
+    // 十字光标订阅 — 通过 ref 间接调用，避免 onCrosshair 引用变化触发图表重建
+    chart.subscribeCrosshairMove((param) => {
+      const cb = crosshairCbRef.current;
+      if (!cb) return;
+      if (!param.time || !param.seriesData.get(candle)) {
+        cb(null);
+        return;
+      }
+      const cd = param.seriesData.get(candle) as CandlestickData;
+      const vd = param.seriesData.get(volume) as HistogramData | undefined;
+      cb({
+        time: cd.time as number,
+        open: cd.open,
+        high: cd.high,
+        low: cd.low,
+        close: cd.close,
+        volume: vd?.value ?? 0,
       });
-    }
+    });
 
     return () => {
       chart.remove();
@@ -86,7 +91,7 @@ const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, on
       candleRef.current = null;
       volumeRef.current = null;
     };
-  }, [market, onCrosshair]);
+  }, [market]);
 
   // 喂入数据
   useEffect(() => {
@@ -110,7 +115,9 @@ const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, on
 
   // 对数坐标
   useEffect(() => {
-    chartRef.current?.priceScale("right").applyOptions({ mode: logScale ? 1 : 0 });
+    chartRef.current?.priceScale("right").applyOptions({
+      mode: logScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
+    });
   }, [logScale]);
 
   return <div ref={containerRef} style={{ width: "100%", height }} />;
