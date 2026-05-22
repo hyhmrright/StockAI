@@ -26,6 +26,8 @@ async function run() {
   const isListModels = args.some(arg => arg === '--list-models');
   const isInfo = args.some(arg => arg === '--info');
   const isSearch = args.some(arg => arg === '--search');
+  const isKline = args.some(arg => arg === '--kline');
+  const isQuote = args.some(arg => arg === '--quote');
 
   // 健康自检逻辑 - 优先运行
   if (isCheck) {
@@ -66,6 +68,16 @@ async function run() {
     const idx = args.indexOf('--search');
     // Rust 传参顺序: ["--search", config_json, keyword]，跳过 config_json
     actionParam = args[idx + 2];
+  } else if (isKline) {
+    action = '--kline';
+    const idx = args.indexOf('--kline');
+    // 参数顺序: ["--kline", request_json]
+    actionParam = args[idx + 1];
+  } else if (isQuote) {
+    action = '--quote';
+    const idx = args.indexOf('--quote');
+    // 参数顺序: ["--quote", symbol]
+    actionParam = args[idx + 1];
   } else {
     // 默认为分析模式: [binary] [symbol] [config_json]
     const possibleJson = args.find(a => a.startsWith('{'));
@@ -101,6 +113,12 @@ async function run() {
       break;
     case '--search':
       await Handlers.handleSearch(actionParam || '');
+      break;
+    case '--kline':
+      await Handlers.handleKline(actionParam || '{}');
+      break;
+    case '--quote':
+      await Handlers.handleQuote(actionParam || '');
       break;
     default:
       try {
