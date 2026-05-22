@@ -82,8 +82,14 @@ export type KlinePeriod = "1m" | "5m" | "15m" | "30m" | "60m" | "1d" | "1w" | "1
 
 /**
  * 时间范围（UI 选择器）
+ * 注意：此处的 "1m" 表示 1 个月，与 KlinePeriod 的 "1m"（1 分钟）含义不同。
  */
 export type KlineRange = "1d" | "5d" | "1m" | "3m" | "6m" | "ytd" | "1y" | "5y" | "all";
+
+/**
+ * 市场归属（按 symbol 自动识别）
+ */
+export type Market = "A股" | "美股";
 
 /**
  * 复权方式
@@ -94,7 +100,7 @@ export type AdjustMode = "qfq" | "hfq" | "none";
  * 一根 K 线
  */
 export interface KlinePoint {
-  time: number;        // Unix 秒，对齐到周期起点
+  time: number;        // Unix 秒 (UTC)，对齐到周期起点
   open: number;
   high: number;
   low: number;
@@ -118,7 +124,7 @@ export interface KlineRequest {
  */
 export interface RealtimeQuote {
   symbol: string;
-  name: string;
+  name: string;              // 显示名（A 股中文名 / 美股英文短名）
   price: number;
   change: number;
   changePercent: number;
@@ -137,6 +143,6 @@ export interface RealtimeQuote {
   preMarket?: { price: number; change: number; changePercent: number };
   postMarket?: { price: number; change: number; changePercent: number };
   timestamp: number;         // 报价时间 Unix 秒
-  currency: string;          // CNY / USD
-  market: "A股" | "美股";
+  currency: "CNY" | "USD";   // 货币
+  market: Market;
 }
