@@ -1,5 +1,12 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { FullAnalysisResponse, ServiceResponse, StockInfo, StockSearchResult, KlineRequest, KlinePoint, RealtimeQuote } from "../../shared/types";
+import {
+  MOCK_STOCKS,
+  MOCK_STOCK_INFO,
+  MOCK_MODELS,
+  MOCK_KLINE,
+  MOCK_QUOTE,
+} from "./dev-mocks";
 
 /**
  * 从原始 stdout 字符串中解析响应，支持标准 ServiceResponse 信封。
@@ -35,29 +42,11 @@ export function parseServiceResponse<T>(raw: string): T {
   return envelope.data;
 }
 
-const MOCK_DATA = {
-  stocks: [
-    { name: "苹果公司", code: "AAPL", type: "美股", fullCode: "gb_aapl" },
-    { name: "隆基绿能", code: "601012", type: "A股", fullCode: "sh601012" }
-  ] as StockSearchResult[],
-  stockInfo: {
-    name: "苹果公司",
-    code: "AAPL",
-    exchange: "NASDAQ",
-    market: "美股",
-    price: 180.5,
-    change: 2.5,
-    changePercent: 1.4,
-    currency: "USD"
-  } as StockInfo,
-  models: ["gpt-4o", "gpt-4o-mini", "ollama-dev"]
-};
-
 /**
  * 搜索股票建议
  */
 export async function searchStocks(keyword: string): Promise<StockSearchResult[]> {
-  if (!isTauri()) return MOCK_DATA.stocks;
+  if (!isTauri()) return MOCK_STOCKS;
 
   try {
     const raw = await invoke<string>("search_stocks", { keyword });
@@ -72,7 +61,7 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
  * 获取股票基本信息
  */
 export async function getStockInfo(symbol: string): Promise<StockInfo> {
-  if (!isTauri()) return MOCK_DATA.stockInfo;
+  if (!isTauri()) return MOCK_STOCK_INFO;
 
   const raw = await invoke<string>("get_stock_info", { symbol });
   return parseServiceResponse<StockInfo>(raw);
@@ -133,7 +122,7 @@ export async function startAnalysis(symbol: string): Promise<FullAnalysisRespons
  * 获取可用模型列表
  */
 export async function listModels(provider: string, baseUrl: string): Promise<string[]> {
-  if (!isTauri()) return MOCK_DATA.models;
+  if (!isTauri()) return MOCK_MODELS;
 
   try {
     const raw = await invoke<string>("list_models", { provider, baseUrl });
@@ -145,38 +134,6 @@ export async function listModels(provider: string, baseUrl: string): Promise<str
     throw error;
   }
 }
-
-const MOCK_KLINE: KlinePoint[] = Array.from({ length: 30 }, (_, i) => {
-  const base = 180 + Math.sin(i / 5) * 5;
-  return {
-    // i = 29 时为今天（让最后一根能与 quote.timestamp 同日合并）
-    time: Math.floor(Date.now() / 1000) - (29 - i) * 86400,
-    open: base,
-    high: base + 2,
-    low: base - 2,
-    close: base + (Math.random() - 0.5) * 3,
-    volume: 50_000_000 + Math.random() * 10_000_000,
-  };
-});
-
-const MOCK_QUOTE: RealtimeQuote = {
-  symbol: "AAPL",
-  name: "Apple Inc.",
-  price: 180.5,
-  change: 2.5,
-  changePercent: 1.4,
-  open: 179,
-  high: 182,
-  low: 178.5,
-  prevClose: 178,
-  volume: 55_000_000,
-  amount: 9_900_000_000,
-  high52w: 200,
-  low52w: 150,
-  timestamp: Math.floor(Date.now() / 1000),
-  currency: "USD",
-  market: "美股",
-};
 
 /** 通过开发桥接器（3001）尝试拉真实数据；bridge 不在线时退回 mock，避免阻塞浏览器调试 */
 let bridgeWarnLogged = false;

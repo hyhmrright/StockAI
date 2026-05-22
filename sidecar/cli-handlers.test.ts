@@ -2,6 +2,7 @@ import { describe, it, expect, mock } from 'bun:test';
 import { createHandlers } from './cli-handlers';
 import { ScrapeEmptyError } from './analysis';
 import { createMockAnalysisResponse } from '../shared/test-utils';
+import type { ResolvedConfig } from './configResolver';
 
 describe('CLI Handlers', () => {
   describe('handleAnalysis', () => {
@@ -11,7 +12,7 @@ describe('CLI Handlers', () => {
       const mockAnalyze = mock(async () => mockResult);
 
       const handlers = createHandlers({ _out: mockOut, _analyze: mockAnalyze });
-      const config = { provider: 'openai' as any, apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
+      const config: ResolvedConfig = { provider: 'openai', apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
 
       await handlers.handleAnalysis('AAPL', config);
 
@@ -28,7 +29,7 @@ describe('CLI Handlers', () => {
       const mockAnalyze = mock(async () => { throw new Error('Analysis Failed'); });
 
       const handlers = createHandlers({ _out: mockOut, _analyze: mockAnalyze });
-      const config = { provider: 'openai' as any, apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
+      const config: ResolvedConfig = { provider: 'openai', apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
 
       await handlers.handleAnalysis('AAPL', config);
 
@@ -45,7 +46,7 @@ describe('CLI Handlers', () => {
       const mockAnalyze = mock(async () => { throw new ScrapeEmptyError('未搜寻到股票相关新闻'); });
 
       const handlers = createHandlers({ _out: mockOut, _analyze: mockAnalyze });
-      const config = { provider: 'openai' as any, apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
+      const config: ResolvedConfig = { provider: 'openai', apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
 
       await handlers.handleAnalysis('AAPL', config);
 

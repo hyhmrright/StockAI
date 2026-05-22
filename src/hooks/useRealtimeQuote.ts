@@ -7,8 +7,9 @@ const POLL_MS = 10_000;
 
 /**
  * 实时报价 hook
- * - 切换 symbol 立即拉一次
- * - 仅在交易时段每 10 秒轮询
+ * - 切换 symbol 立即拉一次（无论是否开盘，给出"最后已知价格"）
+ * - 周期性 tick 时再判断交易时段：开盘期间真正拉数据，否则空转
+ *   这样长时间打开应用、跨越 open→close 边界也不会持续刷接口
  * - 失败时静默保留最后一次成功的报价
  */
 export function useRealtimeQuote(symbol: string): RealtimeQuote | null {
@@ -16,10 +17,9 @@ export function useRealtimeQuote(symbol: string): RealtimeQuote | null {
 
   useEffect(() => {
     let active = true;
-    let timer: ReturnType<typeof setInterval> | null = null;
     const market = detectMarket(symbol);
 
-    const tick = async () => {
+    const fetchOnce = async () => {
       try {
         const q = await fetchRealtimeQuote(symbol);
         if (active) setQuote(q);
@@ -28,17 +28,18 @@ export function useRealtimeQuote(symbol: string): RealtimeQuote | null {
       }
     };
 
-    // 切换股票时立即拉一次
-    tick();
+    const tick = () => {
+      if (!isTradingHours(market)) return;
+      void fetchOnce();
+    };
 
-    // 仅在交易时段启用轮询
-    if (isTradingHours(market)) {
-      timer = setInterval(tick, POLL_MS);
-    }
+    // 切换股票时立即拉一次（不受交易时段限制）
+    void fetchOnce();
+    const timer = setInterval(tick, POLL_MS);
 
     return () => {
       active = false;
-      if (timer) clearInterval(timer);
+      clearInterval(timer);
     };
   }, [symbol]);
 

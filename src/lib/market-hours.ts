@@ -1,15 +1,7 @@
 import type { Market } from "../../shared/types";
 
 export type { Market };
-
-/**
- * 从原始 symbol 判断市场归属
- * 规则：含 6 位数字 → A 股；纯字母 / gb_ 前缀 → 美股
- */
-export function detectMarket(symbol: string): Market {
-  if (/(?<!\d)\d{6}(?!\d)/.test(symbol)) return "A股";
-  return "美股";
-}
+export { detectMarket } from "../../shared/market";
 
 /**
  * 涨色：A 股红、美股绿
@@ -55,6 +47,8 @@ export function isTradingHours(market: Market, ts: number = Date.now()): boolean
 }
 
 function isEdt(d: Date): boolean {
+  // DST 切换发生在周日 02:00 ET；由于周末闭市覆盖了切换前后窗口，
+  // 直接用 00:00 UTC 作为边界对 isTradingHours 不会产生可观察差异。
   const year = d.getUTCFullYear();
   const march = new Date(Date.UTC(year, 2, 1));
   const dstStart = new Date(Date.UTC(year, 2, 1 + ((7 - march.getUTCDay() + 7) % 7) + 7));

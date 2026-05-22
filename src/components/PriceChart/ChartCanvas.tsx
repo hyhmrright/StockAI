@@ -187,6 +187,11 @@ const ChartCanvas: React.FC<Props> = ({
     }
   }, [compareData]);
 
+  // 比较 series 的 title 在 chart 创建时只绑定一次，切换 compareSymbol 后需主动更新
+  useEffect(() => {
+    compareRef.current?.applyOptions({ title: compareLabel ?? "Compare" });
+  }, [compareLabel]);
+
   // 关键水平线：昨收虚线 + 当前价实线（标签实时跟随）
   useEffect(() => {
     const candle = candleRef.current;
