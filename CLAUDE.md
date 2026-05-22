@@ -67,6 +67,15 @@ A Bun process that reads JSON config from `process.argv[3]` and runs a two-step 
 
 The result is written as a JSON string to stdout, captured by Tauri, and returned to the frontend where it is parsed into `FullAnalysisResponse`.
 
+**Sidecar CLI actions**（`sidecar/index.ts` 按 `process.argv` 分发，所有 handler 集中在 `cli-handlers.ts`）：
+- 无标志（默认）：`<symbol> <config-json>` → 完整 scrape+analyze pipeline
+- `--kline <request-json>`：拉取 K 线，多源容错（`sidecar/kline/` 下 eastmoney / tencent / yahoo 顺序回退）
+- `--quote <symbol>`：拉取实时报价
+- `--info <config-json> <symbol>` / `--search <config-json> <keyword>` / `--list-models <config-json>`：辅助查询
+- `--check`：健康自检（仅触发 BrowserManager 启动验证）
+
+前端 `src/components/PriceChart/` 是独立子系统：`ChartCanvas.tsx` 封装 TradingView lightweight-charts v4 主图（K 线 + MA + BOLL + 现价线 + "现"marker），`QuoteHeader` / `Toolbar` / `SubChart` / `CrosshairTooltip` 拆分页面区块，`index.tsx` 编排并通过 `useRealtimeQuote`（仅交易时段轮询）合并 K 线尾根与实时价。
+
 ## Key Conventions
 
 - **Code comments**: All inline logic comments must be written in Simplified Chinese.
@@ -79,7 +88,7 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 ## Workflow
 
 - Pre-push 钩子 (`lefthook.yml`) 跑 `tsc --noEmit` 与 `cargo check`。
-- 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun sidecar/sidecar-bridge.ts`（:3001 HTTP 端点）。
+- 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun scripts/sidecar-bridge.ts`（:3001 HTTP 端点）。浏览器 dev 模式下 `src/lib/ipc.ts` 自动走该桥接器，bridge 未启动时退回 mock 数据并 `console.warn` 一次（避免轮询刷屏）。
 
 ## Release Checklist
 
@@ -124,7 +133,7 @@ git push origin vx.y.z
 
 CI（`release.yml`）会自动构建三平台产物并创建 **Draft Release**。
 
-### 4. 发布 GitHub Release
+### 5. 发布 GitHub Release
 
 CI 完成后，进入 GitHub → Releases → 编辑 Draft：
 - **Release title**：`StockAI vx.y.z`
@@ -132,13 +141,13 @@ CI 完成后，进入 GitHub → Releases → 编辑 Draft：
 - 确认产物（`.dmg` / `.deb` / `.msi`）已全部上传
 - 点击 **Publish release**
 
-### 5. 更新 GitHub 仓库 About
+### 6. 更新 GitHub 仓库 About
 
 进入 GitHub → 仓库首页 → 右上角齿轮（Edit repository details）：
 - **Description**：保持简短（≤ 100 字符），若有功能新增需同步更新
 - **Website**：如有新的 landing page 或文档地址，一并更新
 - **Topics**：若版本引入了新技术/新平台支持，追加对应 topic
 
-### 6. 更新 GitHub Labels（按需）
+### 7. 更新 GitHub Labels（按需）
 
 若本版本引入了新的 issue 类型或工作流（如新增某 provider 的专属 bug 分类），进入 GitHub → Issues → Labels 添加对应标签。常规版本可跳过此步。
