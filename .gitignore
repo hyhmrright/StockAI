@@ -17,6 +17,11 @@ sidecar/stockai-backend-*
 *.lockb
 *.lock
 
+# 临时构建产物 / 调试输出（历史曾误入仓库，参见 brooks-sweep 修复）
+output.json
+test-bin
+test-bun-build
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

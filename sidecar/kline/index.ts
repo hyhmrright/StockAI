@@ -1,13 +1,10 @@
 import type { KlineRequest, KlinePoint, RealtimeQuote } from "../../shared/types";
 import type { NormalizedRequest } from "./types";
+import { detectMarket } from "../../shared/market";
 import { fetchYahooKline, fetchYahooQuote } from "./yahoo";
 import { fetchTencentKline, fetchTencentQuote } from "./tencent";
 import { fetchEastmoneyKline } from "./eastmoney";
 import { logger, toErrorMessage } from "../utils";
-
-function detectMarket(symbol: string): "A股" | "美股" {
-  return /(?<!\d)\d{6}(?!\d)/.test(symbol) ? "A股" : "美股";
-}
 
 function normalize(req: KlineRequest): NormalizedRequest {
   return {
