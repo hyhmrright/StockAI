@@ -5,6 +5,7 @@ import { join } from "path";
  * Sidecar 桥接服务器 (增强版)
  */
 const SIDECAR_PATH = join(process.cwd(), "sidecar", "stockai-backend-aarch64-apple-darwin");
+const SIDECAR_ENTRY = join(process.cwd(), "sidecar", "index.ts");
 
 const server = Bun.serve({
   port: 3001,
@@ -24,6 +25,18 @@ const server = Bun.serve({
     if (url.pathname === "/invoke" && req.method === "POST") {
       const { cmd, args } = await req.json();
       console.log(`[Bridge] 执行指令: ${cmd}, 目标股票: ${args.symbol}`);
+
+      // K 线 / 实时报价：用 bun 跑源码而非二进制，避免旧版本二进制不识别新 action
+      const corsHeaders = { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" };
+      const runAndRespond = (sidecarArgs: string[], label: string) => {
+        const result = spawnSync("bun", [SIDECAR_ENTRY, ...sidecarArgs], { encoding: "utf-8", env: { ...process.env } });
+        if (result.stderr) console.error(`[Bridge][${label}] ${result.stderr}`);
+        const fallback = JSON.stringify({ error: { code: "ERR_BRIDGE", message: result.error?.message || "no stdout" } });
+        return new Response(result.stdout || fallback, { headers: corsHeaders });
+      };
+
+      if (cmd === "fetch_kline") return runAndRespond(["--kline", JSON.stringify(args.request)], "kline");
+      if (cmd === "fetch_realtime_quote") return runAndRespond(["--quote", args.symbol], "quote");
 
       if (cmd === "start_analysis") {
         // 尝试从环境变量获取 OpenAI Key 作为测试兜底

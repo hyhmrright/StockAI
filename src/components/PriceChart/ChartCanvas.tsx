@@ -123,6 +123,21 @@ const ChartCanvas: React.FC<Props> = ({
       maRef.current.long.setData( showMA.long  ? toLine(sma(closes, lp)) : []);
     }
 
+    // 在最后一根 K 上标注 "现"，让用户一眼定位当前 K 线
+    const last = data[data.length - 1];
+    if (last) {
+      const isUp = last.close >= last.open;
+      candleRef.current.setMarkers([{
+        time: last.time as UTCTimestamp,
+        position: isUp ? "aboveBar" : "belowBar",
+        color: isUp ? upColor(market) : downColor(market),
+        shape: isUp ? "arrowDown" : "arrowUp",
+        text: "现",
+      }]);
+    } else {
+      candleRef.current.setMarkers([]);
+    }
+
     chartRef.current?.timeScale().fitContent();
   }, [data, market, showMA.short, showMA.mid, showMA.long]);
 
