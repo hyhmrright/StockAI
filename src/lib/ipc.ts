@@ -149,7 +149,8 @@ export async function listModels(provider: string, baseUrl: string): Promise<str
 const MOCK_KLINE: KlinePoint[] = Array.from({ length: 30 }, (_, i) => {
   const base = 180 + Math.sin(i / 5) * 5;
   return {
-    time: Math.floor(Date.now() / 1000) - (30 - i) * 86400,
+    // i = 29 时为今天（让最后一根能与 quote.timestamp 同日合并）
+    time: Math.floor(Date.now() / 1000) - (29 - i) * 86400,
     open: base,
     high: base + 2,
     low: base - 2,
@@ -177,16 +178,36 @@ const MOCK_QUOTE: RealtimeQuote = {
   market: "美股",
 };
 
+/** 通过开发桥接器（3001）尝试拉真实数据；bridge 不在线时退回 mock，避免阻塞浏览器调试 */
+let bridgeWarnLogged = false;
+async function devBridgeInvoke<T>(cmd: string, args: Record<string, unknown>, fallback: T): Promise<T> {
+  try {
+    const resp = await fetch("http://localhost:3001/invoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cmd, args }),
+    });
+    return parseServiceResponse<T>(await resp.text());
+  } catch {
+    // 只警告一次，避免 10s 轮询刷屏；让开发者知道当前看的是 mock
+    if (!bridgeWarnLogged) {
+      console.warn("[dev] sidecar bridge 不在线 (http://localhost:3001)，返回 mock 数据。启动 `bun scripts/sidecar-bridge.ts` 可拉真实数据。");
+      bridgeWarnLogged = true;
+    }
+    return fallback;
+  }
+}
+
 /** 拉取 K 线 */
 export async function fetchKline(req: KlineRequest): Promise<KlinePoint[]> {
-  if (!isTauri()) return MOCK_KLINE;
+  if (!isTauri()) return devBridgeInvoke<KlinePoint[]>("fetch_kline", { request: req }, MOCK_KLINE);
   const raw = await invoke<string>("fetch_kline", { request: req });
   return parseServiceResponse<KlinePoint[]>(raw);
 }
 
 /** 拉取实时报价 */
 export async function fetchRealtimeQuote(symbol: string): Promise<RealtimeQuote> {
-  if (!isTauri()) return MOCK_QUOTE;
+  if (!isTauri()) return devBridgeInvoke<RealtimeQuote>("fetch_realtime_quote", { symbol }, MOCK_QUOTE);
   const raw = await invoke<string>("fetch_realtime_quote", { symbol });
   return parseServiceResponse<RealtimeQuote>(raw);
 }
