@@ -2,6 +2,24 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.6.0] - 2026-05-22
+
+### Added
+
+- **专业级 K 线图子系统** — 替换原 TradingView iframe Widget，基于 lightweight-charts v4 全新构建：主图 K 线 + 成交量副图 + MA 均线（短/中/长可切换）+ BOLL 布林带 + 昨收/现价水平线 + 比较基准叠加（归一化另一标的相对走势）。
+- **多副图技术指标** — MACD / RSI / KDJ / OBV / VWAP 一键切换。
+- **十字光标信息浮层** — 鼠标悬浮显示当根 K 线 OHLCV 详情。
+- **实时报价合并** — `useRealtimeQuote` 仅在交易时段轮询，与 K 线最后一根自动合并；最后一根 K 上标注"现"marker，一眼定位当前 K 线。
+- **多源 K 线数据** — 新增 Yahoo Finance / 东方财富 / 腾讯三个数据源，按顺序容错回退，覆盖美股与 A 股（含复权）。
+- **技术指标库** — `src/lib/indicators.ts` 提供 SMA / EMA / MACD / RSI / KDJ / BOLL / OBV / VWAP 纯函数实现，含完整单测。
+- **新 IPC 命令** — `fetch_kline` / `fetch_realtime_quote`，Sidecar CLI 同步新增 `--kline` / `--quote` 动作。
+- **开发桥接器扩展** — `scripts/sidecar-bridge.ts` 支持新增的 K 线 / 报价指令，浏览器 dev 模式可直拉真实数据；bridge 未启动时一次性 warn 后回退 mock，避免轮询刷屏。
+- **市场识别工具** — `src/lib/market-hours.ts` 提供市场识别 / 涨跌色（美股绿涨红跌，A 股相反）/ 交易时段判断。
+
+### Changed
+
+- **CLAUDE.md 架构文档** — 补全 Sidecar CLI actions 表与 PriceChart 子系统说明，修正过时的开发桥接器路径。
+
 ## [0.5.12] - 2026-05-21
 
 ### Fixed

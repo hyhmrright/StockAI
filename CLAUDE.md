@@ -94,14 +94,13 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 
 发版时必须按顺序完成以下所有步骤，缺一不可：
 
-### 1. 版本号同步（4 个文件）
+### 1. 版本号同步（3 个文件）
 
 | 文件 | 字段 |
 |------|------|
 | `src-tauri/tauri.conf.json` | `version` |
 | `src-tauri/Cargo.toml` | `version`（`[package]` 段） |
 | `package.json` | `version` |
-| `sidecar/package.json` | `version` |
 
 ### 2. CHANGELOG.md
 
