@@ -14,6 +14,11 @@ export function mapRangeToYahoo(range: KlineRange): { range: string; interval: s
     case "1y":  return { range: "1y",  interval: "1d"  };
     case "5y":  return { range: "5y",  interval: "1wk" };
     case "all": return { range: "max", interval: "1mo" };
+    default: {
+      // 编译期穷尽性检查：若 KlineRange 新增值未在此分支，TypeScript 会报错
+      const _exhaustive: never = range;
+      throw new Error(`unsupported range: ${_exhaustive}`);
+    }
   }
 }
 
@@ -90,11 +95,11 @@ export function parseYahooQuote(json: any, symbol: string): RealtimeQuote {
     low: meta.regularMarketDayLow ?? 0,
     prevClose,
     volume: meta.regularMarketVolume ?? 0,
-    amount: 0,
+    amount: 0,  // Yahoo Chart API 不返回成交额，填 0
     high52w: meta.fiftyTwoWeekHigh,
     low52w: meta.fiftyTwoWeekLow,
     timestamp: meta.regularMarketTime ?? Math.floor(Date.now() / 1000),
-    currency: (meta.currency || "USD") as "CNY" | "USD",
+    currency: meta.currency === "CNY" ? "CNY" : "USD",  // 仅接受 CNY/USD，其它一律回退到 USD
     market: "美股",
   };
 
