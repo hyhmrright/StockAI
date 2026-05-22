@@ -14,6 +14,9 @@ describe("mapRangeToYahoo", () => {
   test("all → 月 K", () => {
     expect(mapRangeToYahoo("all")).toEqual({ range: "max", interval: "1mo" });
   });
+  test("5d → 5 分钟 K", () => {
+    expect(mapRangeToYahoo("5d")).toEqual({ range: "5d", interval: "5m" });
+  });
 });
 
 describe("parseYahooChart", () => {
@@ -63,6 +66,11 @@ describe("parseYahooChart", () => {
   test("响应错误 → 抛错", () => {
     expect(() => parseYahooChart({ chart: { result: null, error: { code: "Not Found" } } }))
       .toThrow();
+  });
+
+  test("空响应 / 缺少 result → 抛错", () => {
+    expect(() => parseYahooChart({ chart: { result: null, error: null } }))
+      .toThrow("缺少 result");
   });
 });
 
