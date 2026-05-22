@@ -74,3 +74,69 @@ export interface FullAnalysisResponse {
   news: StockNews[];
   analysis: AIAnalysisResult;
 }
+
+/**
+ * K 线粒度
+ */
+export type KlinePeriod = "1m" | "5m" | "15m" | "30m" | "60m" | "1d" | "1w" | "1mo";
+
+/**
+ * 时间范围（UI 选择器）
+ */
+export type KlineRange = "1d" | "5d" | "1m" | "3m" | "6m" | "ytd" | "1y" | "5y" | "all";
+
+/**
+ * 复权方式
+ */
+export type AdjustMode = "qfq" | "hfq" | "none";
+
+/**
+ * 一根 K 线
+ */
+export interface KlinePoint {
+  time: number;        // Unix 秒，对齐到周期起点
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;      // 股数；A 股原始是手数，已 × 100
+  amount?: number;     // 成交额（人民币 / 美元）
+}
+
+/**
+ * 一次 K 线拉取请求
+ */
+export interface KlineRequest {
+  symbol: string;            // 原始用户输入（"600519" / "AAPL" / "sh600519"）
+  period: KlinePeriod;
+  range: KlineRange;
+  adjust?: AdjustMode;       // 默认 "qfq"
+}
+
+/**
+ * 实时报价
+ */
+export interface RealtimeQuote {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  open: number;
+  high: number;
+  low: number;
+  prevClose: number;
+  volume: number;            // 股数
+  amount: number;            // 成交额
+  turnoverRate?: number;     // 换手率 %（A 股）
+  marketCap?: number;        // 总市值
+  pe?: number;
+  pb?: number;
+  high52w?: number;
+  low52w?: number;
+  preMarket?: { price: number; change: number; changePercent: number };
+  postMarket?: { price: number; change: number; changePercent: number };
+  timestamp: number;         // 报价时间 Unix 秒
+  currency: string;          // CNY / USD
+  market: "A股" | "美股";
+}
