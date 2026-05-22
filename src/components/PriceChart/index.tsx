@@ -18,6 +18,7 @@ interface Props {
 const PriceChart: React.FC<Props> = ({ symbol }) => {
   const [config, setConfig] = useState<ChartConfig>(DEFAULT_CONFIG);
   const [data, setData] = useState<KlinePoint[]>([]);
+  const [compareData, setCompareData] = useState<KlinePoint[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [crosshair, setCrosshair] = useState<KlinePoint | null>(null);
 
@@ -36,6 +37,19 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
       .then(setData)
       .catch((e) => setError(e?.message || "K 线加载失败"));
   }, [symbol, config.range, config.adjust]);
+
+  // 拉取比较基准的 K 线（symbol/range 变化时同步重拉）
+  useEffect(() => {
+    if (!config.compareSymbol) { setCompareData([]); return; }
+    fetchKline({
+      symbol: config.compareSymbol,
+      period: rangeToPeriod(config.range),
+      range: config.range,
+      adjust: "qfq",
+    })
+      .then(setCompareData)
+      .catch(() => setCompareData([]));
+  }, [config.compareSymbol, config.range]);
 
   // 用实时报价 update 最后一根 K 线（同一交易日时合并）
   useEffect(() => {
@@ -92,6 +106,8 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
           showBoll={config.subIndicator === "boll"}
           prevClose={quote?.prevClose}
           currentPrice={quote?.price}
+          compareData={compareData}
+          compareLabel={config.compareSymbol}
           onCrosshair={setCrosshair}
         />
         <CrosshairTooltip
