@@ -90,6 +90,33 @@ export function createHandlers(deps: HandlerDeps = {}) {
     },
 
     /**
+     * 拉取 K 线
+     */
+    async handleKline(reqJson: string) {
+      try {
+        const req = JSON.parse(reqJson);
+        const { getKline } = await import("./kline");
+        const points = await getKline(req);
+        out({ data: points });
+      } catch (error) {
+        out({ error: { code: "ERR_KLINE", message: toErrorMessage(error) } });
+      }
+    },
+
+    /**
+     * 拉取实时报价
+     */
+    async handleQuote(symbol: string) {
+      try {
+        const { getQuote } = await import("./kline");
+        const quote = await getQuote(symbol);
+        out({ data: quote });
+      } catch (error) {
+        out({ error: { code: "ERR_QUOTE", message: toErrorMessage(error) } });
+      }
+    },
+
+    /**
      * 执行完整分析 - 此处才会触发 playwright 相关的 scraper 加载
      */
     async handleAnalysis(symbol: string, config: ResolvedConfig) {
