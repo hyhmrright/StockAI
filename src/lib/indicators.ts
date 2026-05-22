@@ -146,3 +146,57 @@ export function kdj(
   }
   return { k, d, j };
 }
+
+/**
+ * 布林带 BOLL（中轨 SMA + 标准差倍数上下轨）
+ */
+export function boll(
+  closes: number[],
+  period = 20,
+  k = 2,
+): { mid: (number | null)[]; upper: (number | null)[]; lower: (number | null)[] } {
+  const mid = sma(closes, period);
+  const upper: (number | null)[] = new Array(closes.length).fill(null);
+  const lower: (number | null)[] = new Array(closes.length).fill(null);
+
+  for (let i = period - 1; i < closes.length; i++) {
+    const m = mid[i] as number;
+    let sq = 0;
+    for (let p = i - period + 1; p <= i; p++) sq += (closes[p] - m) ** 2;
+    const std = Math.sqrt(sq / period);
+    upper[i] = m + k * std;
+    lower[i] = m - k * std;
+  }
+  return { mid, upper, lower };
+}
+
+/**
+ * OBV（能量潮）
+ * 上涨日 += vol，下跌日 -= vol，平盘 += 0；首日 = vol[0]
+ */
+export function obv(closes: number[], volumes: number[]): number[] {
+  const out: number[] = new Array(closes.length).fill(0);
+  if (closes.length === 0) return out;
+  out[0] = volumes[0];
+  for (let i = 1; i < closes.length; i++) {
+    const sign = closes[i] > closes[i - 1] ? 1 : closes[i] < closes[i - 1] ? -1 : 0;
+    out[i] = out[i - 1] + sign * volumes[i];
+  }
+  return out;
+}
+
+/**
+ * VWAP（成交量加权均价，累计型）
+ * 典型价 = (H+L+C)/3；VWAP = Σ(typ × vol) / Σvol
+ */
+export function vwap(highs: number[], lows: number[], closes: number[], volumes: number[]): number[] {
+  const out: number[] = new Array(closes.length).fill(0);
+  let pvSum = 0, vSum = 0;
+  for (let i = 0; i < closes.length; i++) {
+    const typ = (highs[i] + lows[i] + closes[i]) / 3;
+    pvSum += typ * volumes[i];
+    vSum += volumes[i];
+    out[i] = vSum === 0 ? typ : pvSum / vSum;
+  }
+  return out;
+}
