@@ -1,5 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { FullAnalysisResponse, ServiceResponse, StockInfo, StockSearchResult } from "../../shared/types";
+import { FullAnalysisResponse, ServiceResponse, StockInfo, StockSearchResult, KlineRequest, KlinePoint, RealtimeQuote } from "../../shared/types";
 
 /**
  * 从原始 stdout 字符串中解析响应，支持标准 ServiceResponse 信封。
@@ -141,8 +141,53 @@ export async function listModels(provider: string, baseUrl: string): Promise<str
     return data.models || [];
   } catch (error) {
     console.error(`IPC 调用失败 (list_models) [provider=${provider}, baseUrl=${baseUrl}]:`, error);
-    // 重新抛出错误，让 UI 能够捕获并显示具体的失败原因，而不是由于返回 [] 导致的“未发现可用模型”掩盖
+    // 重新抛出错误，让 UI 能够捕获并显示具体的失败原因，而不是由于返回 [] 导致的"未发现可用模型"掩盖
     throw error;
   }
+}
+
+const MOCK_KLINE: KlinePoint[] = Array.from({ length: 30 }, (_, i) => {
+  const base = 180 + Math.sin(i / 5) * 5;
+  return {
+    time: Math.floor(Date.now() / 1000) - (30 - i) * 86400,
+    open: base,
+    high: base + 2,
+    low: base - 2,
+    close: base + (Math.random() - 0.5) * 3,
+    volume: 50_000_000 + Math.random() * 10_000_000,
+  };
+});
+
+const MOCK_QUOTE: RealtimeQuote = {
+  symbol: "AAPL",
+  name: "Apple Inc.",
+  price: 180.5,
+  change: 2.5,
+  changePercent: 1.4,
+  open: 179,
+  high: 182,
+  low: 178.5,
+  prevClose: 178,
+  volume: 55_000_000,
+  amount: 9_900_000_000,
+  high52w: 200,
+  low52w: 150,
+  timestamp: Math.floor(Date.now() / 1000),
+  currency: "USD",
+  market: "美股",
+};
+
+/** 拉取 K 线 */
+export async function fetchKline(req: KlineRequest): Promise<KlinePoint[]> {
+  if (!isTauri()) return MOCK_KLINE;
+  const raw = await invoke<string>("fetch_kline", { request: req });
+  return parseServiceResponse<KlinePoint[]>(raw);
+}
+
+/** 拉取实时报价 */
+export async function fetchRealtimeQuote(symbol: string): Promise<RealtimeQuote> {
+  if (!isTauri()) return MOCK_QUOTE;
+  const raw = await invoke<string>("fetch_realtime_quote", { symbol });
+  return parseServiceResponse<RealtimeQuote>(raw);
 }
 
