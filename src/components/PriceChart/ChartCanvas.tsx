@@ -5,28 +5,45 @@ import {
   type ISeriesApi,
   type CandlestickData,
   type HistogramData,
+  type LineData,
+  type IPriceLine,
   type UTCTimestamp,
   ColorType,
   CrosshairMode,
   PriceScaleMode,
+  LineStyle,
 } from "lightweight-charts";
 import type { KlinePoint } from "../../../shared/types";
 import { upColor, downColor } from "../../lib/market-hours";
+import { sma } from "../../lib/indicators";
+import { maPeriodsForMarket, MA_COLORS } from "./types";
 
 interface Props {
   data: KlinePoint[];
   market: "A股" | "美股";
   logScale: boolean;
   height?: number;
+  showMA: { short: boolean; mid: boolean; long: boolean };
+  prevClose?: number;     // 昨收水平线
+  currentPrice?: number;  // 当前价水平线
   onCrosshair?: (point: KlinePoint | null) => void;
 }
 
-const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, onCrosshair }) => {
+const ChartCanvas: React.FC<Props> = ({
+  data, market, logScale, height = 520,
+  showMA, prevClose, currentPrice, onCrosshair,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const crosshairCbRef = useRef(onCrosshair);
+  const maRef = useRef<{
+    short: ISeriesApi<"Line">;
+    mid:   ISeriesApi<"Line">;
+    long:  ISeriesApi<"Line">;
+  } | null>(null);
+  const priceLinesRef = useRef<{ prev?: IPriceLine; current?: IPriceLine }>({});
 
   // 让 ref 始终持有最新的 onCrosshair，避免被 effect 闭包"锁定"
   useEffect(() => { crosshairCbRef.current = onCrosshair; }, [onCrosshair]);
@@ -61,6 +78,13 @@ const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, on
       scaleMargins: { top: 0.78, bottom: 0 },
     });
 
+    // 三条均线 — 颜色由 types.ts 中 MA_COLORS 集中管理
+    maRef.current = {
+      short: chart.addLineSeries({ color: MA_COLORS.short, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+      mid:   chart.addLineSeries({ color: MA_COLORS.mid,   lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+      long:  chart.addLineSeries({ color: MA_COLORS.long,  lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+    };
+
     chartRef.current = chart;
     candleRef.current = candle;
     volumeRef.current = volume;
@@ -87,6 +111,7 @@ const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, on
 
     return () => {
       chart.remove();
+      maRef.current = null;
       chartRef.current = null;
       candleRef.current = null;
       volumeRef.current = null;
@@ -110,8 +135,21 @@ const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, on
 
     candleRef.current.setData(candleData);
     volumeRef.current.setData(volData);
+
+    // 根据 showMA 开关动态喂入 MA 数据
+    if (maRef.current) {
+      const { short: sp, mid: mp, long: lp } = maPeriodsForMarket(market);
+      const closes = data.map((p) => p.close);
+      const times  = data.map((p) => p.time as UTCTimestamp);
+      const toLine = (vals: (number | null)[]): LineData[] =>
+        vals.flatMap((v, i) => (v == null ? [] : [{ time: times[i], value: v }]));
+      maRef.current.short.setData(showMA.short ? toLine(sma(closes, sp)) : []);
+      maRef.current.mid.setData(  showMA.mid   ? toLine(sma(closes, mp)) : []);
+      maRef.current.long.setData( showMA.long  ? toLine(sma(closes, lp)) : []);
+    }
+
     chartRef.current?.timeScale().fitContent();
-  }, [data, market]);
+  }, [data, market, showMA.short, showMA.mid, showMA.long]);
 
   // 对数坐标
   useEffect(() => {
@@ -119,6 +157,24 @@ const ChartCanvas: React.FC<Props> = ({ data, market, logScale, height = 520, on
       mode: logScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
     });
   }, [logScale]);
+
+  // 关键水平线：昨收虚线 + 当前价实线（标签实时跟随）
+  useEffect(() => {
+    const candle = candleRef.current;
+    if (!candle) return;
+
+    // 移除旧线，防止重复叠加
+    const pl = priceLinesRef.current;
+    if (pl.prev)    { candle.removePriceLine(pl.prev);    pl.prev    = undefined; }
+    if (pl.current) { candle.removePriceLine(pl.current); pl.current = undefined; }
+
+    if (prevClose != null)
+      pl.prev = candle.createPriceLine({ price: prevClose, color: "rgba(255,255,255,0.4)", lineWidth: 1, lineStyle: LineStyle.Dashed,  axisLabelVisible: true, title: "昨收" });
+    if (currentPrice != null) {
+      const color = (prevClose == null || currentPrice >= prevClose) ? upColor(market) : downColor(market);
+      pl.current = candle.createPriceLine({ price: currentPrice, color, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "现价" });
+    }
+  }, [prevClose, currentPrice, market]);
 
   return <div ref={containerRef} style={{ width: "100%", height }} />;
 };

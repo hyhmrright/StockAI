@@ -16,7 +16,7 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
 
   return (
     <div className="w-full bg-panel rounded-xl border border-white/10 p-4 mb-8">
-      <ChartCanvas data={data} market={market} logScale={false} />
+      <ChartCanvas data={data} market={market} logScale={false} showMA={{ short: true, mid: true, long: true }} />
     </div>
   );
 };
