@@ -77,3 +77,34 @@ describe("kdj", () => {
     expect(k[8]).not.toBeNull();
   });
 });
+
+import { boll, obv, vwap } from "./indicators";
+
+describe("boll", () => {
+  it("中轨 = SMA，上下轨 = 中轨 ± k×std", () => {
+    const closes = Array.from({ length: 30 }, (_, i) => 100 + i);
+    const { mid, upper, lower } = boll(closes, 20, 2);
+    expect(mid[19]).not.toBeNull();
+    // 等差数列：std 可手算；20 项 [1..20] 的样本 std ≈ 5.766
+    expect((upper[19] as number) - (mid[19] as number)).toBeCloseTo(2 * 5.766, 1);
+    expect((mid[19] as number) - (lower[19] as number)).toBeCloseTo(2 * 5.766, 1);
+  });
+});
+
+describe("obv", () => {
+  it("收盘上涨日累加成交量，下跌日扣减", () => {
+    const closes = [10, 11, 10, 12];
+    const volumes = [100, 200, 150, 300];
+    expect(obv(closes, volumes)).toEqual([100, 300, 150, 450]);
+  });
+});
+
+describe("vwap", () => {
+  it("VWAP = Σ(typPrice × vol) / Σvol", () => {
+    const highs = [10, 12], lows = [8, 10], closes = [9, 11], volumes = [100, 200];
+    const out = vwap(highs, lows, closes, volumes);
+    // typ[0]=9, typ[1]=11；vwap[0]=9；vwap[1]=(9*100+11*200)/300=10.333
+    expect(out[0]).toBeCloseTo(9, 5);
+    expect(out[1]).toBeCloseTo(10.333, 3);
+  });
+});
