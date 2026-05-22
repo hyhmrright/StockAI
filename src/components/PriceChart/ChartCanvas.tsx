@@ -15,7 +15,7 @@ import {
 } from "lightweight-charts";
 import type { KlinePoint } from "../../../shared/types";
 import { upColor, downColor } from "../../lib/market-hours";
-import { sma } from "../../lib/indicators";
+import { sma, boll } from "../../lib/indicators";
 import { maPeriodsForMarket, MA_COLORS } from "./types";
 
 interface Props {
@@ -24,6 +24,7 @@ interface Props {
   logScale: boolean;
   height?: number;
   showMA: { short: boolean; mid: boolean; long: boolean };
+  showBoll?: boolean;
   prevClose?: number;     // 昨收水平线
   currentPrice?: number;  // 当前价水平线
   onCrosshair?: (point: KlinePoint | null) => void;
@@ -31,7 +32,7 @@ interface Props {
 
 const ChartCanvas: React.FC<Props> = ({
   data, market, logScale, height = 520,
-  showMA, prevClose, currentPrice, onCrosshair,
+  showMA, showBoll, prevClose, currentPrice, onCrosshair,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -42,6 +43,11 @@ const ChartCanvas: React.FC<Props> = ({
     short: ISeriesApi<"Line">;
     mid:   ISeriesApi<"Line">;
     long:  ISeriesApi<"Line">;
+  } | null>(null);
+  const bollRef = useRef<{
+    upper: ISeriesApi<"Line">;
+    mid:   ISeriesApi<"Line">;
+    lower: ISeriesApi<"Line">;
   } | null>(null);
   const priceLinesRef = useRef<{ prev?: IPriceLine; current?: IPriceLine }>({});
 
@@ -61,28 +67,20 @@ const ChartCanvas: React.FC<Props> = ({
       autoSize: true,
     });
 
+    const up = upColor(market), dn = downColor(market);
     const candle = chart.addCandlestickSeries({
-      upColor: upColor(market),
-      downColor: downColor(market),
-      borderUpColor: upColor(market),
-      borderDownColor: downColor(market),
-      wickUpColor: upColor(market),
-      wickDownColor: downColor(market),
+      upColor: up, downColor: dn, borderUpColor: up, borderDownColor: dn, wickUpColor: up, wickDownColor: dn,
     });
 
-    const volume = chart.addHistogramSeries({
-      priceFormat: { type: "volume" },
-      priceScaleId: "volume",
-    });
-    chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.78, bottom: 0 },
-    });
+    const volume = chart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "volume" });
+    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
 
     // 三条均线 — 颜色由 types.ts 中 MA_COLORS 集中管理
+    const maOpts = { lineWidth: 1 as const, priceLineVisible: false as const, lastValueVisible: false as const };
     maRef.current = {
-      short: chart.addLineSeries({ color: MA_COLORS.short, lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
-      mid:   chart.addLineSeries({ color: MA_COLORS.mid,   lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
-      long:  chart.addLineSeries({ color: MA_COLORS.long,  lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+      short: chart.addLineSeries({ color: MA_COLORS.short, ...maOpts }),
+      mid:   chart.addLineSeries({ color: MA_COLORS.mid,   ...maOpts }),
+      long:  chart.addLineSeries({ color: MA_COLORS.long,  ...maOpts }),
     };
 
     chartRef.current = chart;
@@ -112,6 +110,7 @@ const ChartCanvas: React.FC<Props> = ({
     return () => {
       chart.remove();
       maRef.current = null;
+      bollRef.current = null;
       priceLinesRef.current = {};  // 清除指向旧 chart 的 IPriceLine handle
       chartRef.current = null;
       candleRef.current = null;
@@ -123,19 +122,9 @@ const ChartCanvas: React.FC<Props> = ({
   useEffect(() => {
     if (!candleRef.current || !volumeRef.current) return;
 
-    const candleData: CandlestickData[] = data.map((p) => ({
-      time: p.time as UTCTimestamp,
-      open: p.open, high: p.high, low: p.low, close: p.close,
-    }));
-
-    const volData: HistogramData[] = data.map((p) => ({
-      time: p.time as UTCTimestamp,
-      value: p.volume,
-      color: p.close >= p.open ? upColor(market) + "80" : downColor(market) + "80",
-    }));
-
-    candleRef.current.setData(candleData);
-    volumeRef.current.setData(volData);
+    const up = upColor(market), dn = downColor(market);
+    candleRef.current.setData(data.map((p) => ({ time: p.time as UTCTimestamp, open: p.open, high: p.high, low: p.low, close: p.close })));
+    volumeRef.current.setData(data.map((p) => ({ time: p.time as UTCTimestamp, value: p.volume, color: p.close >= p.open ? up + "80" : dn + "80" })));
 
     // 根据 showMA 开关动态喂入 MA 数据
     if (maRef.current) {
@@ -158,6 +147,34 @@ const ChartCanvas: React.FC<Props> = ({
       mode: logScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
     });
   }, [logScale]);
+
+  // BOLL 上下轨叠加（主图）
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const bandOpts = { priceLineVisible: false as const, lastValueVisible: false as const };
+    if (showBoll && !bollRef.current) {
+      bollRef.current = {
+        upper: chart.addLineSeries({ color: "rgba(255,255,255,0.4)", lineWidth: 1, lineStyle: LineStyle.Dashed, ...bandOpts }),
+        mid:   chart.addLineSeries({ color: "rgba(255,255,255,0.6)", lineWidth: 1, ...bandOpts }),
+        lower: chart.addLineSeries({ color: "rgba(255,255,255,0.4)", lineWidth: 1, lineStyle: LineStyle.Dashed, ...bandOpts }),
+      };
+    } else if (!showBoll && bollRef.current) {
+      const b = bollRef.current;
+      chart.removeSeries(b.upper); chart.removeSeries(b.mid); chart.removeSeries(b.lower);
+      bollRef.current = null;
+    }
+    if (showBoll && bollRef.current && data.length > 0) {
+      const { upper, mid, lower } = boll(data.map((p) => p.close));
+      const times = data.map((p) => p.time as UTCTimestamp);
+      const toLine = (vs: (number | null)[]): LineData<UTCTimestamp>[] =>
+        vs.map((v, i) => (v == null ? null : { time: times[i], value: v })).filter((x): x is LineData<UTCTimestamp> => x !== null);
+      bollRef.current.upper.setData(toLine(upper));
+      bollRef.current.mid.setData(toLine(mid));
+      bollRef.current.lower.setData(toLine(lower));
+    }
+  }, [showBoll, data]);
 
   // 关键水平线：昨收虚线 + 当前价实线（标签实时跟随）
   useEffect(() => {
