@@ -58,6 +58,26 @@ async function runSmokeTest() {
     }
     console.log(`✅ 未知 symbol 返回空数组（长度 ${fallback.length}）`);
 
+    // 5. K 线 + 报价：覆盖 A 股 / 美股两个市场
+    console.log("\n阶段 5: K 线 + 实时报价回归（A 股 + 美股）...");
+    const { getKline, getQuote } = await import("../sidecar/kline");
+
+    const aapl = await getKline({ symbol: "AAPL", period: "1d", range: "1m" });
+    if (!Array.isArray(aapl) || aapl.length === 0) throw new Error("AAPL K 线为空");
+    console.log(`✅ AAPL 1M 日 K：${aapl.length} 根，最后一根 close=${aapl[aapl.length - 1].close}`);
+
+    const maotai = await getKline({ symbol: "600519", period: "1d", range: "1m" });
+    if (!Array.isArray(maotai) || maotai.length === 0) throw new Error("600519 K 线为空");
+    console.log(`✅ 600519 1M 日 K：${maotai.length} 根，最后一根 close=${maotai[maotai.length - 1].close}`);
+
+    const qAapl = await getQuote("AAPL");
+    if (!qAapl?.price || isNaN(qAapl.price)) throw new Error("AAPL 报价无效");
+    console.log(`✅ AAPL 实时：${qAapl.price} ${qAapl.currency}，涨跌 ${qAapl.changePercent}%`);
+
+    const qMaotai = await getQuote("600519");
+    if (!qMaotai?.price || isNaN(qMaotai.price)) throw new Error("600519 报价无效");
+    console.log(`✅ 600519 实时：${qMaotai.price} ${qMaotai.currency}，涨跌 ${qMaotai.changePercent}%`);
+
     console.log("\n✨ 全流程集成测试通过！");
     process.exit(0);
   } catch (error) {
