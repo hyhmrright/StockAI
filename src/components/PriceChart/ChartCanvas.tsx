@@ -112,6 +112,7 @@ const ChartCanvas: React.FC<Props> = ({
     return () => {
       chart.remove();
       maRef.current = null;
+      priceLinesRef.current = {};  // 清除指向旧 chart 的 IPriceLine handle
       chartRef.current = null;
       candleRef.current = null;
       volumeRef.current = null;
