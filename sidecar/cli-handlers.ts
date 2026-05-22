@@ -95,6 +95,10 @@ export function createHandlers(deps: HandlerDeps = {}) {
     async handleKline(reqJson: string) {
       try {
         const req = JSON.parse(reqJson);
+        if (!req?.symbol) {
+          out({ error: { code: "ERR_MISSING_PARAM", message: "未提供 symbol" } });
+          return;
+        }
         const { getKline } = await import("./kline");
         const points = await getKline(req);
         out({ data: points });
@@ -107,6 +111,10 @@ export function createHandlers(deps: HandlerDeps = {}) {
      * 拉取实时报价
      */
     async handleQuote(symbol: string) {
+      if (!symbol) {
+        out({ error: { code: "ERR_MISSING_PARAM", message: "未提供 symbol" } });
+        return;
+      }
       try {
         const { getQuote } = await import("./kline");
         const quote = await getQuote(symbol);
