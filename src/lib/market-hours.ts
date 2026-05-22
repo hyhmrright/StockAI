@@ -30,7 +30,6 @@ export function downColor(market: Market): string {
  * 不考虑节假日（免费数据源也不提供节假日日历，用户切换股票时会自动重拉）
  */
 export function isTradingHours(market: Market, ts: number = Date.now()): boolean {
-  const d = new Date(ts);
   if (market === "A股") {
     // 北京时间 = UTC+8
     const beijing = new Date(ts + 8 * 60 * 60 * 1000);
@@ -44,6 +43,7 @@ export function isTradingHours(market: Market, ts: number = Date.now()): boolean
            (mins >= 13 * 60 && mins <= 15 * 60);
   } else {
     // 美股按 ET（EDT/EST），夏令时简化：3月第2周日 ~ 11月第1周日 = EDT(UTC-4)，否则 EST(UTC-5)
+    const d = new Date(ts);
     const offsetH = isEdt(d) ? -4 : -5;
     const et = new Date(ts + offsetH * 60 * 60 * 1000);
     const day = et.getUTCDay();
