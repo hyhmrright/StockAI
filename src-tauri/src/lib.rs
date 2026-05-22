@@ -128,6 +128,22 @@ impl SidecarManager {
 
         Self::run(app_handle, vec!["--search".to_string(), config_json, keyword]).await
     }
+
+    async fn fetch_kline(
+        app_handle: &tauri::AppHandle,
+        request: serde_json::Value,
+    ) -> Result<String, String> {
+        let request_json = serde_json::to_string(&request)
+            .map_err(|e| format!("K 线参数序列化失败: {}", e))?;
+        Self::run(app_handle, vec!["--kline".to_string(), request_json]).await
+    }
+
+    async fn fetch_quote(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+    ) -> Result<String, String> {
+        Self::run(app_handle, vec!["--quote".to_string(), symbol]).await
+    }
 }
 
 /**
@@ -180,6 +196,28 @@ async fn list_models(
 }
 
 /**
+ * 拉取 K 线
+ */
+#[tauri::command]
+async fn fetch_kline(
+    app_handle: tauri::AppHandle,
+    request: serde_json::Value,
+) -> Result<String, String> {
+    SidecarManager::fetch_kline(&app_handle, request).await
+}
+
+/**
+ * 拉取实时报价
+ */
+#[tauri::command]
+async fn fetch_realtime_quote(
+    app_handle: tauri::AppHandle,
+    symbol: String,
+) -> Result<String, String> {
+    SidecarManager::fetch_quote(&app_handle, symbol).await
+}
+
+/**
  * 启动股票分析
  */
 #[tauri::command]
@@ -229,7 +267,14 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![start_analysis, list_models, get_stock_info, search_stocks])
+        .invoke_handler(tauri::generate_handler![
+            start_analysis,
+            list_models,
+            get_stock_info,
+            search_stocks,
+            fetch_kline,
+            fetch_realtime_quote
+        ])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");
 }
