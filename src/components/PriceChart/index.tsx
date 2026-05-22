@@ -4,11 +4,12 @@ import SubChart from "./SubChart";
 import QuoteHeader from "./QuoteHeader";
 import Toolbar from "./Toolbar";
 import CrosshairTooltip from "./CrosshairTooltip";
-import { fetchKline, fetchRealtimeQuote } from "../../lib/ipc";
+import { fetchKline } from "../../lib/ipc";
 import { detectMarket } from "../../lib/market-hours";
 import { sma } from "../../lib/indicators";
 import { DEFAULT_CONFIG, rangeToPeriod, maPeriodsForMarket, type ChartConfig } from "./types";
-import type { KlinePoint, RealtimeQuote } from "../../../shared/types";
+import { useRealtimeQuote } from "../../hooks/useRealtimeQuote";
+import type { KlinePoint } from "../../../shared/types";
 
 interface Props {
   symbol: string;
@@ -17,11 +18,11 @@ interface Props {
 const PriceChart: React.FC<Props> = ({ symbol }) => {
   const [config, setConfig] = useState<ChartConfig>(DEFAULT_CONFIG);
   const [data, setData] = useState<KlinePoint[]>([]);
-  const [quote, setQuote] = useState<RealtimeQuote | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [crosshair, setCrosshair] = useState<KlinePoint | null>(null);
 
   const market = useMemo(() => detectMarket(symbol), [symbol]);
+  const quote = useRealtimeQuote(symbol);
 
   // 拉 K 线（symbol / range / adjust 任一变化都重拉）
   useEffect(() => {
@@ -36,12 +37,28 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
       .catch((e) => setError(e?.message || "K 线加载失败"));
   }, [symbol, config.range, config.adjust]);
 
-  // 拉报价（symbol 变化时）
+  // 用实时报价 update 最后一根 K 线（同一交易日时合并）
   useEffect(() => {
-    fetchRealtimeQuote(symbol)
-      .then(setQuote)
-      .catch(() => setQuote(null));
-  }, [symbol]);
+    if (!quote || data.length === 0) return;
+    const last = data[data.length - 1];
+    const lastDate = new Date(last.time * 1000).toDateString();
+    const quoteDate = new Date(quote.timestamp * 1000).toDateString();
+    if (lastDate !== quoteDate) return;
+    setData((prev) => {
+      const merged = [...prev];
+      const i = merged.length - 1;
+      merged[i] = {
+        time: merged[i].time,
+        open: merged[i].open,
+        high: Math.max(merged[i].high, quote.price),
+        low:  Math.min(merged[i].low,  quote.price),
+        close: quote.price,
+        volume: quote.volume || merged[i].volume,
+        amount: quote.amount || merged[i].amount,
+      };
+      return merged;
+    });
+  }, [quote]);
 
   // 十字光标对应的 MA 值（按当前 hover 的 K 线索引取出对应均线值）
   const crosshairMA = useMemo(() => {
