@@ -67,6 +67,34 @@ export const logger = {
   }
 };
 
+import type { SuccessEnvelope, ErrorEnvelope, ServiceErrorPayload } from "../shared/types";
+
+/**
+ * 构造成功信封（强类型，避免散落各处写错字段名）
+ */
+export function successEnvelope<T>(data: T): SuccessEnvelope<T> {
+  return { data };
+}
+
+/**
+ * 构造错误信封
+ */
+export function errorEnvelope(code: string, message: string): ErrorEnvelope {
+  return { error: { code, message } };
+}
+
+/**
+ * 从 unknown 错误构造错误信封（用于 catch 块的快捷写法）
+ */
+export function errorEnvelopeFromUnknown(code: string, error: unknown): ErrorEnvelope {
+  return errorEnvelope(code, toErrorMessage(error));
+}
+
+/** 类型守卫：判断信封是否为成功响应（编译期 + 运行期双重校验） */
+export function isSuccess<T>(env: { data?: T; error?: ServiceErrorPayload }): env is SuccessEnvelope<T> {
+  return env.error === undefined && env.data !== undefined;
+}
+
 let _stdoutWritten = false;
 
 /**
@@ -91,7 +119,7 @@ export function outputJson(data: unknown): void {
     const msg = toErrorMessage(err);
     logToFile(`JSON 序列化失败: ${msg}`);
     // 序列化失败时仍写出有效的错误 JSON，确保 Tauri 端能解析响应
-    output = JSON.stringify({ error: { code: 'ERR_SERIALIZE', message: `JSON 序列化失败: ${msg}` } });
+    output = JSON.stringify(errorEnvelope('ERR_SERIALIZE', `JSON 序列化失败: ${msg}`));
   }
   _stdoutWritten = true;
   process.stdout.write(output + '\n');

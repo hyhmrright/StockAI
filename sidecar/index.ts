@@ -1,4 +1,4 @@
-import { logger, toErrorMessage, outputJson, logToFile } from './utils';
+import { logger, toErrorMessage, outputJson, logToFile, errorEnvelope, errorEnvelopeFromUnknown } from './utils';
 
 /**
  * 紧急入口点：确保错误拦截器在任何业务逻辑加载前运行。
@@ -6,14 +6,14 @@ import { logger, toErrorMessage, outputJson, logToFile } from './utils';
 process.on('uncaughtException', (err) => {
   const msg = toErrorMessage(err);
   logger.error(`[CRITICAL] 未捕获异常: ${msg}`);
-  outputJson({ error: { code: 'ERR_BOOT_CRASH', message: `启动崩溃: ${msg}` } });
+  outputJson(errorEnvelope('ERR_BOOT_CRASH', `启动崩溃: ${msg}`));
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   const msg = toErrorMessage(reason);
   logger.error(`[CRITICAL] Promise 拒绝: ${msg}`);
-  outputJson({ error: { code: 'ERR_BOOT_ASYNC', message: `异步启动失败: ${msg}` } });
+  outputJson(errorEnvelope('ERR_BOOT_ASYNC', `异步启动失败: ${msg}`));
   process.exit(1);
 });
 
@@ -125,7 +125,7 @@ async function run() {
         const config = resolveConfig(rawConfig);
         await Handlers.handleAnalysis(action || '', config);
       } catch (error) {
-        outputJson({ error: { code: 'ERR_CONFIG', message: toErrorMessage(error) } });
+        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
       }
       break;
   }
@@ -133,6 +133,6 @@ async function run() {
 
 run().catch(err => {
   logger.error(`执行流异常: ${toErrorMessage(err)}`);
-  outputJson({ error: { code: 'ERR_FATAL', message: toErrorMessage(err) } });
+  outputJson(errorEnvelopeFromUnknown('ERR_FATAL', err));
   process.exit(1);
 });

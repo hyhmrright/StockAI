@@ -1,5 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { FullAnalysisResponse, ServiceResponse, StockInfo, StockSearchResult, KlineRequest, KlinePoint, RealtimeQuote } from "../../shared/types";
+import { FullAnalysisResponse, StockInfo, StockSearchResult, KlineRequest, KlinePoint, RealtimeQuote } from "../../shared/types";
 import {
   MOCK_STOCKS,
   MOCK_STOCK_INFO,
@@ -28,9 +28,10 @@ export function parseServiceResponse<T>(raw: string): T {
     throw new Error('分析服务无响应，请检查 AI 模型配置或 Ollama 服务是否已启动。');
   }
 
-  let envelope: ServiceResponse<T> & { error?: any };
+  // envelope 形态由 sidecar successEnvelope/errorEnvelope 保证 union 互斥；这里做宽松解构兼容旧格式
+  let envelope: { data?: T; error?: { code?: string; message?: string } | string };
   try {
-    envelope = JSON.parse(raw);
+    envelope = JSON.parse(raw) as typeof envelope;
   } catch (e) {
     console.error("JSON 解析失败:", e, "原始数据:", raw);
     throw new Error(`分析服务响应格式错误 (非 JSON)。请检查 Sidecar 运行状态。内容: ${raw.substring(0, 50)}...`);

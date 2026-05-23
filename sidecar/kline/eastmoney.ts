@@ -1,4 +1,5 @@
 import type { KlinePoint, KlinePeriod, AdjustMode, NormalizedRequest } from "./types";
+import { parseChinaSymbol, chinaPrefixToEastmoneyMarket } from "./symbol";
 
 export function mapPeriodToEastmoney(p: KlinePeriod): number {
   return ({ "1m": 1, "5m": 5, "15m": 15, "30m": 30, "60m": 60, "1d": 101, "1w": 102, "1mo": 103 } as const)[p];
@@ -8,26 +9,9 @@ export function mapAdjustToEastmoney(a: AdjustMode): number {
   return a === "qfq" ? 1 : a === "hfq" ? 2 : 0;
 }
 
-/** 把腾讯式前缀 (sh/sz/bj) 映射为东财 secid 市场码 */
-function getMarketCode(rawSymbol: string): number {
-  const m = rawSymbol.match(/^(sh|sz|bj)?(\d{6})/i);
-  if (!m) throw new Error(`无法解析 A 股代码：${rawSymbol}`);
-  const prefix = (m[1] || "").toLowerCase();
-  const code = m[2];
-  if (prefix === "sh" || code.startsWith("6")) return 1;
-  if (prefix === "bj" || code.startsWith("4") || code.startsWith("8")) return 0;
-  return 0; // sz/创业板
-}
-
-function extractCode(rawSymbol: string): string {
-  const m = rawSymbol.match(/\d{6}/);
-  if (!m) throw new Error(`无法在 ${rawSymbol} 中找到 6 位代码`);
-  return m[0];
-}
-
 export async function fetchEastmoneyKline(req: NormalizedRequest): Promise<KlinePoint[]> {
-  const code = extractCode(req.rawSymbol);
-  const market = getMarketCode(req.rawSymbol);
+  const { prefix, code } = parseChinaSymbol(req.rawSymbol);
+  const market = chinaPrefixToEastmoneyMarket(prefix);
   const klt = mapPeriodToEastmoney(req.period);
   const fqt = mapAdjustToEastmoney(req.adjust);
 
