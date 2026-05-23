@@ -1,5 +1,6 @@
 import { spawnSync } from "child_process";
 import { join } from "path";
+import { errorEnvelope } from "../sidecar/utils";
 
 /**
  * Sidecar 桥接服务器 (增强版)
@@ -31,7 +32,7 @@ const server = Bun.serve({
       const runAndRespond = (sidecarArgs: string[], label: string) => {
         const result = spawnSync("bun", [SIDECAR_ENTRY, ...sidecarArgs], { encoding: "utf-8", env: { ...process.env } });
         if (result.stderr) console.error(`[Bridge][${label}] ${result.stderr}`);
-        const fallback = JSON.stringify({ error: { code: "ERR_BRIDGE", message: result.error?.message || "no stdout" } });
+        const fallback = JSON.stringify(errorEnvelope("ERR_BRIDGE", result.error?.message || "no stdout"));
         return new Response(result.stdout || fallback, { headers: corsHeaders });
       };
 

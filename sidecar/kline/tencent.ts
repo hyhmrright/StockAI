@@ -1,4 +1,5 @@
 import type { KlinePoint, RealtimeQuote, KlinePeriod, KlineRange, AdjustMode, NormalizedRequest } from "./types";
+import { parseChinaSymbol } from "./symbol";
 
 /** 把通用周期映射为腾讯 param */
 export function mapPeriodToTencent(period: KlinePeriod): string {
@@ -14,21 +15,8 @@ function countForRange(_period: KlinePeriod, range: KlineRange): number {
   return map[range];
 }
 
-/** 从原始 symbol 提取 tencent 接口前缀（sh / sz / bj）和 6 位代码 */
-function normalizeChinaSymbol(raw: string): { prefix: string; code: string } {
-  const m = raw.match(/(sh|sz|bj)?(\d{6})/i);
-  if (!m) throw new Error(`无法解析 A 股代码：${raw}`);
-  const code = m[2];
-  const explicit = m[1]?.toLowerCase();
-  if (explicit) return { prefix: explicit, code };
-  if (code.startsWith("6")) return { prefix: "sh", code };
-  if (code.startsWith("0") || code.startsWith("3")) return { prefix: "sz", code };
-  if (code.startsWith("4") || code.startsWith("8")) return { prefix: "bj", code };
-  return { prefix: "sh", code };
-}
-
 export async function fetchTencentKline(req: NormalizedRequest): Promise<KlinePoint[]> {
-  const { prefix, code } = normalizeChinaSymbol(req.rawSymbol);
+  const { prefix, code } = parseChinaSymbol(req.rawSymbol);
   const tencentSymbol = `${prefix}${code}`;
   const period = mapPeriodToTencent(req.period);
   const adjust = req.adjust === "qfq" ? "qfq" : req.adjust === "hfq" ? "hfq" : "";
@@ -82,7 +70,7 @@ function parseAmount(v: any): number | undefined {
 }
 
 export async function fetchTencentQuote(symbol: string): Promise<RealtimeQuote> {
-  const { prefix, code } = normalizeChinaSymbol(symbol);
+  const { prefix, code } = parseChinaSymbol(symbol);
   const tencentSymbol = `${prefix}${code}`;
   const url = `https://web.sqt.gtimg.cn/q=${tencentSymbol}`;
   const resp = await fetch(url, { headers: { Referer: "https://gu.qq.com" } });

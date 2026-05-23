@@ -1,4 +1,13 @@
-import { toErrorMessage, outputJson, withTimeout, logger, classifyListModelsError } from './utils';
+import {
+  toErrorMessage,
+  outputJson,
+  withTimeout,
+  logger,
+  classifyListModelsError,
+  successEnvelope,
+  errorEnvelope,
+  errorEnvelopeFromUnknown,
+} from './utils';
 import { DEFAULT_OPENAI_MODELS } from './config';
 import type { performFullAnalysis as AnalysisFn } from './analysis';
 import { ScrapeEmptyError } from './analysis';
@@ -38,14 +47,14 @@ export function createHandlers(deps: HandlerDeps = {}) {
             "获取 Ollama 模型列表超时，请检查服务是否响应"
           );
 
-          out({ data: { models: list.models.map(m => m.name) } });
+          out(successEnvelope({ models: list.models.map(m => m.name) }));
         } else {
-          out({ data: { models: DEFAULT_OPENAI_MODELS } });
+          out(successEnvelope({ models: DEFAULT_OPENAI_MODELS }));
         }
       } catch (error) {
         const { code, message } = classifyListModelsError(error);
         logger.error(`获取模型列表失败 [${code}]: ${message}`);
-        out({ error: { code, message } });
+        out(errorEnvelope(code, message));
       }
     },
 
@@ -54,7 +63,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
      */
     async handleInfo(symbol: string) {
       if (!symbol) {
-        out({ error: { code: 'ERR_MISSING_PARAM', message: '未提供股票代码' } });
+        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
         return;
       }
       try {
@@ -63,12 +72,12 @@ export function createHandlers(deps: HandlerDeps = {}) {
         const parsed = parseSymbol(symbol);
         const info = await fetchStockInfo(parsed);
         if (info) {
-          out({ data: info });
+          out(successEnvelope(info));
         } else {
-          out({ error: { code: 'ERR_NOT_FOUND', message: `未找到股票 "${symbol}" 的信息` } });
+          out(errorEnvelope('ERR_NOT_FOUND', `未找到股票 "${symbol}" 的信息`));
         }
       } catch (error) {
-        out({ error: { code: 'ERR_INFO', message: toErrorMessage(error) } });
+        out(errorEnvelopeFromUnknown('ERR_INFO', error));
       }
     },
 
@@ -77,15 +86,15 @@ export function createHandlers(deps: HandlerDeps = {}) {
      */
     async handleSearch(keyword: string) {
       if (!keyword) {
-        out({ data: [] });
+        out(successEnvelope([]));
         return;
       }
       try {
         const { searchStocks } = await import('./search');
         const results = await searchStocks(keyword);
-        out({ data: results });
+        out(successEnvelope(results));
       } catch (error) {
-        out({ error: { code: 'ERR_SEARCH', message: toErrorMessage(error) } });
+        out(errorEnvelopeFromUnknown('ERR_SEARCH', error));
       }
     },
 
@@ -96,14 +105,14 @@ export function createHandlers(deps: HandlerDeps = {}) {
       try {
         const req = JSON.parse(reqJson);
         if (!req?.symbol) {
-          out({ error: { code: "ERR_MISSING_PARAM", message: "未提供 symbol" } });
+          out(errorEnvelope('ERR_MISSING_PARAM', '未提供 symbol'));
           return;
         }
         const { getKline } = await import("./kline");
         const points = await getKline(req);
-        out({ data: points });
+        out(successEnvelope(points));
       } catch (error) {
-        out({ error: { code: "ERR_KLINE", message: toErrorMessage(error) } });
+        out(errorEnvelopeFromUnknown('ERR_KLINE', error));
       }
     },
 
@@ -112,15 +121,15 @@ export function createHandlers(deps: HandlerDeps = {}) {
      */
     async handleQuote(symbol: string) {
       if (!symbol) {
-        out({ error: { code: "ERR_MISSING_PARAM", message: "未提供 symbol" } });
+        out(errorEnvelope('ERR_MISSING_PARAM', '未提供 symbol'));
         return;
       }
       try {
         const { getQuote } = await import("./kline");
         const quote = await getQuote(symbol);
-        out({ data: quote });
+        out(successEnvelope(quote));
       } catch (error) {
-        out({ error: { code: "ERR_QUOTE", message: toErrorMessage(error) } });
+        out(errorEnvelopeFromUnknown('ERR_QUOTE', error));
       }
     },
 
@@ -136,14 +145,10 @@ export function createHandlers(deps: HandlerDeps = {}) {
           model: config.modelName,
           deepMode: config.deepMode,
         });
-        out({ data: result });
+        out(successEnvelope(result));
       } catch (error) {
-        out({
-          error: {
-            code: error instanceof ScrapeEmptyError ? 'ERR_SCRAPE_EMPTY' : 'ERR_ANALYSIS_FAILED',
-            message: toErrorMessage(error),
-          },
-        });
+        const code = error instanceof ScrapeEmptyError ? 'ERR_SCRAPE_EMPTY' : 'ERR_ANALYSIS_FAILED';
+        out(errorEnvelope(code, toErrorMessage(error)));
       }
     },
   };
