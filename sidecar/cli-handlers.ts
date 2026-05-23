@@ -1,4 +1,4 @@
-import { toErrorMessage, outputJson, withTimeout, logger } from './utils';
+import { toErrorMessage, outputJson, withTimeout, logger, classifyListModelsError } from './utils';
 import { DEFAULT_OPENAI_MODELS } from './config';
 import type { performFullAnalysis as AnalysisFn } from './analysis';
 import { ScrapeEmptyError } from './analysis';
@@ -43,9 +43,9 @@ export function createHandlers(deps: HandlerDeps = {}) {
           out({ data: { models: DEFAULT_OPENAI_MODELS } });
         }
       } catch (error) {
-        const msg = toErrorMessage(error);
-        logger.error(`获取模型列表失败: ${msg}`);
-        out({ error: { code: 'ERR_LIST_MODELS', message: msg } });
+        const { code, message } = classifyListModelsError(error);
+        logger.error(`获取模型列表失败 [${code}]: ${message}`);
+        out({ error: { code, message } });
       }
     },
 
