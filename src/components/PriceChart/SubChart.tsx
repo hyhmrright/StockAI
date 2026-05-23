@@ -10,6 +10,7 @@ import {
 } from "lightweight-charts";
 import type { KlinePoint } from "../../../shared/types";
 import type { SubChartIndicator } from "./types";
+import { CHART_THEME } from "./chart-theme";
 import { macd, rsi, kdj, obv, vwap } from "../../lib/indicators";
 import { upColor, downColor } from "../../lib/market-hours";
 
@@ -32,12 +33,12 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
 
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "rgba(255,255,255,0.45)",
+        background: { type: ColorType.Solid, color: CHART_THEME.background },
+        textColor: CHART_THEME.textMuted,
       },
       grid: {
-        vertLines: { color: "rgba(255,255,255,0.04)" },
-        horzLines: { color: "rgba(255,255,255,0.04)" },
+        vertLines: { color: CHART_THEME.gridSubtle },
+        horzLines: { color: CHART_THEME.gridSubtle },
       },
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false, timeVisible: false, visible: false },
@@ -61,11 +62,14 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
         .map((v, i) => (v == null ? null : { time: times[i], value: v }))
         .filter((x): x is LineData<UTCTimestamp> => x !== null);
 
+    const palette = CHART_THEME.series;
+    const lineOpts = { lineWidth: 1 as const, priceLineVisible: false as const, lastValueVisible: false as const };
+
     if (indicator === "macd") {
       const { dif, dea, hist } = macd(closes);
-      const sDif = chart.addLineSeries({ color: "#F5C842", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      const sDif = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
       sDif.setData(toLine(dif));
-      const sDea = chart.addLineSeries({ color: "#B388FF", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      const sDea = chart.addLineSeries({ color: palette.purple, ...lineOpts });
       sDea.setData(toLine(dea));
       const sHist = chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false });
       const histData: HistogramData<UTCTimestamp>[] = [];
@@ -75,21 +79,21 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
       });
       sHist.setData(histData);
     } else if (indicator === "rsi") {
-      const series = chart.addLineSeries({ color: "#4FC3F7", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      const series = chart.addLineSeries({ color: palette.cyan, ...lineOpts });
       series.setData(toLine(rsi(closes)));
     } else if (indicator === "kdj") {
       const { k, d, j } = kdj(highs, lows, closes);
-      const sK = chart.addLineSeries({ color: "#F5C842", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      const sK = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
       sK.setData(toLine(k));
-      const sD = chart.addLineSeries({ color: "#B388FF", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      const sD = chart.addLineSeries({ color: palette.purple, ...lineOpts });
       sD.setData(toLine(d));
-      const sJ = chart.addLineSeries({ color: "#FF6B9D", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      const sJ = chart.addLineSeries({ color: palette.pink, ...lineOpts });
       sJ.setData(toLine(j));
     } else if (indicator === "obv") {
-      const series = chart.addLineSeries({ color: "#4FC3F7", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      const series = chart.addLineSeries({ color: palette.cyan, ...lineOpts });
       series.setData(obv(closes, vols).map((v, i) => ({ time: times[i], value: v })));
     } else if (indicator === "vwap") {
-      const series = chart.addLineSeries({ color: "#F5C842", lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      const series = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
       series.setData(vwap(highs, lows, closes, vols).map((v, i) => ({ time: times[i], value: v })));
     }
 
