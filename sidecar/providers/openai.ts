@@ -1,8 +1,8 @@
 import OpenAI from "openai";
-import type { AIAnalysisResult, StockNews } from "../../shared/types";
+import type { AIAnalysisResult, StockNews, QuantBundle } from "../../shared/types";
 import type { AIProvider, ProviderKind } from "../ai";
 import { PROVIDER_PROFILES } from "../config";
-import { buildAnalysisPrompt, SYSTEM_PROMPT } from "../prompts";
+import { buildAnalysisPrompt, buildEnhancedPrompt, SYSTEM_PROMPT } from "../prompts";
 import { toErrorMessage, logger, parseJsonFromAi } from "../utils";
 
 /**
@@ -22,8 +22,10 @@ export class OpenAIProvider implements AIProvider {
     this.model = model;
   }
 
-  async analyze(symbol: string, news: StockNews[]): Promise<AIAnalysisResult> {
-    const prompt = buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.openai.contentLimit);
+  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult> {
+    const prompt = quant
+      ? buildEnhancedPrompt(symbol, news, quant, PROVIDER_PROFILES.openai.contentLimit)
+      : buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.openai.contentLimit);
 
     try {
       const response = await this.client.chat.completions.create({

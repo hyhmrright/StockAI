@@ -40,6 +40,7 @@ const server = Bun.serve({
 
       if (cmd === "fetch_kline") return runAndRespond(["--kline", JSON.stringify(args.request)], "kline");
       if (cmd === "fetch_realtime_quote") return runAndRespond(["--quote", args.symbol], "quote");
+      if (cmd === "fetch_quant_bundle") return runAndRespond(["--quant", args.symbol], "quant");
 
       // sidecar 期望的 raw config 形态：需要 _version + providerConfigs 结构（参考 configResolver.ts）
       const buildSettingsJson = () => {

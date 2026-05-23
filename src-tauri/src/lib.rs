@@ -161,6 +161,13 @@ impl SidecarManager {
         Self::run(app_handle, vec!["--quote".to_string(), symbol]).await
     }
 
+    async fn fetch_quant_bundle(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+    ) -> Result<String, String> {
+        Self::run(app_handle, vec!["--quant".to_string(), symbol]).await
+    }
+
     async fn fetch_market_bundle(
         app_handle: &tauri::AppHandle,
         symbol: String,
@@ -177,6 +184,7 @@ impl SidecarManager {
         symbol: String,
         news: serde_json::Value,
         config: serde_json::Value,
+        quant: Option<String>,
     ) -> Result<String, String> {
         let config_json = serde_json::to_string(&config)
             .map_err(|e| format!("配置序列化失败: {}", e))?;
@@ -199,11 +207,11 @@ impl SidecarManager {
         let guard = TempFileGuard(temp_path);
 
         let path_arg = guard.path().to_string_lossy().into_owned();
-        Self::run(
-            app_handle,
-            vec!["--analyze-only".to_string(), config_json, symbol, path_arg],
-        )
-        .await
+        let mut args = vec!["--analyze-only".to_string(), config_json, symbol, path_arg];
+        if let Some(q) = quant {
+            args.push(q);
+        }
+        Self::run(app_handle, args).await
         // guard drops here，自动清理（即使 await 期间被取消也保证清理）
     }
 }
@@ -322,6 +330,7 @@ async fn analyze_news(
     app_handle: tauri::AppHandle,
     symbol: String,
     news: serde_json::Value,
+    quant: Option<String>,
 ) -> Result<String, String> {
     let store = app_handle
         .store("settings.json")
@@ -331,7 +340,15 @@ async fn analyze_news(
         .filter(|v| !v.is_null())
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
-    SidecarManager::analyze_news(&app_handle, symbol, news, settings_val).await
+    SidecarManager::analyze_news(&app_handle, symbol, news, settings_val, quant).await
+}
+
+#[tauri::command]
+async fn fetch_quant_bundle(
+    app_handle: tauri::AppHandle,
+    symbol: String,
+) -> Result<String, String> {
+    SidecarManager::fetch_quant_bundle(&app_handle, symbol).await
 }
 
 #[cfg(test)]
@@ -423,7 +440,8 @@ pub fn run() {
             get_stock_info,
             search_stocks,
             fetch_kline,
-            fetch_realtime_quote
+            fetch_realtime_quote,
+            fetch_quant_bundle
         ])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");

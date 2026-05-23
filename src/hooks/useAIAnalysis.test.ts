@@ -33,7 +33,7 @@ describe("useAIAnalysis", () => {
     await act(async () => { await result.current.analyze(NEWS); });
     expect(result.current.record?.result.rating).toBe(72);
     expect(result.current.record?.newsSnapshotLength).toBe(1);
-    expect(runner).toHaveBeenCalledWith("AAPL", NEWS);
+    expect(runner).toHaveBeenCalledWith("AAPL", NEWS, undefined);
   });
 
   it("按 symbol 缓存：切换 symbol 后保留各自最近结果", async () => {

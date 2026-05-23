@@ -16,7 +16,7 @@ import type {
 } from './analysis';
 import { ScrapeEmptyError } from './analysis';
 import type { ResolvedConfig } from './configResolver';
-import type { StockNews } from '../shared/types';
+import type { StockNews, QuantBundle } from '../shared/types';
 
 export interface RawConfig {
   provider?: string;
@@ -178,21 +178,39 @@ export function createHandlers(deps: HandlerDeps = {}) {
      * 仅调 LLM 分析已抓到的新闻 — 新交互流程第二步
      * news 由前端从 bundle 缓存传回，避免在 sidecar 重复抓取
      */
-    async handleAnalyzeOnly(symbol: string, news: StockNews[], config: ResolvedConfig) {
+    async handleAnalyzeOnly(symbol: string, news: StockNews[], config: ResolvedConfig, quantJson?: string) {
       try {
         if (!Array.isArray(news) || news.length === 0) {
           out(errorEnvelope('ERR_MISSING_PARAM', '未提供有效的 news 数组，请先拉取新闻'));
           return;
+        }
+        let quant: QuantBundle | undefined;
+        if (quantJson) {
+          try { quant = JSON.parse(quantJson); } catch { logger.warn('quantJson 解析失败，跳过量化数据'); }
         }
         const analyzeOnly = deps._analyzeOnly ?? (await import('./analysis')).analyzeNewsWithLLM;
         const analysis = await analyzeOnly(symbol, news, config.provider, {
           apiKey: config.apiKey,
           baseUrl: config.baseUrl,
           model: config.modelName,
-        });
+        }, quant);
         out(successEnvelope(analysis));
       } catch (error) {
         out(errorEnvelopeFromUnknown('ERR_ANALYSIS_FAILED', error));
+      }
+    },
+
+    async handleQuant(symbol: string) {
+      if (!symbol) {
+        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
+        return;
+      }
+      try {
+        const { fetchQuantBundle } = await import('./quant');
+        const bundle = await fetchQuantBundle(symbol);
+        out(successEnvelope(bundle));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_QUANT', error));
       }
     },
   };

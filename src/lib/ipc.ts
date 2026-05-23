@@ -7,6 +7,7 @@ import {
   MarketBundle,
   StockNews,
   AIAnalysisResult,
+  QuantBundle,
 } from "../../shared/types";
 import {
   MOCK_STOCKS,
@@ -15,6 +16,7 @@ import {
   MOCK_QUOTE,
   MOCK_BUNDLE,
   MOCK_AI_RESULT,
+  MOCK_QUANT,
 } from "./dev-mocks";
 
 /**
@@ -134,12 +136,25 @@ export async function fetchMarketBundle(symbol: string): Promise<MarketBundle> {
 /**
  * 显式触发 LLM 分析（基于已抓到的 news）— 新交互流程第二步
  */
-export async function analyzeNews(symbol: string, news: StockNews[]): Promise<AIAnalysisResult> {
-  if (!isTauri()) return devBridgeInvoke<AIAnalysisResult>("analyze_news", { symbol, news }, MOCK_AI_RESULT);
+export async function analyzeNews(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult> {
+  const quantJson = quant ? JSON.stringify(quant) : undefined;
+  if (!isTauri()) return devBridgeInvoke<AIAnalysisResult>("analyze_news", { symbol, news, quant: quantJson }, MOCK_AI_RESULT);
 
   try {
-    const raw = await invoke<string>("analyze_news", { symbol, news });
+    const raw = await invoke<string>("analyze_news", { symbol, news, quant: quantJson });
     return parseServiceResponse<AIAnalysisResult>(raw);
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error(typeof error === 'string' ? error : String(error));
+  }
+}
+
+export async function fetchQuantBundle(symbol: string): Promise<QuantBundle> {
+  if (!isTauri()) return devBridgeInvoke<QuantBundle>("fetch_quant_bundle", { symbol }, MOCK_QUANT);
+
+  try {
+    const raw = await invoke<string>("fetch_quant_bundle", { symbol });
+    return parseServiceResponse<QuantBundle>(raw);
   } catch (error) {
     if (error instanceof Error) throw error;
     throw new Error(typeof error === 'string' ? error : String(error));

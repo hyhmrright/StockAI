@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { AIAnalysisResult, StockNews } from "../../shared/types";
+import { AIAnalysisResult, StockNews, QuantBundle } from "../../shared/types";
 import { analyzeNews } from "../lib/ipc";
 
 export interface AIAnalysisRecord {
@@ -13,11 +13,11 @@ export interface UseAIAnalysisResult {
   record: AIAnalysisRecord | null;
   analyzing: boolean;
   error: string | null;
-  /** 显式触发 LLM 分析；传入 news 用最新抓到的 */
-  analyze: (news: StockNews[]) => Promise<void>;
+  /** 显式触发 LLM 分析；传入 news 用最新抓到的，quant 可选 */
+  analyze: (news: StockNews[], quant?: QuantBundle) => Promise<void>;
 }
 
-type AnalyzeFn = (symbol: string, news: StockNews[]) => Promise<AIAnalysisResult>;
+type AnalyzeFn = (symbol: string, news: StockNews[], quant?: QuantBundle) => Promise<AIAnalysisResult>;
 
 /** cache/error Map 容量上限，超出按插入顺序淘汰最旧条目 */
 export const MAX_SYMBOLS_IN_CACHE = 50;
@@ -53,7 +53,7 @@ export function useAIAnalysis(symbol: string, runner: AnalyzeFn = analyzeNews): 
   const reqIdRef = useRef<Map<string, number>>(new Map());
   const [, force] = useState(0);
 
-  const analyze = useCallback(async (news: StockNews[]) => {
+  const analyze = useCallback(async (news: StockNews[], quant?: QuantBundle) => {
     if (!symbol) return;
     if (news.length === 0) {
       setWithLRI(errorRef.current, symbol, "尚未抓到新闻，无法分析。请等待数据加载完成后再点击。", MAX_SYMBOLS_IN_CACHE);
@@ -69,7 +69,7 @@ export function useAIAnalysis(symbol: string, runner: AnalyzeFn = analyzeNews): 
     force(n => n + 1);
 
     try {
-      const result = await runner(symbol, news);
+      const result = await runner(symbol, news, quant);
       if (reqIdRef.current.get(symbol) !== myReqId) return;
       setWithLRI(cacheRef.current, symbol, {
         result,

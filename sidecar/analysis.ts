@@ -1,4 +1,4 @@
-import type { AIAnalysisResult, FullAnalysisResponse, MarketBundle, StockInfo, StockNews } from '../shared/types';
+import type { AIAnalysisResult, FullAnalysisResponse, MarketBundle, StockInfo, StockNews, QuantBundle } from '../shared/types';
 import type { ParsedSymbol } from './parsers/exchange';
 import type { AIProvider } from './ai';
 import { scrapeStockNews as realScrape } from './scraper';
@@ -74,12 +74,13 @@ export async function analyzeNewsWithLLM(
   news: StockNews[],
   providerType: string = 'openai',
   config: { apiKey?: string; baseUrl?: string; model?: string } = {},
+  quant?: QuantBundle,
   deps: AnalysisDeps = {},
 ): Promise<AIAnalysisResult> {
   const createProvider = deps.createProvider ?? realCreateProvider;
   try {
     const provider = createProvider(providerType, config);
-    return await provider.analyze(symbol, news);
+    return await provider.analyze(symbol, news, quant);
   } catch (error) {
     const msg = toErrorMessage(error);
     logger.error(`AI 分析异常 (${symbol}): ${msg}`);
@@ -103,6 +104,6 @@ export async function performFullAnalysis(
   deps: AnalysisDeps = {},
 ): Promise<FullAnalysisResponse> {
   const bundle = await fetchMarketBundle(symbol, config.deepMode ?? true, deps);
-  const analysis = await analyzeNewsWithLLM(symbol, bundle.news, providerType, config, deps);
+  const analysis = await analyzeNewsWithLLM(symbol, bundle.news, providerType, config, undefined, deps);
   return { symbol, stockInfo: bundle.stockInfo, news: bundle.news, analysis };
 }

@@ -1,0 +1,60 @@
+import type { QuantBundle } from '../../shared/types';
+import type { FinancialMetrics } from './types';
+import { getKline, getQuote } from '../kline';
+import { analyzeTechnical } from './technical';
+import { fetchFundamentals, scoreFundamentals } from './fundamental';
+import { computeComposite } from './scoring';
+import { detectMarket } from '../../shared/market';
+import { logger, toErrorMessage } from '../utils';
+
+export interface QuantDeps {
+  getKline?: typeof getKline;
+  getQuote?: typeof getQuote;
+  fetchFundamentals?: typeof fetchFundamentals;
+}
+
+export async function fetchQuantBundle(
+  symbol: string,
+  deps: QuantDeps = {},
+): Promise<QuantBundle> {
+  const _getKline = deps.getKline ?? getKline;
+  const _getQuote = deps.getQuote ?? getQuote;
+  const _fetchFundamentals = deps.fetchFundamentals ?? fetchFundamentals;
+
+  const market = detectMarket(symbol);
+
+  const [klineResult, quoteResult, fundamentalsResult] = await Promise.allSettled([
+    _getKline({ symbol, period: '1d', range: '1y' }),
+    _getQuote(symbol),
+    _fetchFundamentals(symbol, market),
+  ]);
+
+  const kline = klineResult.status === 'fulfilled' ? klineResult.value : [];
+  const quote = quoteResult.status === 'fulfilled' ? quoteResult.value : null;
+
+  const fundamentalsRaw: FinancialMetrics = {
+    ...(fundamentalsResult.status === 'fulfilled' ? fundamentalsResult.value : {}),
+  };
+
+  if (quote) {
+    if (quote.pe != null && fundamentalsRaw.pe == null) fundamentalsRaw.pe = quote.pe;
+    if (quote.pb != null && fundamentalsRaw.pb == null) fundamentalsRaw.pb = quote.pb;
+    if (quote.marketCap != null) fundamentalsRaw.marketCap = quote.marketCap;
+  }
+
+  if (klineResult.status === 'rejected') {
+    logger.warn(`K 线获取失败: ${toErrorMessage(klineResult.reason)}`);
+  }
+
+  const technicalResult = analyzeTechnical(kline);
+  const fundamentalResult = scoreFundamentals(fundamentalsRaw);
+  const composite = computeComposite(technicalResult.composite, fundamentalResult.composite);
+
+  return {
+    symbol,
+    technical: technicalResult.composite,
+    fundamental: fundamentalResult.composite,
+    composite,
+    fetchedAt: Date.now(),
+  };
+}

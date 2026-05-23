@@ -6,6 +6,7 @@ import type {
   MarketBundle,
   StockNews,
   AIAnalysisResult,
+  QuantBundle,
 } from "../../shared/types";
 
 /**
@@ -92,4 +93,20 @@ export const MOCK_QUOTE: RealtimeQuote = {
   timestamp: Math.floor(Date.now() / 1000),
   currency: "USD",
   market: "美股",
+};
+
+export const MOCK_QUANT: QuantBundle = {
+  symbol: "AAPL",
+  technical: {
+    signal: "bullish",
+    confidence: 72,
+    details: { rsi: 45, adx: 28, alignment: "bullish", volume_ratio: 1.3, macd_trend: "expanding" },
+  },
+  fundamental: {
+    signal: "neutral",
+    confidence: 55,
+    details: { roe: 16.5, pe: 22, net_margin: 12, pb: 2.8 },
+  },
+  composite: { signal: "bullish", score: 68 },
+  fetchedAt: Date.now(),
 };

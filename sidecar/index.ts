@@ -32,6 +32,7 @@ interface ParsedArgs {
   configStr: string;
   actionParam?: string;
   newsJson?: string;
+  quantJson?: string;
 }
 
 /** 命令定义表：flag → 参数提取逻辑 */
@@ -67,14 +68,20 @@ const COMMAND_TABLE: CommandDef[] = [
     extract: (args, idx) => ({ configStr: args[idx + 1] || '{}', actionParam: args[idx + 2] }),
   },
   {
-    // --analyze-only config_json symbol news_path
+    // --analyze-only config_json symbol news_path [quant_json]
     // news 通过临时文件传递（Rust 写入路径），避免 argv 撞 macOS ARG_MAX
     flag: '--analyze-only',
     extract: (args, idx) => ({
       configStr: args[idx + 1] || '{}',
       actionParam: args[idx + 2],
       newsJson: args[idx + 3],
+      quantJson: args[idx + 4],
     }),
+  },
+  {
+    // --quant symbol
+    flag: '--quant',
+    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
   },
 ];
 
@@ -120,7 +127,7 @@ async function run() {
   const { resolveConfig } = await import('./configResolver');
   const { Handlers } = await import('./cli-handlers');
 
-  const { action, configStr, actionParam, newsJson } = parseArgs(args);
+  const { action, configStr, actionParam, newsJson, quantJson } = parseArgs(args);
 
   logger.info(`Sidecar 执行: action=${action}, param=${actionParam}, config_len=${configStr.length}`);
 
@@ -175,10 +182,13 @@ async function run() {
           outputJson(errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`));
           return;
         }
-        await Handlers.handleAnalyzeOnly(actionParam || '', news, config);
+        await Handlers.handleAnalyzeOnly(actionParam || '', news, config, quantJson);
       } catch (error) {
         outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
       }
+      break;
+    case '--quant':
+      await Handlers.handleQuant(actionParam || '');
       break;
     default:
       try {

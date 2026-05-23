@@ -3,20 +3,22 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 import SentimentBar from './SentimentBar';
 import StockInfoCard from './StockInfoCard';
 import AnalysisTriggerCard from './AnalysisTriggerCard';
+import QuantScoreCard from './QuantScoreCard';
 import type { AIAnalysisRecord } from '../hooks/useAIAnalysis';
-import type { StockInfo } from '../../shared/types';
+import type { StockInfo, QuantBundle } from '../../shared/types';
 
 interface AnalysisPanelProps {
   stockInfo?: StockInfo;
   record: AIAnalysisRecord | null;
   analyzing: boolean;
   error: string | null;
-  /** 当前是否已有新闻可分析（来自 useStockData） */
   hasNews: boolean;
-  /** 当前生效的 Provider / 模型，用于在按钮下方提示 */
   providerLabel: string;
   modelLabel: string;
   onAnalyze: () => void;
+  quant: QuantBundle | null;
+  quantLoading: boolean;
+  quantError: string | null;
 }
 
 function sentimentBgClass(sentiment: 'bullish' | 'bearish' | 'neutral'): string {
@@ -43,6 +45,7 @@ function sentimentBadgeClass(sentiment: 'bullish' | 'bearish' | 'neutral'): stri
  */
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   stockInfo, record, analyzing, error, hasNews, providerLabel, modelLabel, onAnalyze,
+  quant, quantLoading, quantError,
 }) => {
   const result = record?.result;
   const bgClass = sentimentBgClass(result?.sentiment ?? 'bullish');
@@ -51,6 +54,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   return (
     <aside className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-white/10 bg-panel p-6 lg:overflow-y-auto">
       {stockInfo && <StockInfoCard info={stockInfo} />}
+
+      <QuantScoreCard quant={quant} loading={quantLoading} error={quantError} />
 
       {/* AI 触发卡片 — 永远显示，状态决定形态 */}
       <div className="mb-10">
@@ -123,6 +128,23 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                 </div>
               ))}
             </div>
+
+            {(result.technicalView || result.fundamentalView) && (
+              <div className="mt-6 space-y-3">
+                {result.technicalView && (
+                  <div className="p-4 bg-sky-500/5 border-l-4 border-sky-500 rounded-r-xl">
+                    <div className="text-xs text-sky-400 mb-1 font-bold">技术面解读</div>
+                    <div className="text-sm leading-snug">{result.technicalView}</div>
+                  </div>
+                )}
+                {result.fundamentalView && (
+                  <div className="p-4 bg-violet-500/5 border-l-4 border-violet-500 rounded-r-xl">
+                    <div className="text-xs text-violet-400 mb-1 font-bold">基本面解读</div>
+                    <div className="text-sm leading-snug">{result.fundamentalView}</div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}

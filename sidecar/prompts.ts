@@ -1,4 +1,4 @@
-import type { StockNews } from '../shared/types';
+import type { StockNews, QuantBundle } from '../shared/types';
 
 /**
  * 所有 Provider 共用的 system prompt——JSON 纯文本格式要求对 OpenAI / Anthropic / Ollama 都适用。
@@ -58,4 +58,64 @@ ${newsList}
 请结合以上信息（特别是新闻正文中的细节）提供一个结构化的分析报告。
 
 ${FORMAT_INSTRUCTIONS}`;
+}
+
+function translateSignal(signal: string): string {
+  switch (signal) {
+    case 'bullish': return '看涨';
+    case 'bearish': return '看跌';
+    default: return '中性';
+  }
+}
+
+function formatQuantSummary(quant: QuantBundle): string {
+  const t = quant.technical;
+  const f = quant.fundamental;
+  const td = t.details;
+  const fd = f.details;
+
+  const lines: string[] = [
+    '[量化分析摘要]',
+    '',
+    `技术面信号：${translateSignal(t.signal)}，置信度 ${t.confidence}%`,
+  ];
+
+  if (td.alignment != null) lines.push(`- EMA 排列：${td.alignment === 'bullish' ? '多头排列' : td.alignment === 'bearish' ? '空头排列' : '交叉纠缠'}`);
+  if (td.rsi != null) lines.push(`- RSI(14)：${td.rsi}${Number(td.rsi) < 30 ? '（超卖）' : Number(td.rsi) > 70 ? '（超买）' : '（中性区间）'}`);
+  if (td.macd_trend != null) lines.push(`- MACD：柱状量${td.macd_trend === 'expanding' ? '放大' : '收缩'}`);
+  if (td.adx != null) lines.push(`- ADX：${td.adx}${Number(td.adx) > 25 ? '（趋势明确）' : '（趋势较弱）'}`);
+  if (td.volume_ratio != null) lines.push(`- 成交量比：${td.volume_ratio}（相对20日均量）`);
+
+  lines.push('');
+  lines.push(`基本面信号：${translateSignal(f.signal)}，置信度 ${f.confidence}%`);
+
+  if (fd.roe != null) lines.push(`- ROE: ${fd.roe}%`);
+  if (fd.net_margin != null) lines.push(`- 净利率: ${fd.net_margin}%`);
+  if (fd.revenue_growth != null) lines.push(`- 营收增长: ${fd.revenue_growth}%`);
+  if (fd.pe != null) lines.push(`- PE: ${fd.pe}`);
+  if (fd.pb != null) lines.push(`- PB: ${fd.pb}`);
+  if (fd.debt_to_asset != null) lines.push(`- 资产负债率: ${fd.debt_to_asset}%`);
+
+  lines.push('');
+  lines.push(`综合量化评分：${quant.composite.score}/100（${translateSignal(quant.composite.signal)}）`);
+
+  return lines.join('\n');
+}
+
+export function buildEnhancedPrompt(
+  symbol: string,
+  news: StockNews[],
+  quant: QuantBundle,
+  contentLimit = 1000,
+): string {
+  const quantSection = formatQuantSummary(quant);
+  const newsPrompt = buildAnalysisPrompt(symbol, news, contentLimit);
+
+  return `${quantSection}
+
+${newsPrompt}
+
+请结合量化分析数据和新闻信息，给出综合研判。在 JSON 中额外增加两个字段：
+"technicalView": "对技术面指标的文字解读（1-2 句话）",
+"fundamentalView": "对基本面指标的文字解读（1-2 句话）"`;
 }
