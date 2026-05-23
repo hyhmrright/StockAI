@@ -2,6 +2,22 @@ use tauri_plugin_shell::ShellExt;
 use tauri_plugin_store::StoreExt;
 use serde::{Deserialize, Serialize};
 
+/**
+ * RAII 临时文件守卫：drop 时自动删文件，覆盖 panic / async cancel / 提前 return 等所有退出路径。
+ * 不依赖外部 crate，避免引入 tempfile / scopeguard 仅为此一处用。
+ */
+struct TempFileGuard(std::path::PathBuf);
+
+impl TempFileGuard {
+    fn path(&self) -> &std::path::Path { &self.0 }
+}
+
+impl Drop for TempFileGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
 
 /**
  * 模型列表查询配置
@@ -168,7 +184,8 @@ impl SidecarManager {
             .map_err(|e| format!("新闻序列化失败: {}", e))?;
 
         // 通过临时文件传递 news payload，避免 argv 触发 ARG_MAX（macOS ≈ 256KB）。
-        // 文件名含 pid + 纳秒时间戳，跨进程并发也不冲突。
+        // 文件名含 pid + 纳秒时间戳，跨进程并发不冲突。
+        // 用 TempFileGuard 保证 panic / async cancel 等异常退出路径也能清理。
         let temp_path = std::env::temp_dir().join(format!(
             "stockai-news-{}-{}.json",
             std::process::id(),
@@ -179,21 +196,15 @@ impl SidecarManager {
         ));
         std::fs::write(&temp_path, &news_json)
             .map_err(|e| format!("无法写入临时新闻文件: {}", e))?;
+        let guard = TempFileGuard(temp_path);
 
-        let result = Self::run(
+        let path_arg = guard.path().to_string_lossy().into_owned();
+        Self::run(
             app_handle,
-            vec![
-                "--analyze-only".to_string(),
-                config_json,
-                symbol,
-                temp_path.to_string_lossy().into_owned(),
-            ],
+            vec!["--analyze-only".to_string(), config_json, symbol, path_arg],
         )
-        .await;
-
-        // 无论 sidecar 成功失败都清理；忽略 remove 错误避免掩盖原始结果
-        let _ = std::fs::remove_file(&temp_path);
-        result
+        .await
+        // guard drops here，自动清理（即使 await 期间被取消也保证清理）
     }
 }
 
@@ -351,8 +362,7 @@ mod tests {
     }
 
     // 回归保护：news payload 走临时文件而非 argv，确保超过 macOS ARG_MAX (~256KB) 的大 payload
-    // 也能安全转移。如果有人误将这条链路改回 argv，此测试不会直接抓住，但它会失败的写入/读取路径
-    // 至少保证临时文件机制本身在当前 OS 上是可用的。
+    // 也能安全转移。用 TempFileGuard 保证 assert 失败 panic 时文件也能清理。
     #[test]
     fn test_large_news_payload_roundtrips_via_temp_file() {
         let large_news = serde_json::json!([{
@@ -374,9 +384,28 @@ mod tests {
                 .as_nanos()
         ));
         std::fs::write(&temp_path, &news_json).expect("写入临时新闻文件应成功");
-        let read_back = std::fs::read_to_string(&temp_path).expect("读取临时新闻文件应成功");
-        std::fs::remove_file(&temp_path).expect("清理临时新闻文件应成功");
+        let guard = TempFileGuard(temp_path);
+        let read_back = std::fs::read_to_string(guard.path()).expect("读取临时新闻文件应成功");
         assert_eq!(read_back, news_json, "临时文件应能完整 roundtrip 任意大小 news payload");
+        // guard.drop() here cleans up；上面 assert 失败也照样清理
+    }
+
+    #[test]
+    fn test_temp_file_guard_removes_file_on_drop() {
+        let p = std::env::temp_dir().join(format!(
+            "stockai-guard-test-{}-{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(&p, b"x").unwrap();
+        assert!(p.exists(), "前置：文件应存在");
+        {
+            let _g = TempFileGuard(p.clone());
+        } // guard drops here
+        assert!(!p.exists(), "Drop 后文件应被删除");
     }
 }
 
