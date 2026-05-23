@@ -10,9 +10,9 @@ StockAI is a modern cross-platform desktop application built with **Tauri 2.0**.
 
 - **Multi-source News Scraping**: Automatically collects real-time stock news via Google News RSS (no Chromium needed) with Playwright fallback, supporting US stocks and Chinese A-shares (Shanghai, Shenzhen, and Beijing Stock Exchange).
 - **Deep AI Analysis**: Supports OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), DeepSeek (DeepSeek V4 Pro), GLM (GLM-5.1), and Ollama (local models). Each provider keeps its own API key / base URL / model; switch active provider via a dropdown. Analysis is **explicitly triggered** — switching stocks never silently consumes tokens. Deep Mode extracts full article content for richer analysis.
-- **Interactive K-line Chart**: Candlestick chart with MA / BOLL overlays, sub-chart indicators (MACD / RSI / KDJ / OBV / VWAP), comparison baseline overlay, and real-time price merged into the last candle during trading hours.
-- **Editable Watchlist**: Add and remove stocks freely — the list persists across sessions via local storage.
-- **Modern UI Design**: Features a Glassmorphism design language with immersive settings management and real-time analysis progress feedback.
+- **Interactive K-line Chart**: Candlestick chart with MA / BOLL overlays, nine time periods (1D / 5D / 1M / 3M / 6M / YTD / 1Y / 5Y / All), sub-chart indicators (MACD / RSI / KDJ / OBV / VWAP), logarithmic scale, dividend-adjusted price modes, comparison baseline, and real-time price merged into the last candle during trading hours.
+- **Editable Watchlist**: Add and remove stocks freely via the sidebar quick-add input — the list persists across sessions via local storage.
+- **Three-Column Dashboard**: A dark-theme three-column layout — left watchlist sidebar, central stock detail panel (real-time price card, K-line chart, news feed), and a right AI analysis panel displaying the sentiment ratio bar, company profile, and color-coded bullish / bearish factor cards. Settings and a global search bar are pinned to the top toolbar.
 - **Local-first**: All API configurations and personalized settings are securely stored locally, never leaving your device.
 
 ## 🏗️ Architecture Overview
