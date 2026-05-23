@@ -17,6 +17,7 @@ import type { KlinePoint } from "../../../shared/types";
 import { upColor, downColor } from "../../lib/market-hours";
 import { sma, boll } from "../../lib/indicators";
 import { maPeriodsForMarket, MA_COLORS } from "./types";
+import { CHART_THEME } from "./chart-theme";
 
 interface Props {
   data: KlinePoint[];
@@ -54,8 +55,8 @@ const ChartCanvas: React.FC<Props> = ({
     if (!containerRef.current) return;
 
     const chart = createChart(containerRef.current, {
-      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "rgba(255,255,255,0.55)" },
-      grid:   { vertLines: { color: "rgba(255,255,255,0.06)" }, horzLines: { color: "rgba(255,255,255,0.06)" } },
+      layout: { background: { type: ColorType.Solid, color: CHART_THEME.background }, textColor: CHART_THEME.text },
+      grid:   { vertLines: { color: CHART_THEME.grid }, horzLines: { color: CHART_THEME.grid } },
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
       crosshair: { mode: CrosshairMode.Normal },
@@ -79,7 +80,7 @@ const ChartCanvas: React.FC<Props> = ({
     };
 
     // 比较基准 series — 独立坐标轴避免干扰主图刻度
-    compareRef.current = chart.addLineSeries({ color: "#FF6B9D", lineWidth: 1, priceScaleId: "compare", lastValueVisible: true, priceLineVisible: false, title: compareLabel ?? "Compare" });
+    compareRef.current = chart.addLineSeries({ color: CHART_THEME.compareSeries, lineWidth: 1, priceScaleId: "compare", lastValueVisible: true, priceLineVisible: false, title: compareLabel ?? "Compare" });
     chart.priceScale("compare").applyOptions({ visible: false, scaleMargins: { top: 0.05, bottom: 0.3 } }); // 隐藏第二轴刻度
 
     chartRef.current = chart;
@@ -156,9 +157,9 @@ const ChartCanvas: React.FC<Props> = ({
     const bandOpts = { priceLineVisible: false as const, lastValueVisible: false as const };
     if (showBoll && !bollRef.current) {
       bollRef.current = {
-        upper: chart.addLineSeries({ color: "rgba(255,255,255,0.4)", lineWidth: 1, lineStyle: LineStyle.Dashed, ...bandOpts }),
-        mid:   chart.addLineSeries({ color: "rgba(255,255,255,0.6)", lineWidth: 1, ...bandOpts }),
-        lower: chart.addLineSeries({ color: "rgba(255,255,255,0.4)", lineWidth: 1, lineStyle: LineStyle.Dashed, ...bandOpts }),
+        upper: chart.addLineSeries({ color: CHART_THEME.bollBand, lineWidth: 1, lineStyle: LineStyle.Dashed, ...bandOpts }),
+        mid:   chart.addLineSeries({ color: CHART_THEME.bollMid,  lineWidth: 1, ...bandOpts }),
+        lower: chart.addLineSeries({ color: CHART_THEME.bollBand, lineWidth: 1, lineStyle: LineStyle.Dashed, ...bandOpts }),
       };
     } else if (!showBoll && bollRef.current) {
       const b = bollRef.current;
@@ -203,7 +204,7 @@ const ChartCanvas: React.FC<Props> = ({
     if (pl.current) { candle.removePriceLine(pl.current); pl.current = undefined; }
 
     if (prevClose != null)
-      pl.prev = candle.createPriceLine({ price: prevClose, color: "rgba(255,255,255,0.4)", lineWidth: 1, lineStyle: LineStyle.Dashed,  axisLabelVisible: true, title: "昨收" });
+      pl.prev = candle.createPriceLine({ price: prevClose, color: CHART_THEME.prevCloseLine, lineWidth: 1, lineStyle: LineStyle.Dashed,  axisLabelVisible: true, title: "昨收" });
     if (currentPrice != null) {
       const color = (prevClose == null || currentPrice >= prevClose) ? upColor(market) : downColor(market);
       pl.current = candle.createPriceLine({ price: currentPrice, color, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "现价" });
