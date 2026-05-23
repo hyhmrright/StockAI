@@ -62,8 +62,9 @@ const server = Bun.serve({
         return runAndRespond(["--bundle", buildSettingsJson(), args.symbol], "bundle");
       }
       if (cmd === "analyze_news") {
-        // 与 Rust 端保持一致：news 走临时文件而非 argv，避免 ARG_MAX
-        const tempPath = join(tmpdir(), `stockai-news-bridge-${process.pid}-${Date.now()}.json`);
+        // 与 Rust 端保持一致：news 走临时文件而非 argv，避免 ARG_MAX。
+        // 用 hrtime.bigint() 取纳秒精度文件名，避免同毫秒内并发碰撞（Date.now() 仅 ms）。
+        const tempPath = join(tmpdir(), `stockai-news-bridge-${process.pid}-${process.hrtime.bigint()}.json`);
         writeFileSync(tempPath, JSON.stringify(args.news ?? []), "utf-8");
         try {
           return runAndRespond(["--analyze-only", buildSettingsJson(), args.symbol, tempPath], "analyze");

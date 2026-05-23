@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AIAnalysisResult, StockNews } from "../../shared/types";
-import { useAIAnalysis } from "./useAIAnalysis";
+import { useAIAnalysis, MAX_SYMBOLS_IN_CACHE } from "./useAIAnalysis";
 
 function buildResult(rating: number): AIAnalysisResult {
   return {
@@ -140,6 +140,33 @@ describe("useAIAnalysis", () => {
     rerender({ s: "AAPL" });
     expect(result.current.record?.result.rating).toBe(80);
     expect(result.current.analyzing).toBe(false);
+  });
+
+  it("cache 容量上限：超过 MAX_SYMBOLS_IN_CACHE 后最旧条目被淘汰", async () => {
+    let counter = 0;
+    const runner = vi.fn(async () => buildResult(++counter));
+
+    // 第一只 symbol 后续要检查是否被淘汰
+    const firstSym = "SYM0";
+    const { result, rerender } = renderHook(({ s }) => useAIAnalysis(s, runner), {
+      initialProps: { s: firstSym },
+    });
+    await act(async () => { await result.current.analyze(NEWS); });
+    expect(result.current.record).not.toBeNull(); // SYM0 有 record
+
+    // 再分析另外 MAX_SYMBOLS_IN_CACHE 只 symbol，把容量塞满（共 MAX+1 次写入）
+    for (let i = 1; i <= MAX_SYMBOLS_IN_CACHE; i++) {
+      rerender({ s: `SYM${i}` });
+      await act(async () => { await result.current.analyze(NEWS); });
+    }
+
+    // 切回最旧的 SYM0：因 LRI 淘汰，record 应为 null（被挤出）
+    rerender({ s: firstSym });
+    expect(result.current.record).toBeNull();
+
+    // 但最近写入的 symbol 仍在缓存里
+    rerender({ s: `SYM${MAX_SYMBOLS_IN_CACHE}` });
+    expect(result.current.record).not.toBeNull();
   });
 
   it("跨 symbol 并发不互相挤占 requestId：AAPL 迟到的成功仍应写入 AAPL 缓存", async () => {
