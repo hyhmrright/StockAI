@@ -62,13 +62,14 @@ const Dashboard: React.FC = () => {
         stepLabel={stepLabel}
       />
 
-      <main className="flex flex-1 overflow-hidden">
+      {/* 小屏纵向排列并整体滚动；lg 以上横向排列各区域独立滚动 */}
+      <main className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         <Watchlist
           currentSymbol={currentSymbol}
           onSelect={handleWatchlistSelect}
         />
 
-        <section className="flex-1 md:w-1/2 p-8 overflow-y-auto bg-background/50 scrollbar-hide relative">
+        <section className="flex-1 md:w-1/2 p-8 lg:overflow-y-auto bg-background/50 scrollbar-hide relative">
           {dataError && (
             <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-3 text-rose-400">
               <AlertCircle className="w-5 h-5 shrink-0" />

@@ -36,10 +36,53 @@ export async function fetchYahooKline(req: NormalizedRequest): Promise<KlinePoin
   return parseYahooChart(json);
 }
 
+/** Yahoo Chart API 响应结构 */
+interface YahooChartResponse {
+  chart?: {
+    error?: { code?: string; description?: string };
+    result?: Array<{
+      timestamp?: number[];
+      indicators?: {
+        quote?: Array<{
+          open?: Array<number | null>;
+          high?: Array<number | null>;
+          low?: Array<number | null>;
+          close?: Array<number | null>;
+          volume?: Array<number | null>;
+        }>;
+      };
+      meta?: YahooMeta;
+    }>;
+  };
+}
+
+/** Yahoo meta 字段（报价 + 盘前盘后） */
+interface YahooMeta {
+  regularMarketPrice?: number;
+  chartPreviousClose?: number;
+  previousClose?: number;
+  shortName?: string;
+  longName?: string;
+  regularMarketOpen?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketVolume?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  regularMarketTime?: number;
+  currency?: string;
+  preMarketPrice?: number;
+  preMarketChange?: number;
+  preMarketChangePercent?: number;
+  postMarketPrice?: number;
+  postMarketChange?: number;
+  postMarketChangePercent?: number;
+}
+
 /**
  * 解析 Yahoo Chart API 响应
  */
-export function parseYahooChart(json: any): KlinePoint[] {
+export function parseYahooChart(json: YahooChartResponse): KlinePoint[] {
   if (json?.chart?.error) {
     throw new Error(`Yahoo 错误：${json.chart.error.description || json.chart.error.code}`);
   }
@@ -71,10 +114,13 @@ export async function fetchYahooQuote(symbol: string): Promise<RealtimeQuote> {
   return parseYahooQuote(json, upper);
 }
 
+/** Yahoo 报价响应（复用 YahooChartResponse 结构） */
+type YahooQuoteResponse = YahooChartResponse;
+
 /**
  * 解析 Yahoo meta 字段为 RealtimeQuote
  */
-export function parseYahooQuote(json: any, symbol: string): RealtimeQuote {
+export function parseYahooQuote(json: YahooQuoteResponse, symbol: string): RealtimeQuote {
   if (json?.chart?.error) throw new Error(`Yahoo Quote 错误：${json.chart.error.code}`);
   const meta = json?.chart?.result?.[0]?.meta;
   if (!meta) throw new Error("Yahoo Quote 缺少 meta");
