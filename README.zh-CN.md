@@ -4,12 +4,13 @@
 
 ![StockAI Dashboard](./docs/screenshot-dashboard.png)
 
-StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程序，旨在利用 AI 技术对实时股票新闻进行深度情感分析和评分，为投资者提供数据驱动的洞察。
+StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程序，利用 AI 技术对实时股票新闻进行深度情感分析与评分，同时提供交互式 K 线图与技术指标，为投资者在一处聚合数据驱动的洞察。
 
 ## 🌟 核心特性
 
-- **多源新闻抓取**: 自动从 Google Finance、Yahoo Finance 实时采集股票新闻，完整支持美股及 A 股（沪深北三所）。
-- **深度 AI 分析**: 支持 OpenAI (GPT-4o)、Anthropic (Claude 3.5 Sonnet)、DeepSeek (DeepSeek Chat) 与 Ollama (本地模型) 多家提供商；各自独立保存 API Key / Base URL / 模型，通过下拉框切换。深度模式开启时自动提取新闻正文进行深度研判；关闭后仅用摘要，分析更快。
+- **多源新闻抓取**: 优先通过 Google News RSS（无需启动 Chromium）采集新闻，Playwright 策略兜底，完整支持美股及 A 股（沪深北三所）。
+- **深度 AI 分析**: 支持 OpenAI (GPT-4o)、Anthropic (Claude 3.5 Sonnet)、DeepSeek (DeepSeek V4 Pro)、GLM (GLM-5.1) 与 Ollama（本地模型）；各自独立保存 API Key / Base URL / 模型，下拉框切换。分析**显式触发**——切换股票不会静默消耗 token。深度模式开启时抽取正文进行深度研判。
+- **交互式 K 线图**: 蜡烛图支持 MA / BOLL 主图叠加，副图指标可切换（MACD / RSI / KDJ / OBV / VWAP），支持对比基准叠加，交易时段实时价合并入最后一根 K 线。
 - **可编辑关注列表**: 自由增删关注的股票，数据持久化存储，重启后不丢失。
 - **现代 UI 设计**: 采用玻璃拟态 (Glassmorphism) 设计语言，提供沉浸式的设置管理和实时的分析进度反馈。
 - **本地优先**: 所有 API 配置和个性化设置均安全存储在本地，数据不离开设备。
@@ -87,7 +88,13 @@ bun tauri dev
 
 ## 🧪 测试
 
-项目采用了多层测试体系以确保稳定性：
+一键运行全部测试（无需 GNU `timeout`）：
+
+```bash
+bun run test
+```
+
+分层单独运行：
 
 - **前端测试 (Vitest)**: `bunx vitest run`
 - **Sidecar 逻辑测试 (Bun)**: `cd sidecar && bun test`
@@ -99,7 +106,7 @@ bun tauri dev
 - **桌面框架**: Tauri 2.0 (Rust)
 - **前端框架**: React 19, TailwindCSS 4, Lucide Icons, Lightweight Charts
 - **爬虫/后端**: Bun, Playwright, NodeHtmlMarkdown
-- **AI 集成**: OpenAI SDK、Anthropic SDK、Ollama SDK（DeepSeek 通过 OpenAI 兼容协议接入）
+- **AI 集成**: OpenAI SDK、Anthropic SDK、Ollama SDK（DeepSeek / GLM 通过 OpenAI 兼容协议接入）
 
 ## 📅 开发规范
 
