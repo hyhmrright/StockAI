@@ -1,5 +1,7 @@
 import { spawnSync } from "child_process";
 import { join } from "path";
+import { tmpdir } from "os";
+import { writeFileSync, unlinkSync } from "fs";
 import { errorEnvelope } from "../sidecar/utils";
 
 /**
@@ -60,7 +62,14 @@ const server = Bun.serve({
         return runAndRespond(["--bundle", buildSettingsJson(), args.symbol], "bundle");
       }
       if (cmd === "analyze_news") {
-        return runAndRespond(["--analyze-only", buildSettingsJson(), args.symbol, JSON.stringify(args.news ?? [])], "analyze");
+        // 与 Rust 端保持一致：news 走临时文件而非 argv，避免 ARG_MAX
+        const tempPath = join(tmpdir(), `stockai-news-bridge-${process.pid}-${Date.now()}.json`);
+        writeFileSync(tempPath, JSON.stringify(args.news ?? []), "utf-8");
+        try {
+          return runAndRespond(["--analyze-only", buildSettingsJson(), args.symbol, tempPath], "analyze");
+        } finally {
+          try { unlinkSync(tempPath); } catch { /* ignore */ }
+        }
       }
 
       if (cmd === "start_analysis") {
