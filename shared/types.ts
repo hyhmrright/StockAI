@@ -94,6 +94,15 @@ export interface FullAnalysisResponse {
 }
 
 /**
+ * 只抓数据、不调 LLM 的数据包；用户点 "AI 分析" 按钮前先展示这部分
+ */
+export interface MarketBundle {
+  symbol: string;
+  stockInfo?: StockInfo;
+  news: StockNews[];
+}
+
+/**
  * K 线粒度
  */
 export type KlinePeriod = "1m" | "5m" | "15m" | "30m" | "60m" | "1d" | "1w" | "1mo";

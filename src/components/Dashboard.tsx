@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PriceChart from './PriceChart';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
-import { useAnalysis } from '../hooks/useAnalysis';
-import { useSettings } from '../hooks/useSettings';
+import { useStockData } from '../hooks/useStockData';
+import { useAIAnalysis } from '../hooks/useAIAnalysis';
+import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
@@ -12,113 +13,112 @@ import StockInfoCard from './StockInfoCard';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
- * 它是应用的核心容器，协调子组件并管理分析状态
+ *
+ * 数据流（v0.7 新交互）：
+ *  1. 切换 symbol → useStockData 自动抓 StockInfo + News（不调 LLM）
+ *  2. 用户点 AnalysisPanel 的 "开始 AI 分析" 按钮 → useAIAnalysis 调 LLM
+ *  3. settings.autoAnalyze 为 true 时，News 抓到后会自动触发一次 LLM（重度用户专用，默认关）
  */
 const Dashboard: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentSymbol, setCurrentSymbol] = useState(DEFAULT_WATCHLIST[0].sym);
-  
-  // 使用封装好的分析 Hook
-  const { step, loading, error, result, partialInfo, performAnalysis } = useAnalysis();
+  const [autoFlowSymbol, setAutoFlowSymbol] = useState<string | null>(null);
+
+  const { step, stockInfo, news, error: dataError } = useStockData(currentSymbol);
+  const { record, analyzing, error: aiError, analyze } = useAIAnalysis(currentSymbol);
   const { settings } = useSettings();
 
-  // 优先使用完整分析结果中的股票信息；尚未到位时回退到并发抓取的快照
-  const displayInfo = result?.stockInfo || partialInfo;
+  const providerProfile = PROVIDER_PROFILES[settings.activeProvider];
+  const providerLabel = settings.activeProvider;
+  const modelLabel = settings.providerConfigs[settings.activeProvider]?.model ?? providerProfile.model;
 
-  // 获取当前步骤的描述文字
-  function getStepLabel(): string {
-    switch (step) {
-      case 'scraping': return '正在抓取并分析实时数据...';
-      default: return '正在实时分析数据...';
-    }
-  }
+  // 自动模式：数据就绪后触发一次 LLM；用 autoFlowSymbol 防止重复触发
+  useEffect(() => {
+    if (!settings.autoAnalyze) return;
+    if (step !== 'ready' || news.length === 0) return;
+    if (autoFlowSymbol === currentSymbol) return;
+    setAutoFlowSymbol(currentSymbol);
+    analyze(news);
+  }, [step, news, currentSymbol, settings.autoAnalyze, autoFlowSymbol, analyze]);
 
-  // 处理搜索栏提交
   function handleSearch(symbol: string) {
     setCurrentSymbol(symbol);
-    performAnalysis(symbol);
   }
 
-  // 处理关注列表点击（受 autoAnalyze 设置控制）
   function handleWatchlistSelect(sym: string) {
     setCurrentSymbol(sym);
-    if (settings.autoAnalyze) performAnalysis(sym);
   }
+
+  const loading = step === 'fetching';
+  const busy = loading || analyzing;
+  const stepLabel = loading ? '正在抓取实时数据…' : analyzing ? 'AI 正在分析…' : '';
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-white relative">
-      {/* 顶部搜索栏组件 */}
-      <SearchHeader 
+      <SearchHeader
         onSearch={handleSearch}
-        loading={loading}
+        loading={busy}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        stepLabel={getStepLabel()}
+        stepLabel={stepLabel}
       />
 
-      {/* 下方主体：三栏布局 */}
       <main className="flex flex-1 overflow-hidden">
-        {/* 左侧关注列表组件 */}
         <Watchlist
           currentSymbol={currentSymbol}
           onSelect={handleWatchlistSelect}
         />
 
-        {/* 中间主内容 (50%) - 图表与核心详情 */}
         <section className="flex-1 md:w-1/2 p-8 overflow-y-auto bg-background/50 scrollbar-hide relative">
-          {error && (
+          {dataError && (
             <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-3 text-rose-400">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <div>
-                <div className="font-bold">分析出错</div>
-                <div className="text-sm opacity-90">{error}</div>
+                <div className="font-bold">数据抓取出错</div>
+                <div className="text-sm opacity-90">{dataError}</div>
               </div>
             </div>
           )}
 
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">分析详情 ({currentSymbol})</h2>
-            {loading && (
+            {busy && (
               <div className="flex items-center gap-3 text-xs text-emerald-500 font-medium bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/20 animate-pulse">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                {getStepLabel()}
+                {stepLabel}
               </div>
             )}
           </div>
 
-          {/* 实时股票信息展示 */}
-          {displayInfo && <StockInfoCard info={displayInfo} />}
+          {stockInfo && <StockInfoCard info={stockInfo} />}
 
-          {/* 注入 PriceChart 组件 */}
           <PriceChart symbol={currentSymbol} />
 
-          {/* 指标展示区 */}
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
               <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">最新价格 (Price)</div>
               <div className="text-2xl font-mono font-bold text-emerald-400">
-                {displayInfo?.price?.toFixed(2) || '暂无数据'}
-                <span className="text-sm ml-2 text-gray-500">{displayInfo?.currency}</span>
+                {stockInfo?.price?.toFixed(2) || '暂无数据'}
+                <span className="text-sm ml-2 text-gray-500">{stockInfo?.currency}</span>
               </div>
             </div>
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
               <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">涨跌幅 (Change)</div>
-              <div className={`text-2xl font-mono font-bold ${(displayInfo?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {(displayInfo?.changePercent ?? 0) >= 0 ? '+' : ''}
-                {displayInfo?.changePercent?.toFixed(2) || '0.00'}%
+              <div className={`text-2xl font-mono font-bold ${(stockInfo?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {(stockInfo?.changePercent ?? 0) >= 0 ? '+' : ''}
+                {stockInfo?.changePercent?.toFixed(2) || '0.00'}%
               </div>
             </div>
           </div>
 
-          {/* 新闻列表 (抓取到的真实数据) */}
-          {result && result.news.length > 0 && (
+          {news.length > 0 && (
             <div className="mt-10">
               <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">最新相关新闻</h2>
               <div className="space-y-4">
-                {result.news.map((n, i) => (
-                  <a 
-                    key={i} 
-                    href={n.url} 
-                    target="_blank" 
+                {news.map((n, i) => (
+                  <a
+                    key={i}
+                    href={n.url}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="block p-5 bg-panel rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all group"
                   >
@@ -134,14 +134,21 @@ const Dashboard: React.FC = () => {
           )}
         </section>
 
-        {/* 右侧分析栏 (25%) - 舆情与 AI 洞察 */}
-        <AnalysisPanel result={result} />
+        <AnalysisPanel
+          stockInfo={stockInfo}
+          record={record}
+          analyzing={analyzing}
+          error={aiError}
+          hasNews={news.length > 0}
+          providerLabel={providerLabel}
+          modelLabel={modelLabel}
+          onAnalyze={() => analyze(news)}
+        />
       </main>
 
-      {/* 设置模态框 */}
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
     </div>
   );

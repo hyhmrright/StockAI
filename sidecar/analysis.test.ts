@@ -1,6 +1,6 @@
 import { mock, describe, test, expect, beforeEach } from "bun:test";
 import type { StockNews, AIAnalysisResult, StockInfo } from "../shared/types";
-import { performFullAnalysis } from "./analysis";
+import { performFullAnalysis, fetchMarketBundle, analyzeNewsWithLLM } from "./analysis";
 import { createMockNews, createMockAIResult } from "../shared/test-utils";
 
 const DEFAULT_NEWS = [createMockNews()];
@@ -70,5 +70,41 @@ describe("performFullAnalysis (Sociable Unit Tests)", () => {
     expect(result.analysis.rating).toBe(50);
     expect(result.analysis.sentiment).toBe('neutral');
     expect(result.analysis.summary).toContain("AI 分析服务暂不可用");
+  });
+});
+
+describe("fetchMarketBundle (拆分后的纯抓取)", () => {
+  test("ReturnsBundleWithoutCallingProvider", async () => {
+    const { deps, mocks } = makeDeps();
+    const bundle = await fetchMarketBundle("AAPL", true, deps);
+    expect(bundle.symbol).toBe("AAPL");
+    expect(bundle.news).toHaveLength(DEFAULT_NEWS.length);
+    // 抓取阶段不应调用 LLM
+    expect(mocks.analyze).not.toHaveBeenCalled();
+  });
+
+  test("NoNewsFound_ThrowsScrapeEmptyError", async () => {
+    const { deps } = makeDeps({ scrapeResult: [] });
+    await expect(fetchMarketBundle("INVALID", true, deps))
+      .rejects.toThrow(/未搜寻到股票 "INVALID"/);
+  });
+});
+
+describe("analyzeNewsWithLLM (拆分后的纯分析)", () => {
+  test("UsesProvidedNewsDirectly", async () => {
+    const { deps, mocks } = makeDeps();
+    const result = await analyzeNewsWithLLM("AAPL", DEFAULT_NEWS, "openai", { apiKey: "sk" }, deps);
+    expect(result.rating).toBe(DEFAULT_ANALYSIS.rating);
+    // 不应触发抓取
+    expect(mocks.scrape).not.toHaveBeenCalled();
+    expect(mocks.fetchInfo).not.toHaveBeenCalled();
+    expect(mocks.analyze).toHaveBeenCalledTimes(1);
+  });
+
+  test("ProviderFailure_ReturnsNeutralDegradation", async () => {
+    const { deps } = makeDeps({ analyzeRejects: new Error("boom") });
+    const result = await analyzeNewsWithLLM("AAPL", DEFAULT_NEWS, "openai", {}, deps);
+    expect(result.rating).toBe(50);
+    expect(result.sentiment).toBe("neutral");
   });
 });

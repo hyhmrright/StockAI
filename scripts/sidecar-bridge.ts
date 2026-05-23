@@ -39,6 +39,30 @@ const server = Bun.serve({
       if (cmd === "fetch_kline") return runAndRespond(["--kline", JSON.stringify(args.request)], "kline");
       if (cmd === "fetch_realtime_quote") return runAndRespond(["--quote", args.symbol], "quote");
 
+      // sidecar 期望的 raw config 形态：需要 _version + providerConfigs 结构（参考 configResolver.ts）
+      const buildSettingsJson = () => {
+        const provider = process.env.AI_PROVIDER || "openai";
+        return JSON.stringify({
+          _version: 1,
+          activeProvider: provider,
+          providerConfigs: {
+            [provider]: {
+              apiKey: process.env.OPENAI_API_KEY || "",
+              baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+              model: process.env.AI_MODEL || "gpt-4o-mini",
+            },
+          },
+          deepMode: true,
+        });
+      };
+
+      if (cmd === "fetch_market_bundle") {
+        return runAndRespond(["--bundle", buildSettingsJson(), args.symbol], "bundle");
+      }
+      if (cmd === "analyze_news") {
+        return runAndRespond(["--analyze-only", buildSettingsJson(), args.symbol, JSON.stringify(args.news ?? [])], "analyze");
+      }
+
       if (cmd === "start_analysis") {
         // 尝试从环境变量获取 OpenAI Key 作为测试兜底
         const config = {

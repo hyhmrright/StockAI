@@ -28,6 +28,8 @@ async function run() {
   const isSearch = args.some(arg => arg === '--search');
   const isKline = args.some(arg => arg === '--kline');
   const isQuote = args.some(arg => arg === '--quote');
+  const isBundle = args.some(arg => arg === '--bundle');
+  const isAnalyzeOnly = args.some(arg => arg === '--analyze-only');
 
   // 健康自检逻辑 - 优先运行
   if (isCheck) {
@@ -54,6 +56,8 @@ async function run() {
   let action: string | undefined;
   let configStr: string = '{}';
   let actionParam: string | undefined;
+  // --analyze-only 额外需要 newsJson 入参
+  let newsJson: string | undefined;
 
   if (isListModels) {
     action = '--list-models';
@@ -78,6 +82,19 @@ async function run() {
     const idx = args.indexOf('--quote');
     // 参数顺序: ["--quote", symbol]
     actionParam = args[idx + 1];
+  } else if (isBundle) {
+    action = '--bundle';
+    const idx = args.indexOf('--bundle');
+    // 参数顺序: ["--bundle", config_json, symbol]
+    configStr = args[idx + 1] || '{}';
+    actionParam = args[idx + 2];
+  } else if (isAnalyzeOnly) {
+    action = '--analyze-only';
+    const idx = args.indexOf('--analyze-only');
+    // 参数顺序: ["--analyze-only", config_json, symbol, news_json]
+    configStr = args[idx + 1] || '{}';
+    actionParam = args[idx + 2];
+    newsJson = args[idx + 3];
   } else {
     // 默认为分析模式: [binary] [symbol] [config_json]
     const possibleJson = args.find(a => a.startsWith('{'));
@@ -119,6 +136,29 @@ async function run() {
       break;
     case '--quote':
       await Handlers.handleQuote(actionParam || '');
+      break;
+    case '--bundle':
+      try {
+        const config = resolveConfig(rawConfig);
+        await Handlers.handleFetchBundle(actionParam || '', config);
+      } catch (error) {
+        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
+      }
+      break;
+    case '--analyze-only':
+      try {
+        const config = resolveConfig(rawConfig);
+        let news: any[] = [];
+        try {
+          news = newsJson ? JSON.parse(newsJson) : [];
+        } catch (err) {
+          outputJson(errorEnvelope('ERR_MISSING_PARAM', `news JSON 解析失败: ${toErrorMessage(err)}`));
+          return;
+        }
+        await Handlers.handleAnalyzeOnly(actionParam || '', news, config);
+      } catch (error) {
+        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
+      }
       break;
     default:
       try {

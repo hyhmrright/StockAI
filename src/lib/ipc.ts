@@ -1,11 +1,20 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { FullAnalysisResponse, StockInfo, StockSearchResult, KlineRequest, KlinePoint, RealtimeQuote } from "../../shared/types";
+import {
+  StockSearchResult,
+  KlineRequest,
+  KlinePoint,
+  RealtimeQuote,
+  MarketBundle,
+  StockNews,
+  AIAnalysisResult,
+} from "../../shared/types";
 import {
   MOCK_STOCKS,
-  MOCK_STOCK_INFO,
   MOCK_MODELS,
   MOCK_KLINE,
   MOCK_QUOTE,
+  MOCK_BUNDLE,
+  MOCK_AI_RESULT,
 } from "./dev-mocks";
 
 /**
@@ -71,67 +80,6 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
 }
 
 /**
- * 获取股票基本信息
- */
-export async function getStockInfo(symbol: string): Promise<StockInfo> {
-  if (!isTauri()) return MOCK_STOCK_INFO;
-
-  const raw = await invoke<string>("get_stock_info", { symbol });
-  return parseServiceResponse<StockInfo>(raw);
-}
-
-/**
- * 保持向后兼容：解析分析结果
- */
-export function parseAnalysisResponse(raw: string): FullAnalysisResponse {
-  const data = parseServiceResponse<FullAnalysisResponse>(raw);
-
-  if (!data.analysis || typeof data.analysis.rating !== 'number' || !Array.isArray(data.news)) {
-    throw new Error('分析结果格式异常，请检查 AI 模型是否正确返回了 JSON。');
-  }
-
-  return data;
-}
-
-/**
- * 启动股票分析
- */
-export async function startAnalysis(symbol: string): Promise<FullAnalysisResponse> {
-  if (!isTauri()) {
-    if (import.meta.env.DEV) {
-      console.warn("浏览器开发模式: 尝试通过 3001 桥接器获取真实数据。");
-      try {
-        const resp = await fetch('http://localhost:3001/invoke', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cmd: 'start_analysis', args: { symbol } })
-        });
-        return parseAnalysisResponse(await resp.text());
-      } catch (e) {
-        if (e instanceof Error && (
-          e.message.includes('分析服务无响应') ||
-          e.message.includes('分析结果格式异常') ||
-          e.message.includes('版本不兼容')
-        )) {
-          throw e;
-        }
-        throw new Error(`开发桥接器未就绪，请先启动 bun scripts/sidecar-bridge.ts。(原因: ${e instanceof Error ? e.message : String(e)})`);
-      }
-    }
-    throw new Error('此功能仅在 Tauri 桌面应用中可用。');
-  }
-
-  try {
-    const raw = await invoke<string>("start_analysis", { symbol });
-    return parseAnalysisResponse(raw);
-  } catch (error) {
-    // Tauri 在 Rust 返回 Err(String) 时抛出字符串而非 Error，统一包装以保证调用方始终收到 Error 实例
-    if (error instanceof Error) throw error;
-    throw new Error(typeof error === 'string' ? error : String(error));
-  }
-}
-
-/**
  * 获取可用模型列表
  */
 export async function listModels(provider: string, baseUrl: string): Promise<string[]> {
@@ -165,6 +113,36 @@ async function devBridgeInvoke<T>(cmd: string, args: Record<string, unknown>, fa
       bridgeWarnLogged = true;
     }
     return fallback;
+  }
+}
+
+/**
+ * 仅拉取 StockInfo + News（不调 LLM）— 新交互流程第一步
+ */
+export async function fetchMarketBundle(symbol: string): Promise<MarketBundle> {
+  if (!isTauri()) return devBridgeInvoke<MarketBundle>("fetch_market_bundle", { symbol }, MOCK_BUNDLE);
+
+  try {
+    const raw = await invoke<string>("fetch_market_bundle", { symbol });
+    return parseServiceResponse<MarketBundle>(raw);
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error(typeof error === 'string' ? error : String(error));
+  }
+}
+
+/**
+ * 显式触发 LLM 分析（基于已抓到的 news）— 新交互流程第二步
+ */
+export async function analyzeNews(symbol: string, news: StockNews[]): Promise<AIAnalysisResult> {
+  if (!isTauri()) return devBridgeInvoke<AIAnalysisResult>("analyze_news", { symbol, news }, MOCK_AI_RESULT);
+
+  try {
+    const raw = await invoke<string>("analyze_news", { symbol, news });
+    return parseServiceResponse<AIAnalysisResult>(raw);
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error(typeof error === 'string' ? error : String(error));
   }
 }
 
