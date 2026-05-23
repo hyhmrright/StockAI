@@ -144,6 +144,35 @@ impl SidecarManager {
     ) -> Result<String, String> {
         Self::run(app_handle, vec!["--quote".to_string(), symbol]).await
     }
+
+    async fn fetch_market_bundle(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+        config: serde_json::Value,
+    ) -> Result<String, String> {
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+
+        Self::run(app_handle, vec!["--bundle".to_string(), config_json, symbol]).await
+    }
+
+    async fn analyze_news(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+        news: serde_json::Value,
+        config: serde_json::Value,
+    ) -> Result<String, String> {
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+        let news_json = serde_json::to_string(&news)
+            .map_err(|e| format!("新闻序列化失败: {}", e))?;
+
+        Self::run(
+            app_handle,
+            vec!["--analyze-only".to_string(), config_json, symbol, news_json],
+        )
+        .await
+    }
 }
 
 /**
@@ -218,7 +247,7 @@ async fn fetch_realtime_quote(
 }
 
 /**
- * 启动股票分析
+ * 启动股票分析（向后兼容；新交互流程走 fetch_market_bundle + analyze_news）
  */
 #[tauri::command]
 async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
@@ -231,6 +260,45 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
     SidecarManager::run_analysis(&app_handle, symbol, settings_val).await
+}
+
+/**
+ * 仅抓数据（StockInfo + News）— 新交互流程第一步
+ */
+#[tauri::command]
+async fn fetch_market_bundle(
+    app_handle: tauri::AppHandle,
+    symbol: String,
+) -> Result<String, String> {
+    let store = app_handle
+        .store("settings.json")
+        .map_err(|e| format!("无法打开配置存储: {}", e))?;
+
+    let settings_val = store.get("app_settings")
+        .filter(|v| !v.is_null())
+        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
+
+    SidecarManager::fetch_market_bundle(&app_handle, symbol, settings_val).await
+}
+
+/**
+ * 仅调 LLM 分析已抓到的新闻 — 新交互流程第二步（用户显式触发）
+ */
+#[tauri::command]
+async fn analyze_news(
+    app_handle: tauri::AppHandle,
+    symbol: String,
+    news: serde_json::Value,
+) -> Result<String, String> {
+    let store = app_handle
+        .store("settings.json")
+        .map_err(|e| format!("无法打开配置存储: {}", e))?;
+
+    let settings_val = store.get("app_settings")
+        .filter(|v| !v.is_null())
+        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
+
+    SidecarManager::analyze_news(&app_handle, symbol, news, settings_val).await
 }
 
 #[cfg(test)]
@@ -269,6 +337,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             start_analysis,
+            fetch_market_bundle,
+            analyze_news,
             list_models,
             get_stock_info,
             search_stocks,

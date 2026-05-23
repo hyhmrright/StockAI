@@ -34,8 +34,8 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
     <div className="space-y-6">
       <div className="setting-row">
         <div className="setting-label">
-          <span className="setting-title text-gray-200">自动分析</span>
-          <span className="setting-desc text-gray-500 text-xs">点击关注列表时自动开始分析</span>
+          <span className="setting-title text-gray-200">切换股票时自动 AI 分析</span>
+          <span className="setting-desc text-gray-500 text-xs">开启后每次切换股票都会自动调用 LLM（消耗 tokens）；默认关闭，需手动点击右侧分析按钮</span>
         </div>
         <Toggle
           enabled={settings.autoAnalyze}

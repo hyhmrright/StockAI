@@ -1,4 +1,4 @@
-import type { AIAnalysisResult, FullAnalysisResponse, StockInfo, StockNews } from '../shared/types';
+import type { AIAnalysisResult, FullAnalysisResponse, MarketBundle, StockInfo, StockNews } from '../shared/types';
 import type { ParsedSymbol } from './parsers/exchange';
 import type { AIProvider } from './ai';
 import { scrapeStockNews as realScrape } from './scraper';
@@ -27,40 +27,56 @@ export interface AnalysisDeps {
   createProvider?: (type: string, cfg: { apiKey?: string; baseUrl?: string; model?: string }) => AIProvider;
 }
 
-/**
- * 并行抓取股票基本信息和新闻。
- */
-async function fetchMarketData(
-  symbol: string,
-  deepMode: boolean,
-  deps: Required<AnalysisDeps>,
-): Promise<{ stockInfo: FullAnalysisResponse['stockInfo']; news: StockNews[] }> {
-  const parsed = parseSymbol(symbol);
-
-  // 异步增强搜索词（例如：'601012' -> '隆基绿能601012'）
-  const searchSymbol = await deps.enhance(symbol);
-
-  const [stockInfoResult, newsResult] = await Promise.allSettled([
-    deps.fetchInfo(parsed),
-    deps.scrape(searchSymbol, deepMode),
-  ]);
-
+function resolveDeps(deps: AnalysisDeps): Required<AnalysisDeps> {
   return {
-    stockInfo: stockInfoResult.status === 'fulfilled' ? (stockInfoResult.value ?? undefined) : undefined,
-    news: newsResult.status === 'fulfilled' ? newsResult.value : [],
+    scrape:         deps.scrape         ?? realScrape,
+    fetchInfo:      deps.fetchInfo      ?? realFetchInfo,
+    enhance:        deps.enhance        ?? realEnhance,
+    createProvider: deps.createProvider ?? realCreateProvider,
   };
 }
 
 /**
- * 调用 AI Provider 进行分析；失败时返回降级结果而非抛出
+ * 仅抓取数据（信息 + 新闻），不调 LLM。
+ * news 为空时抛 ScrapeEmptyError，让前端在用户点 "AI 分析" 前就能识别"无数据"。
  */
-async function analyzeWithAI(
+export async function fetchMarketBundle(
+  symbol: string,
+  deepMode: boolean = true,
+  deps: AnalysisDeps = {},
+): Promise<MarketBundle> {
+  const resolved = resolveDeps(deps);
+  const parsed = parseSymbol(symbol);
+
+  // 异步增强搜索词（例如：'601012' -> '隆基绿能601012'）
+  const searchSymbol = await resolved.enhance(symbol);
+
+  const [stockInfoResult, newsResult] = await Promise.allSettled([
+    resolved.fetchInfo(parsed),
+    resolved.scrape(searchSymbol, deepMode),
+  ]);
+
+  const stockInfo = stockInfoResult.status === 'fulfilled' ? (stockInfoResult.value ?? undefined) : undefined;
+  const news = newsResult.status === 'fulfilled' ? newsResult.value : [];
+
+  if (news.length === 0) {
+    throw new ScrapeEmptyError(`未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`);
+  }
+
+  return { symbol, stockInfo, news };
+}
+
+/**
+ * 仅调 LLM 分析已抓到的新闻；失败时返回降级结果而非抛出
+ */
+export async function analyzeNewsWithLLM(
   symbol: string,
   news: StockNews[],
-  providerType: string,
-  config: { apiKey?: string; baseUrl?: string; model?: string },
-  createProvider: Required<AnalysisDeps>['createProvider'],
+  providerType: string = 'openai',
+  config: { apiKey?: string; baseUrl?: string; model?: string } = {},
+  deps: AnalysisDeps = {},
 ): Promise<AIAnalysisResult> {
+  const createProvider = deps.createProvider ?? realCreateProvider;
   try {
     const provider = createProvider(providerType, config);
     return await provider.analyze(symbol, news);
@@ -78,7 +94,7 @@ async function analyzeWithAI(
 }
 
 /**
- * 执行完整的股票分析流程
+ * 完整流水线：抓取 + LLM 分析（保留向后兼容；新交互流程不再走此函数）
  */
 export async function performFullAnalysis(
   symbol: string,
@@ -86,20 +102,7 @@ export async function performFullAnalysis(
   config: { apiKey?: string; baseUrl?: string; model?: string; deepMode?: boolean } = {},
   deps: AnalysisDeps = {},
 ): Promise<FullAnalysisResponse> {
-  const resolved: Required<AnalysisDeps> = {
-    scrape:         deps.scrape         ?? realScrape,
-    fetchInfo:      deps.fetchInfo      ?? realFetchInfo,
-    enhance:        deps.enhance        ?? realEnhance,
-    createProvider: deps.createProvider ?? realCreateProvider,
-  };
-
-  const { stockInfo, news } = await fetchMarketData(symbol, config.deepMode ?? true, resolved);
-
-  if (news.length === 0) {
-    throw new ScrapeEmptyError(`未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`);
-  }
-
-  const analysis = await analyzeWithAI(symbol, news, providerType, config, resolved.createProvider);
-
-  return { symbol, stockInfo, news, analysis };
+  const bundle = await fetchMarketBundle(symbol, config.deepMode ?? true, deps);
+  const analysis = await analyzeNewsWithLLM(symbol, bundle.news, providerType, config, deps);
+  return { symbol, stockInfo: bundle.stockInfo, news: bundle.news, analysis };
 }

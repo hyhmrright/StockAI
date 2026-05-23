@@ -20,10 +20,10 @@ export const PROVIDER_PROFILES: Record<ProviderType, ProviderProfile> = {
   glm:       { baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.1',             contentLimit: 1000, timeout:  60_000 },
 };
 
-/** 默认设置对象 */
+/** 默认设置对象。autoAnalyze 默认关——AI 分析改为按需触发，避免无脑消耗 token */
 export const DEFAULT_SETTINGS = {
   activeProvider: "ollama" as ProviderType,
-  autoAnalyze: true,
+  autoAnalyze: false,
   deepMode: true,
 };
 

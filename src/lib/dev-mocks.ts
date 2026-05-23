@@ -3,6 +3,9 @@ import type {
   StockSearchResult,
   KlinePoint,
   RealtimeQuote,
+  MarketBundle,
+  StockNews,
+  AIAnalysisResult,
 } from "../../shared/types";
 
 /**
@@ -40,6 +43,37 @@ export const MOCK_KLINE: KlinePoint[] = Array.from({ length: 30 }, (_, i) => {
     volume: 50_000_000 + Math.random() * 10_000_000,
   };
 });
+
+export const MOCK_NEWS: StockNews[] = [
+  {
+    title: "苹果发布会预告：M5 芯片性能再次跃迁",
+    source: "TechCrunch",
+    date: "2026-05-22",
+    content: "（mock）苹果将于下周发布会上展示 M5 芯片，预计单核性能提升 25%。",
+    url: "https://example.com/news/1",
+  },
+  {
+    title: "AAPL Q2 财报超预期：服务业务首次突破 300 亿美元",
+    source: "Reuters",
+    date: "2026-05-21",
+    content: "（mock）服务业务同比增长 18%，毛利率维持高位。",
+    url: "https://example.com/news/2",
+  },
+];
+
+export const MOCK_BUNDLE: MarketBundle = {
+  symbol: "AAPL",
+  stockInfo: MOCK_STOCK_INFO,
+  news: MOCK_NEWS,
+};
+
+export const MOCK_AI_RESULT: AIAnalysisResult = {
+  rating: 72,
+  sentiment: "bullish",
+  summary: "（mock）整体看涨：核心业务表现稳健，AI 战略推进顺利。",
+  pros: ["服务业务增长", "M5 芯片亮点", "现金流充裕"],
+  cons: ["大盘估值偏高", "中国市场不确定性"],
+};
 
 export const MOCK_QUOTE: RealtimeQuote = {
   symbol: "AAPL",

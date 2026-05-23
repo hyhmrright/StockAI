@@ -1,68 +1,42 @@
 import { describe, it, expect } from 'vitest';
-import { parseAnalysisResponse } from './ipc';
+import { parseServiceResponse, ServiceError } from './ipc';
 
-describe('parseAnalysisResponse', () => {
-  const validData = {
-    symbol: 'AAPL',
-    news: [
-      { title: '测试新闻', source: 'Test', date: '2025-01-01', content: '内容', url: 'http://test.com' }
-    ],
-    analysis: {
-      rating: 80,
-      sentiment: 'bullish',
-      summary: '看涨',
-      pros: ['利多'],
-      cons: ['利空'],
-    },
-  };
-
-  const validResponse = JSON.stringify({ data: validData });
-
-  it('有效响应正确解析为 FullAnalysisResponse', () => {
-    const result = parseAnalysisResponse(validResponse);
-    expect(result.symbol).toBe('AAPL');
-    expect(result.analysis.rating).toBe(80);
-    expect(result.news).toHaveLength(1);
+describe('parseServiceResponse', () => {
+  it('成功信封返回 data 字段内容', () => {
+    const raw = JSON.stringify({ data: { foo: 'bar', n: 1 } });
+    const r = parseServiceResponse<{ foo: string; n: number }>(raw);
+    expect(r.foo).toBe('bar');
+    expect(r.n).toBe(1);
   });
 
-  it('空字符串或纯空白字符串抛出无响应错误', () => {
-    expect(() => parseAnalysisResponse('')).toThrow('分析服务无响应');
-    expect(() => parseAnalysisResponse('   ')).toThrow('分析服务无响应');
+  it('空字符串或纯空白抛出无响应错误', () => {
+    expect(() => parseServiceResponse('')).toThrow('分析服务无响应');
+    expect(() => parseServiceResponse('   ')).toThrow('分析服务无响应');
   });
 
-  it('响应包含 error 字段时将其作为 Error 抛出', () => {
-    const raw = JSON.stringify({ 
-      error: { code: 'ERR_TEST', message: '未搜寻到相关新闻' } 
-    });
-    expect(() => parseAnalysisResponse(raw)).toThrow('未搜寻到相关新闻');
+  it('JSON 非法时抛格式错误', () => {
+    expect(() => parseServiceResponse('not json {')).toThrow('响应格式错误');
   });
 
-  it('analysis.rating 不是 number 时抛出格式异常', () => {
-    const raw = JSON.stringify({
-      data: {
-        symbol: 'AAPL',
-        news: [],
-        analysis: { rating: 'high', sentiment: 'bullish', summary: '', pros: [], cons: [] },
-      }
-    });
-    expect(() => parseAnalysisResponse(raw)).toThrow('格式异常');
+  it('error 对象信封抛 ServiceError 且保留 code', () => {
+    const raw = JSON.stringify({ error: { code: 'ERR_FOO', message: '炸了' } });
+    expect(() => parseServiceResponse(raw)).toThrow(ServiceError);
+    try {
+      parseServiceResponse(raw);
+    } catch (e) {
+      expect(e).toBeInstanceOf(ServiceError);
+      expect((e as ServiceError).code).toBe('ERR_FOO');
+      expect((e as ServiceError).message).toBe('炸了');
+    }
   });
 
-  it('news 不是数组时抛出格式异常', () => {
-    const raw = JSON.stringify({
-      data: {
-        symbol: 'AAPL',
-        news: null,
-        analysis: { rating: 80, sentiment: 'bullish', summary: '', pros: [], cons: [] },
-      }
-    });
-    expect(() => parseAnalysisResponse(raw)).toThrow('格式异常');
+  it('error 为旧版字符串格式时仍抛 Error（兼容路径）', () => {
+    const raw = JSON.stringify({ error: '老格式错误' });
+    expect(() => parseServiceResponse(raw)).toThrow('老格式错误');
   });
 
-  it('analysis 字段缺失时抛出格式异常', () => {
-    const raw = JSON.stringify({ 
-      data: { symbol: 'AAPL', news: [] } 
-    });
-    expect(() => parseAnalysisResponse(raw)).toThrow('格式异常');
+  it('data 缺失时抛"未返回有效数据"', () => {
+    const raw = JSON.stringify({});
+    expect(() => parseServiceResponse(raw)).toThrow('未返回有效数据');
   });
 });

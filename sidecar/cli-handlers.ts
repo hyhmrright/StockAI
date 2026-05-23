@@ -9,9 +9,14 @@ import {
   errorEnvelopeFromUnknown,
 } from './utils';
 import { DEFAULT_OPENAI_MODELS } from './config';
-import type { performFullAnalysis as AnalysisFn } from './analysis';
+import type {
+  performFullAnalysis as AnalysisFn,
+  fetchMarketBundle as FetchBundleFn,
+  analyzeNewsWithLLM as AnalyzeFn,
+} from './analysis';
 import { ScrapeEmptyError } from './analysis';
 import type { ResolvedConfig } from './configResolver';
+import type { StockNews } from '../shared/types';
 
 export interface RawConfig {
   provider?: string;
@@ -22,6 +27,8 @@ export interface RawConfig {
 interface HandlerDeps {
   _out?: typeof outputJson;
   _analyze?: typeof AnalysisFn;
+  _fetchBundle?: typeof FetchBundleFn;
+  _analyzeOnly?: typeof AnalyzeFn;
 }
 
 export function createHandlers(deps: HandlerDeps = {}) {
@@ -135,6 +142,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
 
     /**
      * 执行完整分析 - 此处才会触发 playwright 相关的 scraper 加载
+     * （保留向后兼容；新交互流程走 handleFetchBundle + handleAnalyzeOnly）
      */
     async handleAnalysis(symbol: string, config: ResolvedConfig) {
       try {
@@ -149,6 +157,42 @@ export function createHandlers(deps: HandlerDeps = {}) {
       } catch (error) {
         const code = error instanceof ScrapeEmptyError ? 'ERR_SCRAPE_EMPTY' : 'ERR_ANALYSIS_FAILED';
         out(errorEnvelope(code, toErrorMessage(error)));
+      }
+    },
+
+    /**
+     * 仅抓数据（StockInfo + News）不调 LLM — 新交互流程第一步
+     */
+    async handleFetchBundle(symbol: string, config: ResolvedConfig) {
+      try {
+        const fetchBundle = deps._fetchBundle ?? (await import('./analysis')).fetchMarketBundle;
+        const bundle = await fetchBundle(symbol, config.deepMode);
+        out(successEnvelope(bundle));
+      } catch (error) {
+        const code = error instanceof ScrapeEmptyError ? 'ERR_SCRAPE_EMPTY' : 'ERR_BUNDLE_FAILED';
+        out(errorEnvelope(code, toErrorMessage(error)));
+      }
+    },
+
+    /**
+     * 仅调 LLM 分析已抓到的新闻 — 新交互流程第二步
+     * news 由前端从 bundle 缓存传回，避免在 sidecar 重复抓取
+     */
+    async handleAnalyzeOnly(symbol: string, news: StockNews[], config: ResolvedConfig) {
+      try {
+        if (!Array.isArray(news) || news.length === 0) {
+          out(errorEnvelope('ERR_MISSING_PARAM', '未提供有效的 news 数组，请先拉取新闻'));
+          return;
+        }
+        const analyzeOnly = deps._analyzeOnly ?? (await import('./analysis')).analyzeNewsWithLLM;
+        const analysis = await analyzeOnly(symbol, news, config.provider, {
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+          model: config.modelName,
+        });
+        out(successEnvelope(analysis));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_ANALYSIS_FAILED', error));
       }
     },
   };
