@@ -4,12 +4,13 @@
 
 ![StockAI Dashboard](./docs/screenshot-dashboard.png)
 
-StockAI is a modern cross-platform desktop application built with **Tauri 2.0**. It leverages AI technology to perform deep sentiment analysis and scoring on real-time stock news, providing investors with data-driven insights.
+StockAI is a modern cross-platform desktop application built with **Tauri 2.0**. It leverages AI technology to perform deep sentiment analysis and scoring on real-time stock news, and provides interactive K-line charts with technical indicators, giving investors data-driven insights in one place.
 
 ## 🌟 Key Features
 
-- **Multi-source News Scraping**: Automatically collects real-time stock news from Google Finance and Yahoo Finance, with full support for US stocks and Chinese A-shares (Shanghai, Shenzhen, and Beijing Stock Exchange).
-- **Deep AI Analysis**: Supports OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), DeepSeek (DeepSeek Chat), and Ollama (local models). Each provider keeps its own API key / base URL / model; switch active provider via a dropdown. Deep Mode extracts full article content for richer analysis; disable it for faster results.
+- **Multi-source News Scraping**: Automatically collects real-time stock news via Google News RSS (no Chromium needed) with Playwright fallback, supporting US stocks and Chinese A-shares (Shanghai, Shenzhen, and Beijing Stock Exchange).
+- **Deep AI Analysis**: Supports OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), DeepSeek (DeepSeek V4 Pro), GLM (GLM-5.1), and Ollama (local models). Each provider keeps its own API key / base URL / model; switch active provider via a dropdown. Analysis is **explicitly triggered** — switching stocks never silently consumes tokens. Deep Mode extracts full article content for richer analysis.
+- **Interactive K-line Chart**: Candlestick chart with MA / BOLL overlays, sub-chart indicators (MACD / RSI / KDJ / OBV / VWAP), comparison baseline overlay, and real-time price merged into the last candle during trading hours.
 - **Editable Watchlist**: Add and remove stocks freely — the list persists across sessions via local storage.
 - **Modern UI Design**: Features a Glassmorphism design language with immersive settings management and real-time analysis progress feedback.
 - **Local-first**: All API configurations and personalized settings are securely stored locally, never leaving your device.
@@ -86,7 +87,13 @@ bun tauri dev
 
 ## 🧪 Testing
 
-The project uses a multi-layered testing system:
+Run all tests with a single command (no GNU `timeout` required):
+
+```bash
+bun run test
+```
+
+Individual layers:
 
 - **Frontend Tests (Vitest)**: `bunx vitest run`
 - **Sidecar Logic Tests (Bun)**: `cd sidecar && bun test`
@@ -98,7 +105,7 @@ The project uses a multi-layered testing system:
 - **Desktop Framework**: Tauri 2.0 (Rust)
 - **Frontend Framework**: React 19, TailwindCSS 4, Lucide Icons, Lightweight Charts
 - **Scraper/Backend**: Bun, Playwright, NodeHtmlMarkdown
-- **AI Integration**: OpenAI SDK, Anthropic SDK, Ollama SDK (DeepSeek via OpenAI-compatible API)
+- **AI Integration**: OpenAI SDK, Anthropic SDK, Ollama SDK (DeepSeek / GLM via OpenAI-compatible API)
 
 ## 📅 Development Conventions
 
