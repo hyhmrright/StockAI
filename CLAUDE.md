@@ -102,6 +102,8 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 | `src-tauri/Cargo.toml` | `version`（`[package]` 段） |
 | `package.json` | `version` |
 
+一键同步：`bun run bump-version <x.y.z>` 先 dry-run 预览，确认后 `bun run bump-version <x.y.z> --write` 写盘。
+
 ### 2. CHANGELOG.md
 
 在文件顶部插入新版本条目，格式：

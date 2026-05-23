@@ -10,7 +10,8 @@
     "build:frontend": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test:ui": "vitest"
+    "test:ui": "vitest",
+    "bump-version": "bun scripts/bump-version.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",
