@@ -54,6 +54,8 @@ export interface AIAnalysisResult {
   sector?: string;      // 所属板块
   industry?: string;    // 所属行业
   description?: string; // 公司业务描述
+  technicalView?: string;    // LLM 对技术面的文字解读
+  fundamentalView?: string;  // LLM 对基本面的文字解读
 }
 
 /**
@@ -172,4 +174,23 @@ export interface RealtimeQuote {
   timestamp: number;         // 报价时间 Unix 秒
   currency: "CNY" | "USD";   // 货币
   market: Market;
+}
+
+/** 单维度分析信号 */
+export interface AnalystSignal {
+  signal: 'bullish' | 'bearish' | 'neutral';
+  confidence: number;
+  details: Record<string, number | string>;
+}
+
+/** 量化分析数据包（技术面 + 基本面，不含情绪——情绪由 LLM 综合研判） */
+export interface QuantBundle {
+  symbol: string;
+  technical: AnalystSignal;
+  fundamental: AnalystSignal;
+  composite: {
+    signal: 'bullish' | 'bearish' | 'neutral';
+    score: number;
+  };
+  fetchedAt: number;
 }

@@ -147,7 +147,7 @@ describe('CLI Handlers', () => {
       const handlers = createHandlers({ _out: mockOut, _analyzeOnly: mockAnalyze });
       await handlers.handleAnalyzeOnly('AAPL', news, baseConfig);
 
-      expect(mockAnalyze).toHaveBeenCalledWith('AAPL', news, 'openai', expect.objectContaining({ apiKey: 'key', model: 'model' }));
+      expect(mockAnalyze).toHaveBeenCalledWith('AAPL', news, 'openai', expect.objectContaining({ apiKey: 'key', model: 'model' }), undefined);
       expect(mockOut).toHaveBeenCalledWith({ data: mockResult });
     });
 

@@ -93,7 +93,7 @@ describe("fetchMarketBundle (拆分后的纯抓取)", () => {
 describe("analyzeNewsWithLLM (拆分后的纯分析)", () => {
   test("UsesProvidedNewsDirectly", async () => {
     const { deps, mocks } = makeDeps();
-    const result = await analyzeNewsWithLLM("AAPL", DEFAULT_NEWS, "openai", { apiKey: "sk" }, deps);
+    const result = await analyzeNewsWithLLM("AAPL", DEFAULT_NEWS, "openai", { apiKey: "sk" }, undefined, deps);
     expect(result.rating).toBe(DEFAULT_ANALYSIS.rating);
     // 不应触发抓取
     expect(mocks.scrape).not.toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe("analyzeNewsWithLLM (拆分后的纯分析)", () => {
 
   test("ProviderFailure_ReturnsNeutralDegradation", async () => {
     const { deps } = makeDeps({ analyzeRejects: new Error("boom") });
-    const result = await analyzeNewsWithLLM("AAPL", DEFAULT_NEWS, "openai", {}, deps);
+    const result = await analyzeNewsWithLLM("AAPL", DEFAULT_NEWS, "openai", {}, undefined, deps);
     expect(result.rating).toBe(50);
     expect(result.sentiment).toBe("neutral");
   });

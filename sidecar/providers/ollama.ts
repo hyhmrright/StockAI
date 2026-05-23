@@ -1,8 +1,8 @@
 import { Ollama } from "ollama";
-import type { AIAnalysisResult, StockNews } from "../../shared/types";
+import type { AIAnalysisResult, StockNews, QuantBundle } from "../../shared/types";
 import type { AIProvider, ProviderKind } from "../ai";
 import { PROVIDER_PROFILES } from "../config";
-import { buildAnalysisPrompt, SYSTEM_PROMPT } from "../prompts";
+import { buildAnalysisPrompt, buildEnhancedPrompt, SYSTEM_PROMPT } from "../prompts";
 import { toErrorMessage, withTimeout, logger, parseJsonFromAi } from "../utils";
 
 /**
@@ -18,8 +18,10 @@ export class OllamaProvider implements AIProvider {
     this.model = model;
   }
 
-  async analyze(symbol: string, news: StockNews[]): Promise<AIAnalysisResult> {
-    const prompt = buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.ollama.contentLimit);
+  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult> {
+    const prompt = quant
+      ? buildEnhancedPrompt(symbol, news, quant, PROVIDER_PROFILES.ollama.contentLimit)
+      : buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.ollama.contentLimit);
 
     try {
       const response = await withTimeout(

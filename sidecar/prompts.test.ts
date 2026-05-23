@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { buildAnalysisPrompt, SYSTEM_PROMPT } from "./prompts";
-import { createMockNews } from "../shared/test-utils";
+import { buildAnalysisPrompt, buildEnhancedPrompt, SYSTEM_PROMPT } from "./prompts";
+import { createMockNews, createMockQuantBundle } from "../shared/test-utils";
 
 describe("SYSTEM_PROMPT", () => {
   test("包含金融分析师角色定义", () => {
@@ -77,5 +77,47 @@ describe("buildAnalysisPrompt", () => {
     const prompt = buildAnalysisPrompt("TSLA", []);
     expect(prompt).toContain("TSLA");
     expect(prompt).toContain("股票代码");
+  });
+});
+
+describe("buildEnhancedPrompt", () => {
+  const news = [createMockNews({ title: "测试新闻" })];
+  const quant = createMockQuantBundle({
+    technical: { signal: 'bullish', confidence: 72, details: { rsi: 45, adx: 28, alignment: 'bullish', volume_ratio: 1.3, macd_trend: 'expanding' } },
+    fundamental: { signal: 'neutral', confidence: 55, details: { roe: 16.5, pe: 22, net_margin: 12 } },
+    composite: { signal: 'bullish', score: 68 },
+  });
+
+  test("包含量化分析摘要标题", () => {
+    const prompt = buildEnhancedPrompt("AAPL", news, quant);
+    expect(prompt).toContain("[量化分析摘要]");
+  });
+
+  test("包含技术面信号", () => {
+    const prompt = buildEnhancedPrompt("AAPL", news, quant);
+    expect(prompt).toContain("看涨");
+    expect(prompt).toContain("72%");
+  });
+
+  test("包含基本面指标值", () => {
+    const prompt = buildEnhancedPrompt("AAPL", news, quant);
+    expect(prompt).toContain("ROE: 16.5%");
+    expect(prompt).toContain("PE: 22");
+  });
+
+  test("包含综合评分", () => {
+    const prompt = buildEnhancedPrompt("AAPL", news, quant);
+    expect(prompt).toContain("68/100");
+  });
+
+  test("包含 technicalView/fundamentalView 要求", () => {
+    const prompt = buildEnhancedPrompt("AAPL", news, quant);
+    expect(prompt).toContain("technicalView");
+    expect(prompt).toContain("fundamentalView");
+  });
+
+  test("仍包含原有新闻列表", () => {
+    const prompt = buildEnhancedPrompt("AAPL", news, quant);
+    expect(prompt).toContain("测试新闻");
   });
 });

@@ -1,4 +1,4 @@
-import type { FullAnalysisResponse, StockInfo, StockNews, AIAnalysisResult } from './types';
+import type { FullAnalysisResponse, StockInfo, StockNews, AIAnalysisResult, AnalystSignal, QuantBundle } from './types';
 
 /**
  * 模拟新闻数据工厂
@@ -53,5 +53,25 @@ export function createMockAnalysisResponse(overrides: Partial<FullAnalysisRespon
     analysis: createMockAIResult(),
     stockInfo: createMockStockInfo(),
     ...overrides
+  };
+}
+
+export function createMockSignal(overrides: Partial<AnalystSignal> = {}): AnalystSignal {
+  return {
+    signal: 'bullish',
+    confidence: 70,
+    details: { rsi: 45, macd: 'golden_cross' },
+    ...overrides,
+  };
+}
+
+export function createMockQuantBundle(overrides: Partial<QuantBundle> = {}): QuantBundle {
+  return {
+    symbol: 'AAPL',
+    technical: createMockSignal(),
+    fundamental: createMockSignal({ signal: 'neutral', confidence: 55, details: { pe: 22, roe: 18 } }),
+    composite: { signal: 'bullish', score: 65 },
+    fetchedAt: Date.now(),
+    ...overrides,
   };
 }

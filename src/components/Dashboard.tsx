@@ -4,6 +4,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { useStockData } from '../hooks/useStockData';
 import { useAIAnalysis } from '../hooks/useAIAnalysis';
+import { useQuantData } from '../hooks/useQuantData';
 import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import Watchlist from './Watchlist';
@@ -26,20 +27,22 @@ const Dashboard: React.FC = () => {
 
   const { step, stockInfo, news, error: dataError } = useStockData(currentSymbol);
   const { record, analyzing, error: aiError, analyze } = useAIAnalysis(currentSymbol);
+  const { step: quantStep, quant, error: quantError } = useQuantData(currentSymbol);
   const { settings } = useSettings();
 
   const providerProfile = PROVIDER_PROFILES[settings.activeProvider];
   const providerLabel = settings.activeProvider;
   const modelLabel = settings.providerConfigs[settings.activeProvider]?.model ?? providerProfile.model;
 
-  // 自动模式：数据就绪后触发一次 LLM；用 autoFlowSymbol 防止重复触发
+  // 自动模式：新闻 + 量化数据均就绪后触发一次 LLM
   useEffect(() => {
     if (!settings.autoAnalyze) return;
     if (step !== 'ready' || news.length === 0) return;
+    if (quantStep !== 'ready' && quantStep !== 'error') return;
     if (autoFlowSymbol === currentSymbol) return;
     setAutoFlowSymbol(currentSymbol);
-    analyze(news);
-  }, [step, news, currentSymbol, settings.autoAnalyze, autoFlowSymbol, analyze]);
+    analyze(news, quant ?? undefined);
+  }, [step, news, currentSymbol, settings.autoAnalyze, autoFlowSymbol, analyze, quant, quantStep]);
 
   function handleSearch(symbol: string) {
     setCurrentSymbol(symbol);
@@ -143,7 +146,10 @@ const Dashboard: React.FC = () => {
           hasNews={news.length > 0}
           providerLabel={providerLabel}
           modelLabel={modelLabel}
-          onAnalyze={() => analyze(news)}
+          onAnalyze={() => analyze(news, quant ?? undefined)}
+          quant={quant}
+          quantLoading={quantStep === 'fetching'}
+          quantError={quantError}
         />
       </main>
 
