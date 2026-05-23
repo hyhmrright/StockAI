@@ -2,6 +2,30 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.7.0] - 2026-05-23
+
+### Added
+
+- **两阶段分析架构** — AI 分析改为显式触发，切换股票不再自动消耗 token；分析按钮明确区分"获取数据"与"开始分析"两步，用户完全掌控何时调用 AI。
+- **list-models 错误分类** — Sidecar 对模型列表拉取失败细分 6 种错误码（网络超时、认证失败、端点不存在等），Provider 设置页面展示可操作的具体提示，而非笼统报错。
+- **bump-version 脚本** — `bun run bump-version <x.y.z> --write` 一键同步三个版本文件（`package.json` / `tauri.conf.json` / `Cargo.toml`），内置 dry-run 预览。
+- **聚合测试 runner** — `bun run test` 统一串联前端 vitest 与 sidecar bun test，带超时保护，无需 GNU `timeout` 依赖；`bun run test:integration` 追加网络集成测试。
+- **PriceChart 端到端测试** — 覆盖 K 线协调层 6 个核心场景（数据加载、实时合并、错误回退等）。
+
+### Fixed
+
+- **ARG_MAX 溢出风险** — 当新闻条目过多时，`analyze_news` 命令行参数超过系统限制导致 sidecar 崩溃；改为通过临时文件传递新闻 JSON，彻底消除风险。
+- **跨 symbol 状态泄漏** — 切换股票时，前一只股票的分析结果可能短暂显示在新股票页面；加入请求 ID 校验，过期响应直接丢弃。
+
+### Changed
+
+- **RAII 临时文件清理** — 引入 `TempFileGuard`，分析流程结束后自动删除临时文件，无需手动清理。
+- **LRU cache 上限** — `useAIAnalysis` hook 的缓存条目上限设为 50，防止长时间使用后内存持续增长。
+- **渲染节流** — K 线更新合并高频渲染帧，减少不必要的 DOM 操作。
+- **K 线 symbol 解析共享化** — 提取 `sidecar/parsers/exchange.ts` 共享工具，eastmoney / tencent / yahoo 三个数据源统一解析逻辑。
+- **stdout 信封统一** — Sidecar 所有 CLI 动作输出格式标准化（`{ ok, data } | { ok, error }`），前端解析路径收敛。
+- **三栏仪表盘布局** — 主界面重构为左（自选列表）+ 中（K 线图）+ 右（AI 分析）三栏，信息密度大幅提升。
+
 ## [0.6.0] - 2026-05-22
 
 ### Added
