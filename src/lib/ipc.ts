@@ -9,6 +9,18 @@ import {
 } from "./dev-mocks";
 
 /**
+ * 携带服务端错误码的错误，便于 UI 按 code 做差异化提示
+ */
+export class ServiceError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "ServiceError";
+    this.code = code;
+  }
+}
+
+/**
  * 从原始 stdout 字符串中解析响应，支持标准 ServiceResponse 信封。
  */
 export function parseServiceResponse<T>(raw: string): T {
@@ -29,10 +41,10 @@ export function parseServiceResponse<T>(raw: string): T {
     throw new Error(envelope.error);
   }
 
-  // 处理标准信封错误 (error 为对象)
+  // 处理标准信封错误 (error 为对象)：保留 code，便于 UI 显示差异化提示
   if (envelope.error && typeof envelope.error === 'object') {
-    const { message } = envelope.error;
-    throw new Error(message || '未知服务错误');
+    const { code, message } = envelope.error;
+    throw new ServiceError(code || 'ERR_UNKNOWN', message || '未知服务错误');
   }
 
   if (envelope.data === undefined) {

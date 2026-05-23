@@ -1,13 +1,36 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Key, Globe, Cpu, RefreshCw, AlertCircle } from "lucide-react";
 import { ProviderConfig, ProviderType } from "../../hooks/useSettings";
-import { listModels } from "../../lib/ipc";
+import { listModels, ServiceError } from "../../lib/ipc";
 import { FormInput } from "./FormInput";
 
 interface ProviderFormProps {
   providerType: ProviderType;
   config: ProviderConfig;
   onChange: (patch: Partial<ProviderConfig>) => void;
+}
+
+/**
+ * 把 sidecar 抛出的 list-models 错误码映射成对用户可操作的提示
+ */
+function formatListModelsError(err: unknown): string {
+  if (err instanceof ServiceError) {
+    switch (err.code) {
+      case "ERR_LIST_MODELS_TIMEOUT":
+        return "请求超时：检查 Ollama 服务是否在响应（或网络是否通畅）";
+      case "ERR_LIST_MODELS_AUTH":
+        return "鉴权失败：请检查 API Key 是否正确";
+      case "ERR_LIST_MODELS_NETWORK":
+        return "网络连接失败：检查 Endpoint 地址，或确认服务已启动";
+      case "ERR_LIST_MODELS_SERVER":
+        return `服务器内部错误：${err.message}`;
+      case "ERR_LIST_MODELS_BAD_REQUEST":
+        return `配置异常：${err.message}`;
+      default:
+        return `获取模型列表失败: ${err.message}`;
+    }
+  }
+  return `获取模型列表失败: ${err instanceof Error ? err.message : String(err)}`;
 }
 
 /**
@@ -39,7 +62,7 @@ export function ProviderForm({ providerType, config, onChange }: ProviderFormPro
       else setFetchError("未发现可用模型，请确保 Ollama 服务已启动。");
     } catch (err) {
       if (cancelled?.current) return;
-      setFetchError(`获取模型列表失败: ${err instanceof Error ? err.message : String(err)}`);
+      setFetchError(formatListModelsError(err));
     } finally {
       if (!cancelled?.current) setIsFetching(false);
     }

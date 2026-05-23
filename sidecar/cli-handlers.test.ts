@@ -68,4 +68,16 @@ describe('CLI Handlers', () => {
       );
     });
   });
+
+  describe('handleListModels', () => {
+    it('非 ollama 直接返回默认模型表', async () => {
+      const mockOut = mock(() => {});
+      const handlers = createHandlers({ _out: mockOut });
+
+      await handlers.handleListModels({ provider: 'openai' });
+
+      const call = mockOut.mock.calls[0][0] as { data: { models: string[] } };
+      expect(call.data.models.length).toBeGreaterThan(0);
+    });
+  });
 });
