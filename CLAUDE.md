@@ -144,9 +144,98 @@ CI（`release.yml`）会自动构建三平台产物并创建 **Draft Release**�
 
 CI 完成后，进入 GitHub → Releases → 编辑 Draft：
 - **Release title**：`StockAI vx.y.z`
-- **Release notes**：将 CHANGELOG.md 对应版本的条目内容粘贴进去（不只是链接）
+- **Release notes**：必须使用下方双语模板，**中英文各一份，内容对等**，不得省略任一语言
 - 确认产物（`.dmg` / `.deb` / `.msi`）已全部上传
 - 点击 **Publish release**
+
+#### Release Notes 双语模板
+
+Release Notes 分两块书写，中文在前、英文在后，中间用 `---` 分隔。目标读者是「从未用过这个项目的开发者/投资者」，行文要让人立刻明白「这版更新了什么、值不值得装、怎么装」。
+
+```markdown
+## StockAI vx.y.z
+
+> 一句话概括本版本核心价值（例：支持 GLM / K 线图 / 两阶段分析，让 AI 分析更快更省 token）
+
+### ✨ 新特性 / New Features
+- **功能名称**：一句话说明这个功能解决了什么问题，用户能感知到什么变化
+- ...
+
+### 🐛 修复 / Bug Fixes
+- 修了什么，之前会怎么出错，现在行为是什么
+- ...
+
+### ⚡ 性能 & 体验 / Performance & UX
+- 具体数字优先（「冷启动减少 1–3 秒」「LRU cache 上限防止内存泄漏」）
+- ...
+
+### 📦 安装 / Installation
+
+**macOS**
+1. 下载 `StockAI_x.y.z_aarch64.dmg`（Apple Silicon）或 `StockAI_x.y.z_x64.dmg`（Intel）
+2. 打开 DMG，将 StockAI 拖入 Applications
+3. 首次启动若提示「无法验证开发者」：系统设置 → 隐私与安全性 → 仍要打开
+
+**Windows**
+1. 下载 `StockAI_x.y.z_x64-setup.exe`，双击安装，按向导操作即可
+
+**Linux**
+1. 下载 `StockAI_x.y.z_amd64.deb`
+2. `sudo dpkg -i StockAI_x.y.z_amd64.deb`
+
+**首次配置**
+打开应用 → 右上角设置 → 填入 AI 提供商（OpenAI / DeepSeek / GLM / Anthropic / Ollama）的 API Key → 保存，即可开始使用。
+
+### 🔗 相关链接
+- [README（中文）](../blob/main/README.zh-CN.md) · [README (English)](../blob/main/README.md)
+- 问题反馈：[Issues](../issues) · 功能建议：[Discussions](../discussions)
+
+---
+
+## StockAI vx.y.z
+
+> One-liner on the core value of this release (e.g. GLM support / K-line charts / two-phase analysis for faster, cheaper AI insights)
+
+### ✨ New Features
+- **Feature name**: What problem it solves and what the user will notice
+- ...
+
+### 🐛 Bug Fixes
+- What was broken, how it failed, what it does now
+- ...
+
+### ⚡ Performance & UX
+- Prefer concrete numbers ("cold-start 1–3 s faster", "LRU cache cap prevents memory growth")
+- ...
+
+### 📦 Installation
+
+**macOS**
+1. Download `StockAI_x.y.z_aarch64.dmg` (Apple Silicon) or `StockAI_x.y.z_x64.dmg` (Intel)
+2. Open the DMG and drag StockAI into Applications
+3. If macOS says "cannot verify developer": System Settings → Privacy & Security → Open Anyway
+
+**Windows**
+1. Download `StockAI_x.y.z_x64-setup.exe` and run the installer
+
+**Linux**
+1. Download `StockAI_x.y.z_amd64.deb`
+2. `sudo dpkg -i StockAI_x.y.z_amd64.deb`
+
+**First-time setup**
+Open the app → Settings (top-right) → enter your AI provider API Key (OpenAI / DeepSeek / GLM / Anthropic / Ollama) → Save. Done.
+
+### 🔗 Links
+- [README (中文)](../blob/main/README.zh-CN.md) · [README (English)](../blob/main/README.md)
+- Bug reports: [Issues](../issues) · Feature requests: [Discussions](../discussions)
+```
+
+**写作要点**（每次发版对照检查）：
+- 每条改动都要说「对用户的影响」，不只是技术描述
+- 新特性优先写最吸引人的，不按实现顺序
+- 安装步骤要完整可执行，复制进终端就能跑
+- 中英文内容必须对等，不得一方比另一方信息量少
+- 避免「fix some bugs」「minor improvements」这类无意义措辞
 
 ### 6. 更新 GitHub 仓库 About
 
