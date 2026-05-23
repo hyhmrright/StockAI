@@ -23,7 +23,14 @@ export async function fetchEastmoneyKline(req: NormalizedRequest): Promise<Kline
   return parseEastmoneyKline(json);
 }
 
-export function parseEastmoneyKline(json: any): KlinePoint[] {
+/** 东方财富 K 线接口响应结构 */
+interface EastmoneyKlineResponse {
+  data?: {
+    klines?: string[];
+  };
+}
+
+export function parseEastmoneyKline(json: EastmoneyKlineResponse): KlinePoint[] {
   const klines: string[] = json?.data?.klines || [];
   return klines.map((row) => {
     // 字段顺序：日期, 开, 收, 高, 低, 成交量(手), 成交额, 振幅, 涨跌幅, 涨跌额, 换手率

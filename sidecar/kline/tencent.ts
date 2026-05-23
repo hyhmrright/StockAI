@@ -34,12 +34,19 @@ export async function fetchTencentKline(req: NormalizedRequest): Promise<KlinePo
   return parseTencentKline(json, tencentSymbol, req.adjust, period);
 }
 
-export function parseTencentKline(json: any, symbol: string, adjust: AdjustMode, period: string): KlinePoint[] {
+/** 腾讯 K 线接口响应结构 */
+interface TencentKlineResponse {
+  code?: number;
+  msg?: string;
+  data?: Record<string, Record<string, Array<[string, ...string[]]>>>;
+}
+
+export function parseTencentKline(json: TencentKlineResponse, symbol: string, adjust: AdjustMode, period: string): KlinePoint[] {
   if (json?.code !== 0 && json?.code != null) throw new Error(`腾讯响应错误：${json.msg || json.code}`);
   const node = json?.data?.[symbol];
   if (!node) throw new Error(`腾讯响应缺少 ${symbol}`);
   const key = adjust === "qfq" ? `qfq${period}` : adjust === "hfq" ? `hfq${period}` : period;
-  const arr: any[] = node[key] || node[period] || [];
+  const arr = node[key] || node[period] || [];
 
   return arr.map((row) => {
     // 日/周/月：[date, open, close, high, low, volume(手), {}, amount?]
@@ -57,7 +64,7 @@ export function parseTencentKline(json: any, symbol: string, adjust: AdjustMode,
   });
 }
 
-function parseAmount(v: any): number | undefined {
+function parseAmount(v: unknown): number | undefined {
   if (v == null) return undefined;
   if (typeof v === "number") return v;
   if (typeof v === "string") {

@@ -24,18 +24,31 @@ export async function scrapeStockNews(symbol: string, deepMode = true): Promise<
 
   try {
     for (const strategy of strategies) {
-      const results = await strategy.scrape(symbol, ctx);
-      if (results.length > 0) {
-        news = results;
-        logger.info(`${strategy.name} 抓取成功，获取到 ${results.length} 条新闻概要。`);
-        
-        if (deepMode) {
-          await enrichWithFullContent(news, ctx.getPage);
-        } else {
-          logger.info("深度模式已关闭，仅使用新闻摘要进行分析。");
+      let attempts = 0;
+      while (attempts < 2) {
+        try {
+          const results = await strategy.scrape(symbol, ctx);
+          if (results.length > 0) {
+            news = results;
+            logger.info(`${strategy.name} 抓取成功，获取到 ${results.length} 条新闻概要。`);
+
+            if (deepMode) {
+              await enrichWithFullContent(news, ctx.getPage);
+            } else {
+              logger.info("深度模式已关闭，仅使用新闻摘要进行分析。");
+            }
+          }
+          break; // 无论结果是否为空，不再重试当前策略
+        } catch (err) {
+          attempts++;
+          if (attempts >= 2) {
+            logger.warn(`${strategy.name} 重试后仍失败: ${toErrorMessage(err)}`);
+          } else {
+            logger.warn(`${strategy.name} 首次失败，正在重试: ${toErrorMessage(err)}`);
+          }
         }
-        break;
       }
+      if (news.length > 0) break;
     }
   } catch (error) {
     logger.error(`抓取 ${symbol} 新闻发生异常: ${toErrorMessage(error)}`);

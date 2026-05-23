@@ -1,3 +1,5 @@
+import type { StockNews } from '../shared/types';
+import type { RawConfig } from './cli-handlers';
 import { logger, toErrorMessage, outputJson, logToFile, errorEnvelope, errorEnvelopeFromUnknown } from './utils';
 
 /**
@@ -17,22 +19,88 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
+/** 命令定义：每条命令的参数提取规则 */
+interface CommandDef {
+  flag: string;
+  /** 从 argv 中提取参数；idx 为 flag 在 argv 中的位置 */
+  extract: (args: string[], idx: number) => Omit<ParsedArgs, 'action'>;
+}
+
+/** 参数解析结果 */
+interface ParsedArgs {
+  action: string;
+  configStr: string;
+  actionParam?: string;
+  newsJson?: string;
+}
+
+/** 命令定义表：flag → 参数提取逻辑 */
+const COMMAND_TABLE: CommandDef[] = [
+  {
+    // --list-models：config 从 argv 中找 JSON 串
+    flag: '--list-models',
+    extract: (args) => ({ configStr: args.find(a => a.startsWith('{')) || '{}' }),
+  },
+  {
+    // --info config_json symbol
+    flag: '--info',
+    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 2] }),
+  },
+  {
+    // --search config_json keyword
+    flag: '--search',
+    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 2] }),
+  },
+  {
+    // --kline request_json
+    flag: '--kline',
+    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
+  },
+  {
+    // --quote symbol
+    flag: '--quote',
+    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
+  },
+  {
+    // --bundle config_json symbol
+    flag: '--bundle',
+    extract: (args, idx) => ({ configStr: args[idx + 1] || '{}', actionParam: args[idx + 2] }),
+  },
+  {
+    // --analyze-only config_json symbol news_path
+    // news 通过临时文件传递（Rust 写入路径），避免 argv 撞 macOS ARG_MAX
+    flag: '--analyze-only',
+    extract: (args, idx) => ({
+      configStr: args[idx + 1] || '{}',
+      actionParam: args[idx + 2],
+      newsJson: args[idx + 3],
+    }),
+  },
+];
+
+/** 解析 argv，按命令表依次匹配；均未命中时走默认分析模式 */
+function parseArgs(args: string[]): ParsedArgs {
+  for (const cmd of COMMAND_TABLE) {
+    const idx = args.indexOf(cmd.flag);
+    if (idx >= 0) {
+      return { action: cmd.flag, ...cmd.extract(args, idx) };
+    }
+  }
+  // 默认为分析模式: [binary] [symbol] [config_json]
+  const possibleJson = args.find(a => a.startsWith('{'));
+  if (possibleJson) {
+    const idx = args.indexOf(possibleJson);
+    return { action: idx > 0 ? args[idx - 1] : '', configStr: possibleJson };
+  }
+  return { action: args[args.length - 1] || '', configStr: '{}' };
+}
+
 async function run() {
   const args = process.argv;
   logToFile(`Full Argv: ${JSON.stringify(args)}`);
 
-  // 更加鲁棒的参数寻找逻辑
-  const isCheck = args.some(arg => arg === '--check');
-  const isListModels = args.some(arg => arg === '--list-models');
-  const isInfo = args.some(arg => arg === '--info');
-  const isSearch = args.some(arg => arg === '--search');
-  const isKline = args.some(arg => arg === '--kline');
-  const isQuote = args.some(arg => arg === '--quote');
-  const isBundle = args.some(arg => arg === '--bundle');
-  const isAnalyzeOnly = args.some(arg => arg === '--analyze-only');
-
-  // 健康自检逻辑 - 优先运行
-  if (isCheck) {
+  // 健康自检逻辑 - 优先运行，不需要加载业务模块
+  if (args.includes('--check')) {
     logger.info("运行 Sidecar 健康自检...");
     try {
       const { BrowserManager } = await import('./browser-manager');
@@ -52,61 +120,7 @@ async function run() {
   const { resolveConfig } = await import('./configResolver');
   const { Handlers } = await import('./cli-handlers');
 
-  // 参数解析逻辑优化
-  let action: string | undefined;
-  let configStr: string = '{}';
-  let actionParam: string | undefined;
-  // --analyze-only 额外需要 newsJson 入参
-  let newsJson: string | undefined;
-
-  if (isListModels) {
-    action = '--list-models';
-    configStr = args.find(a => a.startsWith('{')) || '{}';
-  } else if (isInfo) {
-    action = '--info';
-    const idx = args.indexOf('--info');
-    // Rust 传参顺序: ["--info", config_json, symbol]，跳过 config_json
-    actionParam = args[idx + 2];
-  } else if (isSearch) {
-    action = '--search';
-    const idx = args.indexOf('--search');
-    // Rust 传参顺序: ["--search", config_json, keyword]，跳过 config_json
-    actionParam = args[idx + 2];
-  } else if (isKline) {
-    action = '--kline';
-    const idx = args.indexOf('--kline');
-    // 参数顺序: ["--kline", request_json]
-    actionParam = args[idx + 1];
-  } else if (isQuote) {
-    action = '--quote';
-    const idx = args.indexOf('--quote');
-    // 参数顺序: ["--quote", symbol]
-    actionParam = args[idx + 1];
-  } else if (isBundle) {
-    action = '--bundle';
-    const idx = args.indexOf('--bundle');
-    // 参数顺序: ["--bundle", config_json, symbol]
-    configStr = args[idx + 1] || '{}';
-    actionParam = args[idx + 2];
-  } else if (isAnalyzeOnly) {
-    action = '--analyze-only';
-    const idx = args.indexOf('--analyze-only');
-    // 参数顺序: ["--analyze-only", config_json, symbol, news_path_or_json]
-    // news 通过临时文件传递（Rust 写入路径），避免 argv 撞 macOS ARG_MAX
-    configStr = args[idx + 1] || '{}';
-    actionParam = args[idx + 2];
-    newsJson = args[idx + 3];
-  } else {
-    // 默认为分析模式: [binary] [symbol] [config_json]
-    const possibleJson = args.find(a => a.startsWith('{'));
-    if (possibleJson) {
-      configStr = possibleJson;
-      const idx = args.indexOf(possibleJson);
-      if (idx > 0) action = args[idx - 1];
-    } else {
-      action = args[args.length - 1];
-    }
-  }
+  const { action, configStr, actionParam, newsJson } = parseArgs(args);
 
   logger.info(`Sidecar 执行: action=${action}, param=${actionParam}, config_len=${configStr.length}`);
 
@@ -115,16 +129,16 @@ async function run() {
     process.exit(1);
   }
 
-  let rawConfig: any;
+  let rawConfig: Record<string, unknown>;
   try {
-    rawConfig = JSON.parse(configStr);
+    rawConfig = JSON.parse(configStr) as Record<string, unknown>;
   } catch {
     rawConfig = {};
   }
 
   switch (action) {
     case '--list-models':
-      await Handlers.handleListModels(rawConfig);
+      await Handlers.handleListModels(rawConfig as RawConfig);
       break;
     case '--info':
       await Handlers.handleInfo(actionParam || '');
@@ -153,7 +167,7 @@ async function run() {
           outputJson(errorEnvelope('ERR_MISSING_PARAM', '未提供 news 文件路径'));
           return;
         }
-        let news: any[] = [];
+        let news: StockNews[] = [];
         try {
           // news 始终通过临时文件传递（Rust/Bridge 写入），避免 argv 触发 ARG_MAX
           news = JSON.parse(await Bun.file(newsJson).text());

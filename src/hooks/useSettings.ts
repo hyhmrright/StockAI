@@ -42,8 +42,7 @@ export function useSettings() {
     async function loadSettings() {
       try {
         const store = await getStore();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const saved = await store.get<any>("app_settings");
+        const saved = await store.get<Partial<Settings>>("app_settings");
 
         if (saved) {
           // 执行深合并确保 providerConfigs 完整
@@ -53,7 +52,7 @@ export function useSettings() {
               const provider = p as ProviderType;
               mergedConfigs[provider] = {
                 ...DEFAULT_SETTINGS.providerConfigs[provider],
-                ...(cfg as any)
+                ...cfg,
               };
             }
           }
