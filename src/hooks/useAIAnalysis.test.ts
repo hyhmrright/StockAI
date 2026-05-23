@@ -90,4 +90,85 @@ describe("useAIAnalysis", () => {
     });
     expect(result.current.analyzing).toBe(false);
   });
+
+  it("错误状态按 symbol 隔离：AAPL 出错后切 MSFT 应看不到错误", async () => {
+    const runner = vi.fn(async (sym: string) => {
+      if (sym === "AAPL") throw new Error("rate limit");
+      return buildResult(60);
+    });
+    const { result, rerender } = renderHook(({ s }) => useAIAnalysis(s, runner), {
+      initialProps: { s: "AAPL" },
+    });
+
+    await act(async () => { await result.current.analyze(NEWS); });
+    expect(result.current.error).toMatch(/rate limit/);
+
+    rerender({ s: "MSFT" });
+    // MSFT 自己的错误状态应是空——AAPL 的错误不该跨股票泄漏
+    expect(result.current.error).toBeNull();
+
+    rerender({ s: "AAPL" });
+    // 切回 AAPL 仍能看到自己的错误（按 symbol 持久化）
+    expect(result.current.error).toMatch(/rate limit/);
+  });
+
+  it("分析中状态按 symbol 隔离：AAPL 跑着切 MSFT，MSFT.analyzing 应为 false", async () => {
+    let resolveAapl: ((v: AIAnalysisResult) => void) | null = null;
+    const runner = vi.fn((sym: string) => {
+      if (sym === "AAPL") return new Promise<AIAnalysisResult>(res => { resolveAapl = res; });
+      return Promise.resolve(buildResult(40));
+    });
+    const { result, rerender } = renderHook(({ s }) => useAIAnalysis(s, runner), {
+      initialProps: { s: "AAPL" },
+    });
+
+    let pending: Promise<void>;
+    act(() => { pending = result.current.analyze(NEWS); });
+    await waitFor(() => expect(result.current.analyzing).toBe(true));
+
+    rerender({ s: "MSFT" });
+    expect(result.current.analyzing).toBe(false);
+
+    // AAPL 跑完，UI 仍在 MSFT，不应误把 MSFT 的 analyzing 翻回去
+    await act(async () => {
+      resolveAapl!(buildResult(80));
+      await pending!;
+    });
+    expect(result.current.analyzing).toBe(false);
+
+    // 切回 AAPL 才看到结果
+    rerender({ s: "AAPL" });
+    expect(result.current.record?.result.rating).toBe(80);
+    expect(result.current.analyzing).toBe(false);
+  });
+
+  it("跨 symbol 并发不互相挤占 requestId：AAPL 迟到的成功仍应写入 AAPL 缓存", async () => {
+    let resolveAapl: ((v: AIAnalysisResult) => void) | null = null;
+    const runner = vi.fn((sym: string) => {
+      if (sym === "AAPL") return new Promise<AIAnalysisResult>(res => { resolveAapl = res; });
+      return Promise.resolve(buildResult(30));
+    });
+    const { result, rerender } = renderHook(({ s }) => useAIAnalysis(s, runner), {
+      initialProps: { s: "AAPL" },
+    });
+
+    // AAPL 启动分析（pending）
+    let aaplPending: Promise<void>;
+    act(() => { aaplPending = result.current.analyze(NEWS); });
+    await waitFor(() => expect(result.current.analyzing).toBe(true));
+
+    // 切到 MSFT 并启动 MSFT 的分析（立即完成）
+    rerender({ s: "MSFT" });
+    await act(async () => { await result.current.analyze(NEWS); });
+    expect(result.current.record?.result.rating).toBe(30);
+
+    // AAPL 才完成；按旧逻辑会因 latestRequestId 被 MSFT 挤掉而丢，按新逻辑应正常落盘
+    await act(async () => {
+      resolveAapl!(buildResult(90));
+      await aaplPending!;
+    });
+
+    rerender({ s: "AAPL" });
+    expect(result.current.record?.result.rating).toBe(90);
+  });
 });

@@ -167,11 +167,33 @@ impl SidecarManager {
         let news_json = serde_json::to_string(&news)
             .map_err(|e| format!("新闻序列化失败: {}", e))?;
 
-        Self::run(
+        // 通过临时文件传递 news payload，避免 argv 触发 ARG_MAX（macOS ≈ 256KB）。
+        // 文件名含 pid + 纳秒时间戳，跨进程并发也不冲突。
+        let temp_path = std::env::temp_dir().join(format!(
+            "stockai-news-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        std::fs::write(&temp_path, &news_json)
+            .map_err(|e| format!("无法写入临时新闻文件: {}", e))?;
+
+        let result = Self::run(
             app_handle,
-            vec!["--analyze-only".to_string(), config_json, symbol, news_json],
+            vec![
+                "--analyze-only".to_string(),
+                config_json,
+                symbol,
+                temp_path.to_string_lossy().into_owned(),
+            ],
         )
-        .await
+        .await;
+
+        // 无论 sidecar 成功失败都清理；忽略 remove 错误避免掩盖原始结果
+        let _ = std::fs::remove_file(&temp_path);
+        result
     }
 }
 
@@ -326,6 +348,35 @@ mod tests {
         let json = serde_json::to_string(&cfg).unwrap();
         assert!(json.contains("baseUrl"), "serde 应序列化为 camelCase baseUrl");
         assert!(!json.contains("base_url"), "不应出现 snake_case base_url");
+    }
+
+    // 回归保护：news payload 走临时文件而非 argv，确保超过 macOS ARG_MAX (~256KB) 的大 payload
+    // 也能安全转移。如果有人误将这条链路改回 argv，此测试不会直接抓住，但它会失败的写入/读取路径
+    // 至少保证临时文件机制本身在当前 OS 上是可用的。
+    #[test]
+    fn test_large_news_payload_roundtrips_via_temp_file() {
+        let large_news = serde_json::json!([{
+            "title": "stress",
+            "source": "test",
+            "date": "2026-05-23",
+            "content": "x".repeat(400_000),
+            "url": "https://example.com"
+        }]);
+        let news_json = serde_json::to_string(&large_news).unwrap();
+        assert!(news_json.len() > 300_000, "构造样本必须超过 ARG_MAX 阈值才有意义");
+
+        let temp_path = std::env::temp_dir().join(format!(
+            "stockai-news-roundtrip-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(&temp_path, &news_json).expect("写入临时新闻文件应成功");
+        let read_back = std::fs::read_to_string(&temp_path).expect("读取临时新闻文件应成功");
+        std::fs::remove_file(&temp_path).expect("清理临时新闻文件应成功");
+        assert_eq!(read_back, news_json, "临时文件应能完整 roundtrip 任意大小 news payload");
     }
 }
 

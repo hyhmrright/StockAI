@@ -91,7 +91,8 @@ async function run() {
   } else if (isAnalyzeOnly) {
     action = '--analyze-only';
     const idx = args.indexOf('--analyze-only');
-    // 参数顺序: ["--analyze-only", config_json, symbol, news_json]
+    // 参数顺序: ["--analyze-only", config_json, symbol, news_path_or_json]
+    // news 通过临时文件传递（Rust 写入路径），避免 argv 撞 macOS ARG_MAX
     configStr = args[idx + 1] || '{}';
     actionParam = args[idx + 2];
     newsJson = args[idx + 3];
@@ -148,11 +149,16 @@ async function run() {
     case '--analyze-only':
       try {
         const config = resolveConfig(rawConfig);
+        if (!newsJson) {
+          outputJson(errorEnvelope('ERR_MISSING_PARAM', '未提供 news 文件路径'));
+          return;
+        }
         let news: any[] = [];
         try {
-          news = newsJson ? JSON.parse(newsJson) : [];
+          // news 始终通过临时文件传递（Rust/Bridge 写入），避免 argv 触发 ARG_MAX
+          news = JSON.parse(await Bun.file(newsJson).text());
         } catch (err) {
-          outputJson(errorEnvelope('ERR_MISSING_PARAM', `news JSON 解析失败: ${toErrorMessage(err)}`));
+          outputJson(errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`));
           return;
         }
         await Handlers.handleAnalyzeOnly(actionParam || '', news, config);
