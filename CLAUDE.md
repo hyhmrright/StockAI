@@ -12,13 +12,19 @@ bun tauri dev
 # Build for production
 bun tauri build
 
-# Frontend unit tests (Vitest + happy-dom)
+# 一键跑全部单元测试（聚合 vitest + sidecar bun test，自带超时不依赖 GNU `timeout`）
+bun run test
+
+# 同上但额外跑 sidecar 集成测试（需要网络）
+bun run test:integration
+
+# 单独跑前端 vitest
 bunx vitest run
 
 # Run a single frontend test file
 bunx vitest run src/hooks/useAnalysis.test.ts
 
-# Sidecar unit tests (Bun native, fast)
+# 单独跑 sidecar 单元测试
 cd sidecar && bun test
 
 # Run a single Sidecar test file

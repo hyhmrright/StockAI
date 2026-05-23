@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test:ui": "vitest",
+    "test": "bun scripts/test-all.ts",
+    "test:integration": "bun scripts/test-all.ts --integration",
     "bump-version": "bun scripts/bump-version.ts"
   },
   "dependencies": {
