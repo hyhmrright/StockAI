@@ -102,6 +102,32 @@ function formatQuantSummary(quant: QuantBundle): string {
   return lines.join('\n');
 }
 
+function formatValuationSummary(quant: QuantBundle): string | null {
+  const v = quant.valuation;
+  if (!v) return null;
+
+  const lines: string[] = ['[估值分析]', ''];
+  if (v.intrinsicValue != null) {
+    lines.push(`内在价值估算: ${(v.intrinsicValue / 1e8).toFixed(0)}亿`);
+  }
+  if (v.marketCap != null) {
+    lines.push(`当前市值: ${(v.marketCap / 1e8).toFixed(0)}亿`);
+  }
+  if (v.marginOfSafety != null) {
+    const pct = (v.marginOfSafety * 100).toFixed(1);
+    lines.push(`安全边际: ${v.marginOfSafety > 0 ? '+' : ''}${pct}%`);
+  }
+  lines.push(`估值信号: ${v.signal === 'undervalued' ? '低估' : v.signal === 'overvalued' ? '高估' : '合理'}`);
+
+  if (v.models.ownerEarnings) lines.push(`- Owner Earnings: ${v.models.ownerEarnings.details}`);
+  if (v.models.dcf) {
+    lines.push(`- DCF (WACC ${(v.models.dcf.wacc * 100).toFixed(1)}%): 悲观 ${(v.models.dcf.bear / 1e8).toFixed(0)}亿 / 基准 ${(v.models.dcf.base / 1e8).toFixed(0)}亿 / 乐观 ${(v.models.dcf.bull / 1e8).toFixed(0)}亿`);
+  }
+  if (v.models.relative) lines.push(`- 相对估值: ${v.models.relative.details}`);
+
+  return lines.join('\n');
+}
+
 export function buildEnhancedPrompt(
   symbol: string,
   news: StockNews[],
@@ -109,11 +135,14 @@ export function buildEnhancedPrompt(
   contentLimit = 1000,
 ): string {
   const quantSection = formatQuantSummary(quant);
+  const valuationSection = formatValuationSummary(quant);
   const newsPrompt = buildAnalysisPrompt(symbol, news, contentLimit);
 
-  return `${quantSection}
+  const sections = [quantSection];
+  if (valuationSection) sections.push(valuationSection);
+  sections.push(newsPrompt);
 
-${newsPrompt}
+  return `${sections.join('\n\n')}
 
 请结合量化分析数据和新闻信息，给出综合研判。在 JSON 中额外增加两个字段：
 "technicalView": "对技术面指标的文字解读（1-2 句话）",
