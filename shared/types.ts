@@ -194,3 +194,55 @@ export interface QuantBundle {
   };
   fetchedAt: number;
 }
+
+/** 投资大师元信息 */
+export interface MasterMeta {
+  id: string;
+  name: string;
+  nameZh: string;
+  style: string;
+  styleZh: string;
+  avatar: string;
+  description: string;
+}
+
+/** 单个大师的分析信号 */
+export interface MasterSignal {
+  masterId: string;
+  signal: 'bullish' | 'bearish' | 'neutral';
+  confidence: number;
+  reasoning: string;
+}
+
+/** 情绪分析信号 */
+export interface SentimentSignal {
+  signal: 'bullish' | 'bearish' | 'neutral';
+  confidence: number;
+  newsBreakdown: {
+    positive: number;
+    negative: number;
+    neutral: number;
+    total: number;
+  };
+}
+
+/** 深度分析综合结果 */
+export interface DeepAnalysisResult {
+  masterSignals: MasterSignal[];
+  sentiment: SentimentSignal;
+  synthesis: {
+    signal: 'bullish' | 'bearish' | 'neutral';
+    confidence: number;
+    summary: string;
+    consensus: number;
+  };
+}
+
+/** 深度分析完整响应（含新闻和量化数据） */
+export interface DeepAnalysisResponse {
+  symbol: string;
+  stockInfo?: StockInfo;
+  news: StockNews[];
+  quant?: QuantBundle;
+  deepAnalysis: DeepAnalysisResult;
+}

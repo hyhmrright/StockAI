@@ -32,3 +32,12 @@ export const DEFAULT_SETTINGS = {
  * Sidecar 会拒绝不匹配此版本的配置，防止静默降级。
  */
 export const CONFIG_VERSION = "2";
+
+/** 深度分析默认启用的大师 ID 列表 */
+export const DEFAULT_SELECTED_MASTERS: string[] = [
+  'warren-buffett',
+  'ben-graham',
+  'michael-burry',
+  'cathie-wood',
+  'aswath-damodaran',
+];
