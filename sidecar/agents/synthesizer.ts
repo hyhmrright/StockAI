@@ -1,0 +1,63 @@
+import type { MasterSignal, SentimentSignal, DeepAnalysisResult, QuantBundle } from '../../shared/types';
+import type { ChatProvider } from './types';
+import { logger, toErrorMessage } from '../utils';
+
+const SYSTEM_PROMPT = `你是投资委员会主席。综合所有分析师的独立研判，给出最终投资建议。
+重点关注：多数分析师的共识方向、高置信度分析师的权重更大、不同风格间的分歧。
+用中文回复。只返回 JSON：
+{"signal": "bullish|bearish|neutral", "confidence": 0-100, "summary": "200字以内综合分析", "consensus": 0-100}`;
+
+export function computeConsensus(signals: MasterSignal[]): number {
+  if (signals.length === 0) return 0;
+  const counts = { bullish: 0, bearish: 0, neutral: 0 };
+  for (const s of signals) counts[s.signal]++;
+  return Math.round((Math.max(counts.bullish, counts.bearish, counts.neutral) / signals.length) * 100);
+}
+
+function computeLocalSynthesis(signals: MasterSignal[]): { signal: 'bullish' | 'bearish' | 'neutral'; confidence: number } {
+  if (signals.length === 0) return { signal: 'neutral', confidence: 50 };
+  let bW = 0, beW = 0, nW = 0;
+  for (const s of signals) {
+    if (s.signal === 'bullish') bW += s.confidence;
+    else if (s.signal === 'bearish') beW += s.confidence;
+    else nW += s.confidence;
+  }
+  const total = bW + beW + nW;
+  if (total === 0) return { signal: 'neutral', confidence: 50 };
+  const maxW = Math.max(bW, beW, nW);
+  const signal = maxW === bW ? 'bullish' : maxW === beW ? 'bearish' : 'neutral';
+  return { signal, confidence: Math.round((maxW / total) * 100) };
+}
+
+function buildSynthesisPrompt(signals: MasterSignal[], sentiment: SentimentSignal, quant: QuantBundle): string {
+  const summary = signals.map(s => `- ${s.masterId}: ${s.signal} (${s.confidence}%) — ${s.reasoning.slice(0, 80)}`).join('\n');
+  return `[各大师研判]\n${summary}\n\n[情绪分析]\n信号: ${sentiment.signal}, 正面新闻 ${sentiment.newsBreakdown.positive}/${sentiment.newsBreakdown.total}\n\n[量化评分]\n综合: ${quant.composite.score}/100 (${quant.composite.signal})\n技术面: ${quant.technical.signal} (${quant.technical.confidence}%)\n基本面: ${quant.fundamental.signal} (${quant.fundamental.confidence}%)`;
+}
+
+export async function synthesize(
+  masterSignals: MasterSignal[], sentiment: SentimentSignal, quant: QuantBundle, chat: ChatProvider,
+): Promise<DeepAnalysisResult> {
+  const consensus = computeConsensus(masterSignals);
+  const localSynthesis = computeLocalSynthesis(masterSignals);
+  let synthesis: DeepAnalysisResult['synthesis'];
+  try {
+    const raw = await chat.chat(SYSTEM_PROMPT, buildSynthesisPrompt(masterSignals, sentiment, quant));
+    const parsed = JSON.parse(raw);
+    synthesis = {
+      signal: ['bullish', 'bearish', 'neutral'].includes(parsed.signal) ? parsed.signal : localSynthesis.signal,
+      confidence: Math.max(0, Math.min(100, Number(parsed.confidence) || localSynthesis.confidence)),
+      summary: String(parsed.summary || '').slice(0, 1000),
+      consensus: Number(parsed.consensus) || consensus,
+    };
+  } catch (err) {
+    logger.warn(`综合研判 LLM 失败，使用本地计算: ${toErrorMessage(err)}`);
+    const bullishCount = masterSignals.filter(s => s.signal === 'bullish').length;
+    const bearishCount = masterSignals.filter(s => s.signal === 'bearish').length;
+    synthesis = {
+      signal: localSynthesis.signal, confidence: localSynthesis.confidence,
+      summary: `${masterSignals.length} 位大师中 ${bullishCount} 位看涨、${bearishCount} 位看跌。综合判断为${localSynthesis.signal === 'bullish' ? '看涨' : localSynthesis.signal === 'bearish' ? '看跌' : '中性'}。`,
+      consensus,
+    };
+  }
+  return { masterSignals, sentiment, synthesis };
+}
