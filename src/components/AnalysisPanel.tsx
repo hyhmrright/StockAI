@@ -4,8 +4,10 @@ import SentimentBar from './SentimentBar';
 import StockInfoCard from './StockInfoCard';
 import AnalysisTriggerCard from './AnalysisTriggerCard';
 import QuantScoreCard from './QuantScoreCard';
+import ValuationCard from './ValuationCard';
+import DeepAnalysisPanel from './DeepAnalysis/DeepAnalysisPanel';
 import type { AIAnalysisRecord } from '../hooks/useAIAnalysis';
-import type { StockInfo, QuantBundle } from '../../shared/types';
+import type { StockInfo, QuantBundle, DeepAnalysisResult } from '../../shared/types';
 
 interface AnalysisPanelProps {
   stockInfo?: StockInfo;
@@ -19,6 +21,10 @@ interface AnalysisPanelProps {
   quant: QuantBundle | null;
   quantLoading: boolean;
   quantError: string | null;
+  deepAnalysis: DeepAnalysisResult | null;
+  deepAnalyzing: boolean;
+  deepError: string | null;
+  onDeepAnalyze: () => void;
 }
 
 function sentimentBgClass(sentiment: 'bullish' | 'bearish' | 'neutral'): string {
@@ -46,6 +52,7 @@ function sentimentBadgeClass(sentiment: 'bullish' | 'bearish' | 'neutral'): stri
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   stockInfo, record, analyzing, error, hasNews, providerLabel, modelLabel, onAnalyze,
   quant, quantLoading, quantError,
+  deepAnalysis, deepAnalyzing, deepError, onDeepAnalyze,
 }) => {
   const result = record?.result;
   const bgClass = sentimentBgClass(result?.sentiment ?? 'bullish');
@@ -56,6 +63,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       {stockInfo && <StockInfoCard info={stockInfo} />}
 
       <QuantScoreCard quant={quant} loading={quantLoading} error={quantError} />
+
+      <ValuationCard valuation={quant?.valuation} loading={quantLoading} />
 
       {/* AI 触发卡片 — 永远显示，状态决定形态 */}
       <div className="mb-10">
@@ -147,6 +156,26 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             )}
           </div>
         </>
+      )}
+
+      {/* 深度大师分析触发按钮 — 仅在 AI 分析完成后显示 */}
+      {record && !deepAnalysis && (
+        <div className="mb-6">
+          <button
+            onClick={onDeepAnalyze}
+            disabled={deepAnalyzing}
+            className="w-full py-2 px-4 rounded-lg text-xs font-medium bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/30 disabled:opacity-50 transition-colors"
+          >
+            {deepAnalyzing ? '深度分析中...' : '深度大师分析'}
+          </button>
+          {deepError && <p className="mt-2 text-xs text-rose-400">{deepError}</p>}
+        </div>
+      )}
+
+      {deepAnalysis && (
+        <div className="mb-10">
+          <DeepAnalysisPanel result={deepAnalysis} />
+        </div>
       )}
     </aside>
   );
