@@ -108,13 +108,19 @@ function parseArgs(args: string[]): ParsedArgs {
       return { action: cmd.flag, ...cmd.extract(args, idx) };
     }
   }
-  // 默认为分析模式: [binary] [symbol] [config_json]
-  const possibleJson = args.find(a => a.startsWith('{'));
-  if (possibleJson) {
-    const idx = args.indexOf(possibleJson);
-    return { action: idx > 0 ? args[idx - 1] : '', configStr: possibleJson };
+  // 默认为分析模式: [binary] [symbol] [config_json | @config_path]
+  const possibleConfig = args.find(a => a.startsWith('{') || a.startsWith('@'));
+  if (possibleConfig) {
+    const idx = args.indexOf(possibleConfig);
+    return { action: idx > 0 ? args[idx - 1] : '', configStr: possibleConfig };
   }
   return { action: args[args.length - 1] || '', configStr: '{}' };
+}
+
+/** 解析 config 字符串：@ 前缀表示从临时文件读取，否则视为内联 JSON */
+async function resolveConfigStr(str: string): Promise<string> {
+  if (str.startsWith('@')) return await Bun.file(str.slice(1)).text();
+  return str;
 }
 
 async function run() {
@@ -142,7 +148,8 @@ async function run() {
   const { resolveConfig } = await import('./configResolver');
   const { Handlers } = await import('./cli-handlers');
 
-  const { action, configStr, actionParam, newsJson, quantJson } = parseArgs(args);
+  const { action, configStr: rawConfigStr, actionParam, newsJson, quantJson } = parseArgs(args);
+  const configStr = await resolveConfigStr(rawConfigStr);
 
   logger.info(`Sidecar 执行: action=${action}, param=${actionParam}, config_len=${configStr.length}`);
 

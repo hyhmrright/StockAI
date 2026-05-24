@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import type { ChatProvider } from './types';
 import { PROVIDER_PROFILES } from '../../shared/constants';
 import type { ProviderType } from '../../shared/types';
+import { logger } from '../utils';
 
 interface ChatConfig {
   provider: string;
@@ -31,7 +32,9 @@ export function createChatProvider(config: ChatConfig, dep?: CompletionDep): Cha
         ],
         response_format: { type: 'json_object' },
       });
-      return response.choices[0]?.message?.content || '{}';
+      const content = response.choices[0]?.message?.content;
+      if (!content) logger.warn('LLM 返回空内容，使用空对象降级');
+      return content || '{}';
     },
   };
 }

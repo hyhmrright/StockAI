@@ -7,6 +7,7 @@ interface BacktestPanelProps {
 }
 
 function formatPct(n: number): string {
+  if (!Number.isFinite(n)) return 'N/A';
   return `${n >= 0 ? '+' : ''}${(n * 100).toFixed(2)}%`;
 }
 
@@ -79,7 +80,7 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol }) => {
             <MetricCard label="策略收益" value={formatPct(result.totalReturn)} valueClass={pctColor(result.totalReturn)} />
             <MetricCard label="买入持有" value={formatPct(result.buyAndHoldReturn)} valueClass={pctColor(result.buyAndHoldReturn)} />
             <MetricCard label="最大回撤" value={formatPct(result.maxDrawdown)} valueClass="text-rose-400" />
-            <MetricCard label="夏普比率" value={result.sharpeRatio.toFixed(2)} />
+            <MetricCard label="夏普比率" value={Number.isFinite(result.sharpeRatio) ? result.sharpeRatio.toFixed(2) : 'N/A'} />
           </div>
 
           <div className="flex justify-between text-[10px] text-gray-500">

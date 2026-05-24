@@ -25,7 +25,11 @@ function computeLocalSynthesis(signals: MasterSignal[]): { signal: 'bullish' | '
   const total = bW + beW + nW;
   if (total === 0) return { signal: 'neutral', confidence: 50 };
   const maxW = Math.max(bW, beW, nW);
-  const signal = maxW === bW ? 'bullish' : maxW === beW ? 'bearish' : 'neutral';
+  let signal: 'bullish' | 'bearish' | 'neutral';
+  if (bW === beW && bW === maxW) signal = 'neutral';
+  else if (maxW === bW) signal = 'bullish';
+  else if (maxW === beW) signal = 'bearish';
+  else signal = 'neutral';
   return { signal, confidence: Math.round((maxW / total) * 100) };
 }
 

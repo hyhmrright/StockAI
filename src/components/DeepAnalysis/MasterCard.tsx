@@ -1,25 +1,10 @@
 import React from 'react';
 import type { MasterSignal } from '../../../shared/types';
 import { getMasterMeta } from './master-meta';
+import { signalColor, signalLabel } from '../../lib/signal-styles';
 
 interface MasterCardProps {
   signal: MasterSignal;
-}
-
-function signalColor(signal: string): string {
-  switch (signal) {
-    case 'bullish': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-    case 'bearish': return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
-    default: return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-  }
-}
-
-function signalLabel(signal: string): string {
-  switch (signal) {
-    case 'bullish': return '看涨';
-    case 'bearish': return '看跌';
-    default: return '中性';
-  }
 }
 
 const MasterCard: React.FC<MasterCardProps> = ({ signal }) => {
