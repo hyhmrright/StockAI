@@ -107,10 +107,9 @@ impl SidecarManager {
         symbol: String,
         config: serde_json::Value,
     ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
-
-        Self::run(app_handle, vec![symbol, config_json]).await
+        let guard = Self::write_temp_config(&config)?;
+        let config_arg = format!("@{}", guard.path().to_string_lossy());
+        Self::run(app_handle, vec![symbol, config_arg]).await
     }
 
     async fn list_models(
@@ -126,23 +125,17 @@ impl SidecarManager {
     async fn get_stock_info(
         app_handle: &tauri::AppHandle,
         symbol: String,
-        config: serde_json::Value,
+        _config: serde_json::Value,
     ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
-
-        Self::run(app_handle, vec!["--info".to_string(), config_json, symbol]).await
+        Self::run(app_handle, vec!["--info".to_string(), "{}".to_string(), symbol]).await
     }
 
     async fn search_stocks(
         app_handle: &tauri::AppHandle,
         keyword: String,
-        config: serde_json::Value,
+        _config: serde_json::Value,
     ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
-
-        Self::run(app_handle, vec!["--search".to_string(), config_json, keyword]).await
+        Self::run(app_handle, vec!["--search".to_string(), "{}".to_string(), keyword]).await
     }
 
     async fn fetch_kline(
@@ -173,28 +166,53 @@ impl SidecarManager {
         symbol: String,
         config: serde_json::Value,
     ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
-
-        Self::run(app_handle, vec!["--bundle".to_string(), config_json, symbol]).await
+        let guard = Self::write_temp_config(&config)?;
+        let config_arg = format!("@{}", guard.path().to_string_lossy());
+        Self::run(app_handle, vec!["--bundle".to_string(), config_arg, symbol]).await
     }
 
-    // 将 news payload 写入临时文件，返回 TempFileGuard（drop 时自动清理）。
-    // 通过文件传递避免 argv 触发 ARG_MAX（macOS ≈ 256KB）；文件名含 pid + 纳秒时间戳，跨进程并发不冲突。
-    fn write_temp_news(news: &serde_json::Value) -> Result<TempFileGuard, String> {
-        let news_json = serde_json::to_string(news)
-            .map_err(|e| format!("新闻序列化失败: {}", e))?;
+    // 安全写入临时文件（Unix 下 0o600 权限，仅所有者可读写），返回 TempFileGuard（drop 时自动清理）。
+    // 文件名含 pid + 纳秒时间戳，跨进程并发不冲突。
+    fn write_temp_file(label: &str, content: &str) -> Result<TempFileGuard, String> {
         let temp_path = std::env::temp_dir().join(format!(
-            "stockai-news-{}-{}.json",
+            "stockai-{}-{}-{}.json",
+            label,
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_nanos())
                 .unwrap_or(0)
         ));
-        std::fs::write(&temp_path, &news_json)
-            .map_err(|e| format!("无法写入临时新闻文件: {}", e))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            use std::io::Write;
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(&temp_path)
+                .and_then(|mut f| f.write_all(content.as_bytes()))
+                .map_err(|e| format!("无法写入临时{}文件: {}", label, e))?;
+        }
+        #[cfg(not(unix))]
+        {
+            std::fs::write(&temp_path, content)
+                .map_err(|e| format!("无法写入临时{}文件: {}", label, e))?;
+        }
         Ok(TempFileGuard(temp_path))
+    }
+
+    fn write_temp_news(news: &serde_json::Value) -> Result<TempFileGuard, String> {
+        let news_json = serde_json::to_string(news)
+            .map_err(|e| format!("新闻序列化失败: {}", e))?;
+        Self::write_temp_file("news", &news_json)
+    }
+
+    fn write_temp_config(config: &serde_json::Value) -> Result<TempFileGuard, String> {
+        let config_json = serde_json::to_string(config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+        Self::write_temp_file("config", &config_json)
     }
 
     async fn analyze_news(
@@ -204,16 +222,15 @@ impl SidecarManager {
         config: serde_json::Value,
         quant: Option<String>,
     ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
-        let guard = Self::write_temp_news(&news)?;
-        let path_arg = guard.path().to_string_lossy().into_owned();
-        let mut args = vec!["--analyze-only".to_string(), config_json, symbol, path_arg];
+        let config_guard = Self::write_temp_config(&config)?;
+        let config_arg = format!("@{}", config_guard.path().to_string_lossy());
+        let news_guard = Self::write_temp_news(&news)?;
+        let news_arg = news_guard.path().to_string_lossy().into_owned();
+        let mut args = vec!["--analyze-only".to_string(), config_arg, symbol, news_arg];
         if let Some(q) = quant {
             args.push(q);
         }
         Self::run(app_handle, args).await
-        // guard drops here，自动清理（即使 await 期间被取消也保证清理）
     }
 
     async fn deep_analyze(
@@ -223,16 +240,15 @@ impl SidecarManager {
         config: serde_json::Value,
         quant: Option<String>,
     ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
-        let guard = Self::write_temp_news(&news)?;
-        let path_arg = guard.path().to_string_lossy().into_owned();
-        let mut args = vec!["--deep-analysis".to_string(), config_json, symbol, path_arg];
+        let config_guard = Self::write_temp_config(&config)?;
+        let config_arg = format!("@{}", config_guard.path().to_string_lossy());
+        let news_guard = Self::write_temp_news(&news)?;
+        let news_arg = news_guard.path().to_string_lossy().into_owned();
+        let mut args = vec!["--deep-analysis".to_string(), config_arg, symbol, news_arg];
         if let Some(q) = quant {
             args.push(q);
         }
         Self::run(app_handle, args).await
-        // guard drops here，自动清理
     }
 }
 

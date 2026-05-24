@@ -14,7 +14,8 @@ function signalStyle(signal: string): { label: string; className: string } {
   }
 }
 
-function formatBillions(n: number): string {
+function formatYi(n: number): string {
+  if (!Number.isFinite(n)) return 'N/A';
   return `${(n / 1e8).toFixed(0)}亿`;
 }
 
@@ -46,14 +47,14 @@ const ValuationCard: React.FC<ValuationCardProps> = ({ valuation, loading }) => 
 
         {valuation.intrinsicValue != null && valuation.marketCap != null && (
           <div className="flex justify-between text-xs text-gray-400">
-            <span>内在价值 ~{formatBillions(valuation.intrinsicValue)}</span>
-            <span>市值 {formatBillions(valuation.marketCap)}</span>
+            <span>内在价值 ~{formatYi(valuation.intrinsicValue)}</span>
+            <span>市值 {formatYi(valuation.marketCap)}</span>
           </div>
         )}
 
-        {valuation.models.dcf && (
+        {valuation.models.dcf && valuation.models.dcf.wacc > 0 && (
           <div className="text-[10px] text-gray-500">
-            DCF: {formatBillions(valuation.models.dcf.bear)} ~ {formatBillions(valuation.models.dcf.bull)} (WACC {(valuation.models.dcf.wacc * 100).toFixed(1)}%)
+            DCF: {formatYi(valuation.models.dcf.bear)} ~ {formatYi(valuation.models.dcf.bull)} (WACC {(valuation.models.dcf.wacc * 100).toFixed(1)}%)
           </div>
         )}
 

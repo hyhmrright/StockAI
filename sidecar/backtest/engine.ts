@@ -101,9 +101,12 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
     equityCurve.push({ time: bar.time, value: cash + shares * bar.close });
   }
 
-  // 以最后收盘价强制平仓
+  // 以最后收盘价强制平仓，并记录卖出交易
   if (position === 'long') {
-    cash += shares * sorted[sorted.length - 1].close * (1 - transactionCost);
+    const lastBar = sorted[sorted.length - 1];
+    const proceeds = shares * lastBar.close * (1 - transactionCost);
+    trades.push({ type: 'sell', date: lastBar.time, price: lastBar.close, shares, value: proceeds, score: 50 });
+    cash += proceeds;
     shares = 0;
   }
 

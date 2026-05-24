@@ -10,15 +10,18 @@ import { errorEnvelope } from "../sidecar/utils";
 const SIDECAR_PATH = join(process.cwd(), "sidecar", "stockai-backend-aarch64-apple-darwin");
 const SIDECAR_ENTRY = join(process.cwd(), "sidecar", "index.ts");
 
+const CORS_ORIGIN = "http://localhost:1420";
+
 const server = Bun.serve({
   port: 3001,
+  hostname: "127.0.0.1",
   async fetch(req) {
     const url = new URL(req.url);
-    
+
     if (req.method === "OPTIONS") {
       return new Response(null, {
         headers: {
-          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Origin": CORS_ORIGIN,
           "Access-Control-Allow-Methods": "POST, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
         },
@@ -30,7 +33,7 @@ const server = Bun.serve({
       console.log(`[Bridge] 执行指令: ${cmd}, 目标股票: ${args.symbol}`);
 
       // K 线 / 实时报价：用 bun 跑源码而非二进制，避免旧版本二进制不识别新 action
-      const corsHeaders = { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" };
+      const corsHeaders = { "Access-Control-Allow-Origin": CORS_ORIGIN, "Content-Type": "application/json" };
       const runAndRespond = (sidecarArgs: string[], label: string) => {
         const result = spawnSync("bun", [SIDECAR_ENTRY, ...sidecarArgs], { encoding: "utf-8", env: { ...process.env } });
         if (result.stderr) console.error(`[Bridge][${label}] ${result.stderr}`);
@@ -93,7 +96,7 @@ const server = Bun.serve({
         
         if (result.error) {
           console.error("[Bridge] Sidecar 运行致命错误:", result.error);
-          return Response.json({ error: result.error.message }, { headers: { "Access-Control-Allow-Origin": "*" } });
+          return Response.json({ error: result.error.message }, { headers: { "Access-Control-Allow-Origin": CORS_ORIGIN } });
         }
 
         console.log(`[Bridge] Sidecar 返回长度: ${result.stdout.length}`);
@@ -102,7 +105,7 @@ const server = Bun.serve({
         return new Response(result.stdout, {
           headers: { 
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*" 
+            "Access-Control-Allow-Origin": CORS_ORIGIN 
           },
         });
       }

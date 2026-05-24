@@ -11,7 +11,6 @@ import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import AnalysisPanel from './AnalysisPanel';
-import StockInfoCard from './StockInfoCard';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
@@ -94,8 +93,6 @@ const Dashboard: React.FC = () => {
               </div>
             )}
           </div>
-
-          {stockInfo && <StockInfoCard info={stockInfo} />}
 
           <PriceChart symbol={currentSymbol} />
 

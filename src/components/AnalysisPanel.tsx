@@ -8,6 +8,7 @@ import ValuationCard from './ValuationCard';
 import RiskCard from './RiskCard';
 import DeepAnalysisPanel from './DeepAnalysis/DeepAnalysisPanel';
 import BacktestPanel from './Backtest/BacktestPanel';
+import { sentimentBgClass, sentimentBadgeClass } from '../lib/signal-styles';
 import type { AIAnalysisRecord } from '../hooks/useAIAnalysis';
 import type { StockInfo, QuantBundle, DeepAnalysisResult } from '../../shared/types';
 
@@ -30,22 +31,6 @@ interface AnalysisPanelProps {
   masterAnalysisEnabled: boolean;
 }
 
-function sentimentBgClass(sentiment: 'bullish' | 'bearish' | 'neutral'): string {
-  switch (sentiment) {
-    case 'bullish': return 'bg-emerald-500';
-    case 'bearish': return 'bg-rose-500';
-    case 'neutral': return 'bg-amber-500';
-  }
-}
-
-function sentimentBadgeClass(sentiment: 'bullish' | 'bearish' | 'neutral'): string {
-  switch (sentiment) {
-    case 'bullish': return 'bg-emerald-500/20 text-emerald-500';
-    case 'bearish': return 'bg-rose-500/20 text-rose-500';
-    case 'neutral': return 'bg-amber-500/20 text-amber-500';
-  }
-}
-
 /**
  * 右侧分析面板 — 三态：
  *  1. 未分析：醒目大按钮触发 LLM（默认状态）
@@ -58,7 +43,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   deepAnalysis, deepAnalyzing, deepError, onDeepAnalyze, masterAnalysisEnabled,
 }) => {
   const result = record?.result;
-  const bgClass = sentimentBgClass(result?.sentiment ?? 'bullish');
+  const bgClass = result ? sentimentBgClass(result.sentiment) : '';
   const badgeClass = result ? sentimentBadgeClass(result.sentiment) : '';
 
   return (

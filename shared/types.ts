@@ -227,7 +227,6 @@ export interface MasterMeta {
   nameZh: string;
   style: string;
   styleZh: string;
-  avatar: string;
   description: string;
 }
 

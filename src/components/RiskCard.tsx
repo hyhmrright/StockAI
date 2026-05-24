@@ -46,7 +46,7 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
           </div>
           <div>
             <div className="text-xs text-gray-500">夏普比率</div>
-            <div className="text-sm text-white">{risk.sharpeProxy}</div>
+            <div className="text-sm text-white">{Number.isFinite(risk.sharpeProxy) ? risk.sharpeProxy.toFixed(2) : 'N/A'}</div>
           </div>
         </div>
       </div>

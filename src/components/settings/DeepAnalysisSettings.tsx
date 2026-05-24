@@ -15,6 +15,7 @@ const DeepAnalysisSettings: React.FC<DeepAnalysisSettingsProps> = ({
 
   function toggleMaster(id: string) {
     if (selectedMasters.includes(id)) {
+      if (selectedMasters.length <= 1) return;
       onSelectedMastersChange(selectedMasters.filter(m => m !== id));
     } else {
       onSelectedMastersChange([...selectedMasters, id]);

@@ -1,17 +1,10 @@
 import React from 'react';
 import type { DeepAnalysisResult } from '../../../shared/types';
+import { signalBadge } from '../../lib/signal-styles';
 
 interface SynthesisSummaryProps {
   synthesis: DeepAnalysisResult['synthesis'];
   totalMasters: number;
-}
-
-function signalBadge(signal: string): { label: string; className: string } {
-  switch (signal) {
-    case 'bullish': return { label: '看涨', className: 'bg-emerald-500/20 text-emerald-400' };
-    case 'bearish': return { label: '看跌', className: 'bg-rose-500/20 text-rose-400' };
-    default: return { label: '中性', className: 'bg-amber-500/20 text-amber-400' };
-  }
 }
 
 const SynthesisSummary: React.FC<SynthesisSummaryProps> = ({ synthesis, totalMasters }) => {

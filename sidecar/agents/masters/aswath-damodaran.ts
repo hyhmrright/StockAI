@@ -1,6 +1,6 @@
-import type { MasterAgent, MasterAnalysisContext, MasterSignal } from '../types';
+import { createMasterAgent } from './factory';
+import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
-import { logger, toErrorMessage } from '../../utils';
 
 const meta: MasterMeta = {
   id: 'aswath-damodaran',
@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '阿斯瓦斯·达摩达兰',
   style: 'Valuation',
   styleZh: '估值',
-  avatar: 'damodaran.png',
   description: '估值院长，用数字讲故事，纪律性估值',
 };
 
@@ -77,27 +76,4 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
   return facts;
 }
 
-function parseResponse(raw: string, masterId: string): MasterSignal {
-  try {
-    const parsed = JSON.parse(raw);
-    const signal = ['bullish', 'bearish', 'neutral'].includes(parsed.signal) ? parsed.signal : 'neutral';
-    const confidence = Math.max(0, Math.min(100, Number(parsed.confidence) || 50));
-    const reasoning = String(parsed.reasoning || '').slice(0, 500);
-    return { masterId, signal, confidence, reasoning };
-  } catch {
-    return { masterId, signal: 'neutral', confidence: 50, reasoning: '响应解析失败' };
-  }
-}
-
-async function analyze(ctx: MasterAnalysisContext): Promise<MasterSignal> {
-  const userPrompt = buildUserPrompt(ctx);
-  try {
-    const raw = await ctx.chat.chat(SYSTEM_PROMPT, userPrompt);
-    return parseResponse(raw, meta.id);
-  } catch (err) {
-    logger.warn(`[${meta.id}] 分析失败: ${toErrorMessage(err)}`);
-    return { masterId: meta.id, signal: 'neutral', confidence: 50, reasoning: '分析服务暂不可用' };
-  }
-}
-
-export const agent: MasterAgent = { meta, analyze };
+export const agent = createMasterAgent(meta, SYSTEM_PROMPT, buildUserPrompt);
