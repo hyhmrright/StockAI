@@ -5,6 +5,7 @@ import { SettingsModal } from './SettingsModal';
 import { useStockData } from '../hooks/useStockData';
 import { useAIAnalysis } from '../hooks/useAIAnalysis';
 import { useQuantData } from '../hooks/useQuantData';
+import { useDeepAnalysis } from '../hooks/useDeepAnalysis';
 import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import Watchlist from './Watchlist';
@@ -28,6 +29,7 @@ const Dashboard: React.FC = () => {
   const { step, stockInfo, news, error: dataError } = useStockData(currentSymbol);
   const { record, analyzing, error: aiError, analyze } = useAIAnalysis(currentSymbol);
   const { step: quantStep, quant, error: quantError } = useQuantData(currentSymbol);
+  const { result: deepAnalysis, analyzing: deepAnalyzing, error: deepError, analyze: analyzeDeep } = useDeepAnalysis(currentSymbol);
   const { settings } = useSettings();
 
   const providerProfile = PROVIDER_PROFILES[settings.activeProvider];
@@ -150,6 +152,10 @@ const Dashboard: React.FC = () => {
           quant={quant}
           quantLoading={quantStep === 'fetching'}
           quantError={quantError}
+          deepAnalysis={deepAnalysis}
+          deepAnalyzing={deepAnalyzing}
+          deepError={deepError}
+          onDeepAnalyze={() => analyzeDeep(news, quant ?? undefined)}
         />
       </main>
 

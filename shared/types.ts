@@ -183,6 +183,29 @@ export interface AnalystSignal {
   details: Record<string, number | string>;
 }
 
+/** 估值快照 */
+export interface ValuationSnapshot {
+  intrinsicValue: number | null;
+  marketCap: number | null;
+  marginOfSafety: number | null;
+  signal: 'undervalued' | 'overvalued' | 'fair';
+  confidence: number;
+  models: {
+    ownerEarnings?: { value: number; details: string };
+    dcf?: { base: number; bear: number; bull: number; wacc: number };
+    relative?: { signal: string; details: string };
+  };
+}
+
+/** 风险快照 */
+export interface RiskSnapshot {
+  annualizedVolatility: number;
+  volatilityPercentile: number;
+  maxDrawdown: number;
+  sharpeProxy: number;
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
 /** 量化分析数据包（技术面 + 基本面，不含情绪——情绪由 LLM 综合研判） */
 export interface QuantBundle {
   symbol: string;
@@ -193,25 +216,8 @@ export interface QuantBundle {
     score: number;
   };
   fetchedAt: number;
-  valuation?: {
-    intrinsicValue: number | null;
-    marketCap: number | null;
-    marginOfSafety: number | null;
-    signal: 'undervalued' | 'overvalued' | 'fair';
-    confidence: number;
-    models: {
-      ownerEarnings?: { value: number; details: string };
-      dcf?: { base: number; bear: number; bull: number; wacc: number };
-      relative?: { signal: string; details: string };
-    };
-  };
-  risk?: {
-    annualizedVolatility: number;
-    volatilityPercentile: number;
-    maxDrawdown: number;
-    sharpeProxy: number;
-    riskLevel: 'low' | 'medium' | 'high';
-  };
+  valuation?: ValuationSnapshot;
+  risk?: RiskSnapshot;
 }
 
 /** 投资大师元信息 */
@@ -265,3 +271,28 @@ export interface DeepAnalysisResponse {
   quant?: QuantBundle;
   deepAnalysis: DeepAnalysisResult;
 }
+
+/** 回测交易记录 */
+export interface TradeRecord {
+  type: 'buy' | 'sell';
+  date: number;
+  price: number;
+  shares: number;
+  value: number;
+  score: number;
+}
+
+/** 回测结果 */
+export interface BacktestResult {
+  symbol: string;
+  totalReturn: number;
+  annualizedReturn: number;
+  maxDrawdown: number;
+  winRate: number;
+  totalTrades: number;
+  sharpeRatio: number;
+  buyAndHoldReturn: number;
+  trades: TradeRecord[];
+  equityCurve: Array<{ time: number; value: number }>;
+}
+

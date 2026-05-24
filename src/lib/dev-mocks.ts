@@ -7,6 +7,8 @@ import type {
   StockNews,
   AIAnalysisResult,
   QuantBundle,
+  DeepAnalysisResult,
+  BacktestResult,
 } from "../../shared/types";
 
 /**
@@ -95,6 +97,25 @@ export const MOCK_QUOTE: RealtimeQuote = {
   market: "美股",
 };
 
+export const MOCK_DEEP_ANALYSIS: DeepAnalysisResult = {
+  masterSignals: [
+    { masterId: 'warren-buffett', signal: 'bullish', confidence: 85, reasoning: '护城河深厚，ROE 持续优秀' },
+    { masterId: 'ben-graham', signal: 'neutral', confidence: 60, reasoning: 'PE 偏高，安全边际不足' },
+    { masterId: 'michael-burry', signal: 'bearish', confidence: 55, reasoning: '估值过高，存在回调风险' },
+    { masterId: 'cathie-wood', signal: 'bullish', confidence: 90, reasoning: '创新驱动力强' },
+    { masterId: 'aswath-damodaran', signal: 'bullish', confidence: 72, reasoning: '增长叙事支撑估值' },
+  ],
+  sentiment: {
+    signal: 'bullish', confidence: 70,
+    newsBreakdown: { positive: 5, negative: 1, neutral: 2, total: 8 },
+  },
+  synthesis: {
+    signal: 'bullish', confidence: 78,
+    summary: '多数投资大师看好该股的长期价值，核心优势在于竞争护城河和持续盈利能力。',
+    consensus: 75,
+  },
+};
+
 export const MOCK_QUANT: QuantBundle = {
   symbol: "AAPL",
   technical: {
@@ -109,4 +130,10 @@ export const MOCK_QUANT: QuantBundle = {
   },
   composite: { signal: "bullish", score: 68 },
   fetchedAt: Date.now(),
+};
+
+export const MOCK_BACKTEST: BacktestResult = {
+  symbol: 'MOCK', totalReturn: 0.15, annualizedReturn: 0.12, maxDrawdown: -0.08,
+  winRate: 0.6, totalTrades: 8, sharpeRatio: 1.2, buyAndHoldReturn: 0.2,
+  trades: [], equityCurve: [],
 };

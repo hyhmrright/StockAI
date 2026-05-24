@@ -1,20 +1,8 @@
 import React from 'react';
-
-interface ValuationData {
-  intrinsicValue: number | null;
-  marketCap: number | null;
-  marginOfSafety: number | null;
-  signal: 'undervalued' | 'overvalued' | 'fair';
-  confidence: number;
-  models: {
-    ownerEarnings?: { value: number; details: string };
-    dcf?: { base: number; bear: number; bull: number; wacc: number };
-    relative?: { signal: string; details: string };
-  };
-}
+import type { ValuationSnapshot } from '../../shared/types';
 
 interface ValuationCardProps {
-  valuation?: ValuationData;
+  valuation?: ValuationSnapshot;
   loading?: boolean;
 }
 

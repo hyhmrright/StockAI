@@ -179,21 +179,11 @@ impl SidecarManager {
         Self::run(app_handle, vec!["--bundle".to_string(), config_json, symbol]).await
     }
 
-    async fn analyze_news(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-        news: serde_json::Value,
-        config: serde_json::Value,
-        quant: Option<String>,
-    ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
-        let news_json = serde_json::to_string(&news)
+    // 将 news payload 写入临时文件，返回 TempFileGuard（drop 时自动清理）。
+    // 通过文件传递避免 argv 触发 ARG_MAX（macOS ≈ 256KB）；文件名含 pid + 纳秒时间戳，跨进程并发不冲突。
+    fn write_temp_news(news: &serde_json::Value) -> Result<TempFileGuard, String> {
+        let news_json = serde_json::to_string(news)
             .map_err(|e| format!("新闻序列化失败: {}", e))?;
-
-        // 通过临时文件传递 news payload，避免 argv 触发 ARG_MAX（macOS ≈ 256KB）。
-        // 文件名含 pid + 纳秒时间戳，跨进程并发不冲突。
-        // 用 TempFileGuard 保证 panic / async cancel 等异常退出路径也能清理。
         let temp_path = std::env::temp_dir().join(format!(
             "stockai-news-{}-{}.json",
             std::process::id(),
@@ -204,8 +194,19 @@ impl SidecarManager {
         ));
         std::fs::write(&temp_path, &news_json)
             .map_err(|e| format!("无法写入临时新闻文件: {}", e))?;
-        let guard = TempFileGuard(temp_path);
+        Ok(TempFileGuard(temp_path))
+    }
 
+    async fn analyze_news(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+        news: serde_json::Value,
+        config: serde_json::Value,
+        quant: Option<String>,
+    ) -> Result<String, String> {
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+        let guard = Self::write_temp_news(&news)?;
         let path_arg = guard.path().to_string_lossy().into_owned();
         let mut args = vec!["--analyze-only".to_string(), config_json, symbol, path_arg];
         if let Some(q) = quant {
@@ -213,6 +214,25 @@ impl SidecarManager {
         }
         Self::run(app_handle, args).await
         // guard drops here，自动清理（即使 await 期间被取消也保证清理）
+    }
+
+    async fn deep_analyze(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+        news: serde_json::Value,
+        config: serde_json::Value,
+        quant: Option<String>,
+    ) -> Result<String, String> {
+        let config_json = serde_json::to_string(&config)
+            .map_err(|e| format!("配置序列化失败: {}", e))?;
+        let guard = Self::write_temp_news(&news)?;
+        let path_arg = guard.path().to_string_lossy().into_owned();
+        let mut args = vec!["--deep-analysis".to_string(), config_json, symbol, path_arg];
+        if let Some(q) = quant {
+            args.push(q);
+        }
+        Self::run(app_handle, args).await
+        // guard drops here，自动清理
     }
 }
 
@@ -343,12 +363,44 @@ async fn analyze_news(
     SidecarManager::analyze_news(&app_handle, symbol, news, settings_val, quant).await
 }
 
+/**
+ * 深度多智能体分析 — 调用 Sidecar --deep-analysis 流程
+ */
+#[tauri::command]
+async fn deep_analyze(
+    app_handle: tauri::AppHandle,
+    symbol: String,
+    news: serde_json::Value,
+    quant: Option<String>,
+) -> Result<String, String> {
+    let store = app_handle
+        .store("settings.json")
+        .map_err(|e| format!("无法打开配置存储: {}", e))?;
+
+    let settings_val = store.get("app_settings")
+        .filter(|v| !v.is_null())
+        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
+
+    SidecarManager::deep_analyze(&app_handle, symbol, news, settings_val, quant).await
+}
+
 #[tauri::command]
 async fn fetch_quant_bundle(
     app_handle: tauri::AppHandle,
     symbol: String,
 ) -> Result<String, String> {
     SidecarManager::fetch_quant_bundle(&app_handle, symbol).await
+}
+
+/**
+ * 运行量化回测
+ */
+#[tauri::command]
+async fn run_backtest(
+    app_handle: tauri::AppHandle,
+    symbol: String,
+) -> Result<String, String> {
+    SidecarManager::run(&app_handle, vec!["--backtest".to_string(), symbol]).await
 }
 
 #[cfg(test)]
@@ -436,12 +488,14 @@ pub fn run() {
             start_analysis,
             fetch_market_bundle,
             analyze_news,
+            deep_analyze,
             list_models,
             get_stock_info,
             search_stocks,
             fetch_kline,
             fetch_realtime_quote,
-            fetch_quant_bundle
+            fetch_quant_bundle,
+            run_backtest
         ])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");
