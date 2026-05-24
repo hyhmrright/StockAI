@@ -112,8 +112,10 @@ function computeWACC(m: FinancialMetrics): number {
 }
 
 function computeDCF(m: FinancialMetrics): { base: number; bear: number; bull: number; wacc: number } | undefined {
-  const fcf = m.freeCashFlow;
-  if (!fcf || fcf <= 0) return undefined;
+  const rawFcf = m.freeCashFlow;
+  if (!rawFcf || rawFcf <= 0) return undefined;
+  // 将已验证的非空 FCF 绑定为明确类型，供闭包安全引用
+  const fcf: number = rawFcf;
 
   const wacc = computeWACC(m);
   const baseGrowth = Math.min((m.revenueGrowth ?? 5) / 100, 0.15);
