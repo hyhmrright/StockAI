@@ -193,6 +193,18 @@ export interface QuantBundle {
     score: number;
   };
   fetchedAt: number;
+  valuation?: {
+    intrinsicValue: number | null;
+    marketCap: number | null;
+    marginOfSafety: number | null;
+    signal: 'undervalued' | 'overvalued' | 'fair';
+    confidence: number;
+    models: {
+      ownerEarnings?: { value: number; details: string };
+      dcf?: { base: number; bear: number; bull: number; wacc: number };
+      relative?: { signal: string; details: string };
+    };
+  };
 }
 
 /** 投资大师元信息 */
