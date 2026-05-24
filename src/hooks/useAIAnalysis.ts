@@ -27,7 +27,7 @@ export const MAX_SYMBOLS_IN_CACHE = 50;
  * JS Map 天然保持插入顺序，keys().next() 即最旧条目；命中已有 key 不重排序。
  * 这是 LRI（Least Recently Inserted），不是严格 LRU，但与"最近分析过的 symbol 最可能再用"语义吻合。
  */
-function setWithLRI<V>(map: Map<string, V>, key: string, value: V, capacity: number): void {
+export function setWithLRI<V>(map: Map<string, V>, key: string, value: V, capacity: number): void {
   if (!map.has(key) && map.size >= capacity) {
     const oldest = map.keys().next().value;
     if (oldest !== undefined) map.delete(oldest);
