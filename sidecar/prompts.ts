@@ -99,6 +99,15 @@ function formatQuantSummary(quant: QuantBundle): string {
   lines.push('');
   lines.push(`综合量化评分：${quant.composite.score}/100（${translateSignal(quant.composite.signal)}）`);
 
+  if (quant.risk) {
+    const r = quant.risk;
+    lines.push('');
+    lines.push(`风险等级：${r.riskLevel === 'low' ? '低风险' : r.riskLevel === 'medium' ? '中风险' : '高风险'}`);
+    lines.push(`- 年化波动率: ${(r.annualizedVolatility * 100).toFixed(1)}%`);
+    lines.push(`- 最大回撤: ${(r.maxDrawdown * 100).toFixed(1)}%`);
+    lines.push(`- 夏普比率: ${r.sharpeProxy}`);
+  }
+
   return lines.join('\n');
 }
 
