@@ -18,6 +18,12 @@ import { ScrapeEmptyError } from './analysis';
 import type { ResolvedConfig } from './configResolver';
 import type { StockNews, QuantBundle } from '../shared/types';
 
+function tryParseQuant(quantJson: string | undefined, out: typeof outputJson): QuantBundle | undefined | false {
+  if (!quantJson) return undefined;
+  try { return JSON.parse(quantJson); }
+  catch { out(errorEnvelope('ERR_INVALID_PARAM', 'quantJson 格式无效')); return false; }
+}
+
 export interface RawConfig {
   provider?: string;
   baseUrl?: string;
@@ -184,13 +190,8 @@ export function createHandlers(deps: HandlerDeps = {}) {
           out(errorEnvelope('ERR_MISSING_PARAM', '未提供有效的 news 数组，请先拉取新闻'));
           return;
         }
-        let quant: QuantBundle | undefined;
-        if (quantJson) {
-          try { quant = JSON.parse(quantJson); } catch {
-            out(errorEnvelope('ERR_INVALID_PARAM', 'quantJson 格式无效'));
-            return;
-          }
-        }
+        const quant = tryParseQuant(quantJson, out);
+        if (quant === false) return;
         const analyzeOnly = deps._analyzeOnly ?? (await import('./analysis')).analyzeNewsWithLLM;
         const analysis = await analyzeOnly(symbol, news, config.provider, {
           apiKey: config.apiKey,
@@ -250,13 +251,8 @@ export function createHandlers(deps: HandlerDeps = {}) {
           out(errorEnvelope('ERR_MISSING_PARAM', '深度分析需要 news 数据'));
           return;
         }
-        let quant: QuantBundle | undefined;
-        if (quantJson) {
-          try { quant = JSON.parse(quantJson); } catch {
-            out(errorEnvelope('ERR_INVALID_PARAM', 'quantJson 格式无效'));
-            return;
-          }
-        }
+        let quant = tryParseQuant(quantJson, out);
+        if (quant === false) return;
         if (!quant) {
           const { fetchQuantBundle } = await import('./quant');
           quant = await fetchQuantBundle(symbol);

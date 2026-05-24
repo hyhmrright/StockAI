@@ -61,7 +61,6 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.macd_trend != null ? `MACD 趋势: ${td.macd_trend}` : null,
     '',
-    '',
     ...(quant.risk ? [
       '[风险指标]',
       `年化波动率: ${(quant.risk.annualizedVolatility * 100).toFixed(1)}%`,

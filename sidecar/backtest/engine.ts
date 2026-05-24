@@ -1,9 +1,9 @@
 import type { KlinePoint } from '../../shared/types';
 import type { BacktestConfig, BacktestResult, TradeRecord } from './types';
 import { analyzeTechnical } from '../quant/technical';
+import { TRADING_DAYS_PER_YEAR, RISK_FREE_RATE } from '../../shared/constants';
 
 const MIN_LOOKBACK = 60;
-const RISK_FREE_RATE = 0.045; // 年化无风险利率 4.5%
 
 /** 四舍五入到 4 位小数 */
 const r4 = (n: number) => Math.round(n * 10000) / 10000;
@@ -33,7 +33,7 @@ function computeSharpe(returns: number[]): number {
   const avg = returns.reduce((s, r) => s + r, 0) / returns.length;
   const variance = returns.reduce((s, r) => s + (r - avg) ** 2, 0) / returns.length;
   const std = Math.sqrt(variance);
-  return std > 0 ? (avg * 252 - RISK_FREE_RATE) / (std * Math.sqrt(252)) : 0;
+  return std > 0 ? (avg * TRADING_DAYS_PER_YEAR - RISK_FREE_RATE) / (std * Math.sqrt(TRADING_DAYS_PER_YEAR)) : 0;
 }
 
 /** 从权益曲线计算最大回撤（负数） */
@@ -111,7 +111,7 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   }
 
   const totalReturn = (cash - initialCapital) / initialCapital;
-  const years = (sorted.length - MIN_LOOKBACK) / 252;
+  const years = (sorted.length - MIN_LOOKBACK) / TRADING_DAYS_PER_YEAR;
   const annualizedReturn = years > 0 ? (cash / initialCapital) ** (1 / years) - 1 : 0;
 
   // 胜率：按买卖配对计算

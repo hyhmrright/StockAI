@@ -1,6 +1,8 @@
 import type { StockNews } from '../shared/types';
 import type { RawConfig } from './cli-handlers';
 import { logger, toErrorMessage, outputJson, logToFile, errorEnvelope, errorEnvelopeFromUnknown } from './utils';
+import { tmpdir } from 'os';
+import { resolve, basename } from 'path';
 
 /**
  * 紧急入口点：确保错误拦截器在任何业务逻辑加载前运行。
@@ -119,7 +121,13 @@ function parseArgs(args: string[]): ParsedArgs {
 
 /** 解析 config 字符串：@ 前缀表示从临时文件读取，否则视为内联 JSON */
 async function resolveConfigStr(str: string): Promise<string> {
-  if (str.startsWith('@')) return await Bun.file(str.slice(1)).text();
+  if (str.startsWith('@')) {
+    const filePath = resolve(str.slice(1));
+    if (!filePath.startsWith(tmpdir()) || !basename(filePath).startsWith('stockai-')) {
+      throw new Error('无效的配置文件路径：必须是 StockAI 临时文件');
+    }
+    return await Bun.file(filePath).text();
+  }
   return str;
 }
 

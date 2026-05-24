@@ -1,7 +1,9 @@
-import type { FinancialMetrics, ValuationResult } from './types';
+import type { FinancialMetrics } from './types';
+import type { ValuationSnapshot } from '../../shared/types';
+import { RISK_FREE_RATE } from '../../shared/constants';
 
-export function computeValuation(metrics: FinancialMetrics): ValuationResult | null {
-  const models: ValuationResult['models'] = {};
+export function computeValuation(metrics: FinancialMetrics): ValuationSnapshot | null {
+  const models: ValuationSnapshot['models'] = {};
   const values: number[] = [];
 
   // 模型1：Owner Earnings（巴菲特真实盈利法）
@@ -85,7 +87,7 @@ function computeOwnerEarnings(m: FinancialMetrics): { value: number; details: st
 }
 
 function computeWACC(m: FinancialMetrics): number {
-  const riskFreeRate = 0.045;
+  const riskFreeRate = RISK_FREE_RATE;
   const marketPremium = 0.06;
   // beta 默认1.0（市场平均）
   const costOfEquity = riskFreeRate + 1.0 * marketPremium;
