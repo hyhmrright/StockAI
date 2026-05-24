@@ -213,6 +213,41 @@ export function createHandlers(deps: HandlerDeps = {}) {
         out(errorEnvelopeFromUnknown('ERR_QUANT', error));
       }
     },
+
+    async handleDeepAnalysis(symbol: string, news: StockNews[], config: ResolvedConfig, quantJson?: string) {
+      try {
+        if (!Array.isArray(news) || news.length === 0) {
+          out(errorEnvelope('ERR_MISSING_PARAM', '深度分析需要 news 数据'));
+          return;
+        }
+        let quant: QuantBundle | undefined;
+        if (quantJson) {
+          try { quant = JSON.parse(quantJson); } catch { logger.warn('quantJson 解析失败'); }
+        }
+        if (!quant) {
+          const { fetchQuantBundle } = await import('./quant');
+          quant = await fetchQuantBundle(symbol);
+        }
+        const { createChatProvider } = await import('./agents/chat-adapter');
+        const { runDeepAnalysis } = await import('./deep-analysis');
+        const chat = createChatProvider({
+          provider: config.provider,
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+          modelName: config.modelName,
+        });
+        const result = await runDeepAnalysis({
+          symbol,
+          quant,
+          news,
+          chat,
+          selectedMasters: config.selectedMasters,
+        });
+        out(successEnvelope(result));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_DEEP_ANALYSIS', error));
+      }
+    },
   };
 }
 
