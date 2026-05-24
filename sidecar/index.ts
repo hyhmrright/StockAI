@@ -83,6 +83,16 @@ const COMMAND_TABLE: CommandDef[] = [
     flag: '--quant',
     extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
   },
+  {
+    // --deep-analysis config_json symbol news_path [quant_json]
+    flag: '--deep-analysis',
+    extract: (args, idx) => ({
+      configStr: args[idx + 1] || '{}',
+      actionParam: args[idx + 2],
+      newsJson: args[idx + 3],
+      quantJson: args[idx + 4],
+    }),
+  },
 ];
 
 /** 解析 argv，按命令表依次匹配；均未命中时走默认分析模式 */
@@ -189,6 +199,25 @@ async function run() {
       break;
     case '--quant':
       await Handlers.handleQuant(actionParam || '');
+      break;
+    case '--deep-analysis':
+      try {
+        const config = resolveConfig(rawConfig);
+        if (!newsJson) {
+          outputJson(errorEnvelope('ERR_MISSING_PARAM', '未提供 news 文件路径'));
+          return;
+        }
+        let news: StockNews[] = [];
+        try {
+          news = JSON.parse(await Bun.file(newsJson).text());
+        } catch (err) {
+          outputJson(errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`));
+          return;
+        }
+        await Handlers.handleDeepAnalysis(actionParam || '', news, config, quantJson);
+      } catch (error) {
+        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
+      }
       break;
     default:
       try {

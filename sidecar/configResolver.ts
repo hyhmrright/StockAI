@@ -1,4 +1,4 @@
-import { PROVIDER_PROFILES, CONFIG_VERSION } from '../shared/constants';
+import { PROVIDER_PROFILES, CONFIG_VERSION, DEFAULT_SELECTED_MASTERS } from '../shared/constants';
 import { ProviderType } from '../shared/types';
 
 export interface ResolvedConfig {
@@ -7,6 +7,8 @@ export interface ResolvedConfig {
   baseUrl: string;
   modelName: string;
   deepMode: boolean;
+  masterAnalysis: boolean;
+  selectedMasters: string[];
 }
 
 /**
@@ -38,5 +40,7 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
     baseUrl:   providerCfg.baseUrl  ?? defaults.baseUrl,
     modelName: providerCfg.model    ?? defaults.model,
     deepMode:  obj.deepMode !== false,
+    masterAnalysis: obj.masterAnalysis === true,
+    selectedMasters: Array.isArray(obj.selectedMasters) ? obj.selectedMasters : DEFAULT_SELECTED_MASTERS,
   };
 }
