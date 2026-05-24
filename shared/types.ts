@@ -205,6 +205,13 @@ export interface QuantBundle {
       relative?: { signal: string; details: string };
     };
   };
+  risk?: {
+    annualizedVolatility: number;
+    volatilityPercentile: number;
+    maxDrawdown: number;
+    sharpeProxy: number;
+    riskLevel: 'low' | 'medium' | 'high';
+  };
 }
 
 /** 投资大师元信息 */
