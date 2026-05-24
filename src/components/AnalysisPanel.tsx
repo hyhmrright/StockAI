@@ -27,6 +27,7 @@ interface AnalysisPanelProps {
   deepAnalyzing: boolean;
   deepError: string | null;
   onDeepAnalyze: () => void;
+  masterAnalysisEnabled: boolean;
 }
 
 function sentimentBgClass(sentiment: 'bullish' | 'bearish' | 'neutral'): string {
@@ -54,7 +55,7 @@ function sentimentBadgeClass(sentiment: 'bullish' | 'bearish' | 'neutral'): stri
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   stockInfo, record, analyzing, error, hasNews, providerLabel, modelLabel, onAnalyze,
   quant, quantLoading, quantError,
-  deepAnalysis, deepAnalyzing, deepError, onDeepAnalyze,
+  deepAnalysis, deepAnalyzing, deepError, onDeepAnalyze, masterAnalysisEnabled,
 }) => {
   const result = record?.result;
   const bgClass = sentimentBgClass(result?.sentiment ?? 'bullish');
@@ -164,8 +165,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
         </>
       )}
 
-      {/* 深度大师分析触发按钮 — 仅在 AI 分析完成后显示 */}
-      {record && !deepAnalysis && (
+      {/* 深度大师分析触发按钮 — 仅在 AI 分析完成且设置中启用后显示 */}
+      {record && !deepAnalysis && masterAnalysisEnabled && (
         <div className="mb-6">
           <button
             onClick={onDeepAnalyze}

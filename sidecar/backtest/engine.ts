@@ -17,7 +17,7 @@ function toScore(signal: string, confidence: number): number {
   return 50;
 }
 
-/** 从权益曲线计算每日对数收益率序列 */
+/** 从权益曲线计算每日简单收益率序列 */
 function dailyReturns(equityCurve: { time: number; value: number }[]): number[] {
   const result: number[] = [];
   for (let i = 1; i < equityCurve.length; i++) {
