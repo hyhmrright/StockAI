@@ -2,6 +2,49 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.9.0] - 2026-05-24
+
+### Added
+
+- **多 Agent 大师投资分析** — 13 位顶级投资大师 AI Agent（Buffett、Graham、Munger、Burry、Wood、Lynch、Fisher、Ackman、Soros、Dalio、Simons、Druckenmiller、Taleb），各自以独立投资哲学对股票给出多空信号与置信度，综合合成最终投资建议。
+  - **情感分析 Agent** — 基于 LLM 的新闻情感分类，为大师 Agent 提供市场情绪输入。
+  - **信号综合器** — 按大师权重加权聚合多空信号，支持置信度加权、tie-breaking 与分数钳制。
+  - **ChatProvider 适配器** — 统一所有大师 Agent 的 LLM 调用接口，支持 OpenAI / DeepSeek / GLM / Anthropic / Ollama 全部已有 Provider。
+  - **深度分析 UI** — 独立的"深度分析"按钮与结果面板，展示每位大师的分析理由、信号与置信度。
+- **DCF / Owner Earnings 估值模型** — 新增内在价值估算，包含折现现金流（DCF）、所有者盈余（Owner Earnings）和相对估值（PE/PB/PS/EV 百分位），为 Buffett / Graham / Damodaran Agent 提供估值数据。
+  - **ValuationCard 组件** — 展示内在价值、安全边际百分比和估值评级。
+- **风险指标引擎** — 计算年化波动率、波动率百分位、最大回撤、Sharpe 比率代理和风险等级，为 Taleb / Druckenmiller Agent 提供风险量化输入。
+  - **RiskCard 组件** — 展示风险等级、波动率、回撤和 Sharpe 比率。
+- **量化回测引擎** — 基于技术信号的策略回测，生成权益曲线、交易记录、胜率和 Sharpe 比率。
+  - **BacktestPanel 组件** — 可视化权益曲线图表和回测统计指标。
+
+### Fixed
+
+- **技术指标详情丢失（Critical）** — `analyzeTechnical` 的 composite details 只包含信号摘要字符串，未合并子信号的实际指标值（RSI、MACD、ADX、volume_ratio），导致 13 个大师 Agent 的 prompt 中这些字段为 undefined。
+- **@filepath 路径遍历漏洞** — Sidecar 的 `@filepath` 配置协议未校验路径，攻击者可读取任意文件。现在验证路径必须位于 `tmpdir()` 且以 `stockai-` 为前缀。
+- **API Key 泄露风险** — sidecar-bridge 将完整 config JSON 作为命令行参数传递，`ps aux` 可见 API Key。改为写入 0o600 权限的临时文件。
+- **useQuantData 潜在无限循环** — `fetcher` 函数包含在 useEffect 依赖数组中，每次渲染创建新引用触发重新执行。改用 `useRef` 打破依赖循环。
+- **NaN/Infinity 显示** — RiskCard、ValuationCard、BacktestPanel 对无效数值添加 NaN 守卫，防止显示 NaN%。
+- **回测引擎最终平仓** — 引擎现在在回测结束时记录强制平仓交易，之前会丢失最后一笔持仓。
+- **综合信号 tie-breaking** — 当多空权重相等时，synthesizer 现在默认返回 neutral 而非随机偏向。
+- **默认情感分析回退** — 移除 AnalysisPanel 中的硬编码默认 sentiment 值，无数据时不再误导用户。
+
+### Changed
+
+- **LLM 并发限制** — 深度分析的 13+ 个并行 LLM 调用改为 MAX_CONCURRENCY=4 的受控并发，防止 API 429 限流。
+- **波动率百分位算法** — 从 O(n log n) 排序 + findIndex 改为 O(n) 线性扫描。
+- **共享常量提取** — `RISK_FREE_RATE`（4.5%）和 `TRADING_DAYS_PER_YEAR`（252）提取到 `shared/constants.ts`，消除三处重复定义。
+- **类型去重** — 删除 `ValuationResult`、`RiskMetrics`、`DeepAnalysisResponse` 三个与 `shared/types.ts` 重复的接口。
+- **cache-utils 提取** — `MAX_SYMBOLS_IN_CACHE` 和 `setWithLRI` 从 `useAIAnalysis` 提取为独立模块，`useDeepAnalysis` 共享使用。
+- **信号样式集中化** — 创建 `signal-styles.ts` 工具模块，消除 MasterCard / SynthesisSummary / AnalysisPanel 中的重复样式逻辑。
+- **大师 Agent 工厂模式** — `createMasterAgent` 工厂函数消除 13 个 Agent 文件的样板代码。
+- **.gitignore 加固** — 添加 `.env` 和 `.env.*` 规则，防止敏感文件意外提交。
+
+### Tests
+
+- 测试总数升至 **288**（前端 88 + sidecar 200）。
+- 新增：深度分析编排器测试、信号样式测试、大师工厂测试、ChatProvider 适配器测试、Warren Buffett Agent 测试。
+
 ## [0.8.0] - 2026-05-24
 
 ### Added
