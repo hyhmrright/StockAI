@@ -58,6 +58,14 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     fd.roe != null ? `ROE: ${fd.roe}%` : null,
     fd.pe != null ? `PE: ${fd.pe}` : null,
     '',
+    '',
+    ...(quant.risk ? [
+      '[风险调整]',
+      `年化波动率: ${(quant.risk.annualizedVolatility * 100).toFixed(1)}%`,
+      `夏普比率: ${quant.risk.sharpeProxy}`,
+      `最大回撤: ${(quant.risk.maxDrawdown * 100).toFixed(1)}%`,
+      '',
+    ] : []),
     `[近期新闻 (${news.length} 条，关注宏观主题)]`,
     ...news.slice(0, 5).map((n, i) => `${i + 1}. ${n.title}`),
   ].filter(Boolean).join('\n');
