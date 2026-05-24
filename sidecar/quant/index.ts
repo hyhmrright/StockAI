@@ -5,6 +5,7 @@ import { analyzeTechnical } from './technical';
 import { fetchFundamentals, scoreFundamentals } from './fundamental';
 import { computeComposite } from './scoring';
 import { computeValuation } from './valuation';
+import { computeRiskMetrics } from './volatility';
 import { detectMarket } from '../../shared/market';
 import { logger, toErrorMessage } from '../utils';
 
@@ -51,6 +52,7 @@ export async function fetchQuantBundle(
   const fundamentalResult = scoreFundamentals(fundamentalsRaw);
   const composite = computeComposite(technicalResult.composite, fundamentalResult.composite);
   const valuationResult = computeValuation(fundamentalsRaw);
+  const riskResult = computeRiskMetrics(kline);
 
   return {
     symbol,
@@ -59,5 +61,6 @@ export async function fetchQuantBundle(
     composite,
     fetchedAt: Date.now(),
     valuation: valuationResult ?? undefined,
+    risk: riskResult ?? undefined,
   };
 }
