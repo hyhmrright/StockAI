@@ -62,6 +62,52 @@ describe('parseYahooFinancials', () => {
     expect(metrics.grossMargin).toBeCloseTo(43.8, 0);
     expect(metrics.revenueGrowth).toBeCloseTo(4.9, 0);
   });
+
+  test('parseYahooFinancials extracts cash flow fields', () => {
+    const json = {
+      quoteSummary: {
+        result: [{
+          financialData: { returnOnEquity: { raw: 0.25 } },
+          defaultKeyStatistics: { enterpriseValue: { raw: 2_000_000_000_000 } },
+          cashflowStatementHistory: {
+            cashflowStatements: [{
+              freeCashFlow: { raw: 90_000_000_000 },
+              totalCashFromOperatingActivities: { raw: 100_000_000_000 },
+              capitalExpenditures: { raw: -10_000_000_000 },
+              depreciation: { raw: 11_000_000_000 },
+            }]
+          },
+          incomeStatementHistory: {
+            incomeStatementHistory: [{
+              ebitda: { raw: 130_000_000_000 },
+              interestExpense: { raw: -3_000_000_000 },
+              netIncome: { raw: 95_000_000_000 },
+              totalRevenue: { raw: 400_000_000_000 },
+            }]
+          },
+          balanceSheetHistory: {
+            balanceSheetStatements: [{
+              longTermDebt: { raw: 100_000_000_000 },
+              shortLongTermDebt: { raw: 10_000_000_000 },
+              cash: { raw: 50_000_000_000 },
+              commonStockSharesOutstanding: { raw: 15_000_000_000 },
+            }]
+          },
+        }]
+      }
+    };
+    const result = parseYahooFinancials(json);
+    expect(result.freeCashFlow).toBe(90_000_000_000);
+    expect(result.operatingCashFlow).toBe(100_000_000_000);
+    expect(result.capitalExpenditure).toBe(-10_000_000_000);
+    expect(result.ebitda).toBe(130_000_000_000);
+    expect(result.totalDebt).toBe(110_000_000_000);
+    expect(result.cash).toBe(50_000_000_000);
+    expect(result.sharesOutstanding).toBe(15_000_000_000);
+    expect(result.enterpriseValue).toBe(2_000_000_000_000);
+    expect(result.netIncome).toBe(95_000_000_000);
+    expect(result.revenue).toBe(400_000_000_000);
+  });
 });
 
 describe('scoreFundamentals', () => {
