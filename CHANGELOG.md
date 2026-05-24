@@ -2,6 +2,33 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.8.0] - 2026-05-24
+
+### Added
+
+- **量化分析系统（Phase 1）** — 在 AI 分析基础上叠加量化评分，让报告更具专业性与可解释性。
+  - **技术面评分**：EMA 趋势 / RSI 动量 / MACD 信号 / 布林带位置 / ADX 趋势强度，五维加权合成 0–10 分。
+  - **基本面评分**：对接东方财富 / Yahoo Finance，盈利能力 / 增长率 / 财务健康 / 估值四维评分，A 股与美股均支持。
+  - **QuantScoreCard 组件** — 可展开的信号详情卡，直观呈现每个指标的信号方向与权重贡献。
+  - **并行数据获取** — `useQuantData` hook 与新闻爬取并行执行，不阻塞主流程。
+  - **增强 Prompt** — 量化摘要自动注入 LLM 上下文，AI 报告新增 `technicalView` / `fundamentalView` 两个专业视角。
+- **`--quant` Sidecar CLI 动作** — 独立拉取量化包（`QuantBundle`），可在 bridge 模式下单独调用。
+- **Rust `fetch_quant_bundle` 命令** — Tauri 层新增对应指令，与 `start_analysis` 并行触发。
+
+### Changed
+
+- **类型安全全面收紧** — 消除全部 `any` 类型，替换为精确接口定义，TypeScript 严格模式零报错。
+- **CLI 命令表驱动** — Sidecar `index.ts` 改为表驱动分发，新增 action 只需追加一行，无需修改 if-else 链。
+- **策略重试健壮性** — 爬取策略失败时自动重试，减少因网络抖动导致的分析失败。
+- **组件拆分** — `AnalysisTriggerCard` 从 `AnalysisPanel` 提取为独立组件，单文件行数均低于 200 行上限。
+- **移动端适配** — 仪表盘主容器支持小屏垂直堆叠，滚动行为统一（移动端整页滚动，桌面端各区独立滚动）。
+
+### Tests
+
+- 测试总数升至 **296**（前端 88 + sidecar 208）。
+- 新增量化模块单元测试：`technical.test.ts` / `fundamental.test.ts` / `scoring.test.ts`，覆盖纯函数指标计算。
+- 补齐 scraper / prompts / watchlist hook / `AnalysisTriggerCard` 共 47 个测试用例。
+
 ## [0.7.0] - 2026-05-23
 
 ### Added
