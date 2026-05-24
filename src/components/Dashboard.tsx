@@ -156,6 +156,7 @@ const Dashboard: React.FC = () => {
           deepAnalyzing={deepAnalyzing}
           deepError={deepError}
           onDeepAnalyze={() => analyzeDeep(news, quant ?? undefined)}
+          masterAnalysisEnabled={settings.masterAnalysis}
         />
       </main>
 
