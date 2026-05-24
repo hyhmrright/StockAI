@@ -1,0 +1,50 @@
+import type { SentimentSignal } from '../../shared/types';
+import type { ChatProvider } from './types';
+import type { StockNews } from '../../shared/types';
+import { logger, toErrorMessage } from '../utils';
+
+const SYSTEM_PROMPT = `你是金融新闻情绪分析专家。对每条新闻标注情绪倾向并给出整体判断。只返回 JSON。`;
+
+interface SentimentItem {
+  index: number;
+  sentiment: 'positive' | 'negative' | 'neutral';
+}
+
+function buildPrompt(news: StockNews[]): string {
+  const items = news.map((n, i) =>
+    `${i + 1}. ${n.title}${n.content ? '\n   ' + n.content.substring(0, 300) : ''}`,
+  ).join('\n\n');
+  return `对以下 ${news.length} 条新闻逐条标注情绪（positive/negative/neutral）：\n\n${items}\n\n返回格式：\n{\n  "items": [{"index": 1, "sentiment": "positive"}, ...],\n  "overall": "positive" | "negative" | "neutral"\n}`;
+}
+
+export function computeSentimentSignal(items: SentimentItem[]): SentimentSignal {
+  const breakdown = { positive: 0, negative: 0, neutral: 0, total: items.length };
+  for (const item of items) {
+    if (item.sentiment === 'positive') breakdown.positive++;
+    else if (item.sentiment === 'negative') breakdown.negative++;
+    else breakdown.neutral++;
+  }
+  let signal: 'bullish' | 'bearish' | 'neutral';
+  if (breakdown.positive > breakdown.negative && breakdown.positive > breakdown.neutral) signal = 'bullish';
+  else if (breakdown.negative > breakdown.positive && breakdown.negative > breakdown.neutral) signal = 'bearish';
+  else signal = 'neutral';
+  const maxCount = Math.max(breakdown.positive, breakdown.negative, breakdown.neutral);
+  const confidence = breakdown.total > 0 ? Math.round((maxCount / breakdown.total) * 100) : 50;
+  return { signal, confidence, newsBreakdown: breakdown };
+}
+
+export async function analyzeSentiment(news: StockNews[], chat: ChatProvider): Promise<SentimentSignal> {
+  if (news.length === 0) return { signal: 'neutral', confidence: 50, newsBreakdown: { positive: 0, negative: 0, neutral: 0, total: 0 } };
+  try {
+    const raw = await chat.chat(SYSTEM_PROMPT, buildPrompt(news));
+    const parsed = JSON.parse(raw) as { items?: SentimentItem[] };
+    const items: SentimentItem[] = (parsed.items || []).map(it => ({
+      index: it.index,
+      sentiment: ['positive', 'negative', 'neutral'].includes(it.sentiment) ? it.sentiment : 'neutral',
+    }));
+    return computeSentimentSignal(items);
+  } catch (err) {
+    logger.warn(`情绪分析失败: ${toErrorMessage(err)}`);
+    return { signal: 'neutral', confidence: 50, newsBreakdown: { positive: 0, negative: 0, neutral: 0, total: 0 } };
+  }
+}
