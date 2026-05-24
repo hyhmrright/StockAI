@@ -12,6 +12,9 @@ export function parseEastmoneyFinancials(json: { data?: Record<string, number>[]
     currentRatio: row.LD_RATIO ?? undefined,
     revenueGrowth: row.YYZSRTBZZ ?? undefined,
     netIncomeGrowth: row.GSJLRTBZZ ?? undefined,
+    // 注意：MGJYXJL 为每股经营现金流（元/股），与 Yahoo 的绝对值字段单位不同；
+    // 估值模型使用前须结合 sharesOutstanding 换算，或仅作定性参考。
+    operatingCashFlow: row.MGJYXJL ?? undefined,
   };
 }
 
@@ -31,14 +34,44 @@ interface YahooKeyStats {
   enterpriseValue?: { raw: number };
 }
 
+interface YahooCashflowStatement {
+  freeCashFlow?: { raw: number };
+  totalCashFromOperatingActivities?: { raw: number };
+  capitalExpenditures?: { raw: number };
+  depreciation?: { raw: number };
+}
+
+interface YahooIncomeStatement {
+  ebitda?: { raw: number };
+  interestExpense?: { raw: number };
+  netIncome?: { raw: number };
+  totalRevenue?: { raw: number };
+}
+
+interface YahooBalanceSheetStatement {
+  longTermDebt?: { raw: number };
+  shortLongTermDebt?: { raw: number };
+  cash?: { raw: number };
+  commonStockSharesOutstanding?: { raw: number };
+}
+
+interface YahooQuoteItem {
+  financialData?: YahooFinancialData;
+  defaultKeyStatistics?: YahooKeyStats;
+  cashflowStatementHistory?: { cashflowStatements?: YahooCashflowStatement[] };
+  incomeStatementHistory?: { incomeStatementHistory?: YahooIncomeStatement[] };
+  balanceSheetHistory?: { balanceSheetStatements?: YahooBalanceSheetStatement[] };
+}
+
 export function parseYahooFinancials(json: {
-  quoteSummary?: { result?: Array<{ financialData?: YahooFinancialData; defaultKeyStatistics?: YahooKeyStats }> };
+  quoteSummary?: { result?: YahooQuoteItem[] };
 }): FinancialMetrics {
   const item = json?.quoteSummary?.result?.[0];
   if (!item) return {};
   const fd = item.financialData ?? {};
   const ks = item.defaultKeyStatistics ?? {};
-  return {
+
+  const metrics: FinancialMetrics = {
     roe: fd.returnOnEquity?.raw != null ? fd.returnOnEquity.raw * 100 : undefined,
     grossMargin: fd.grossMargins?.raw != null ? fd.grossMargins.raw * 100 : undefined,
     netMargin: fd.profitMargins?.raw != null ? fd.profitMargins.raw * 100 : undefined,
@@ -48,7 +81,39 @@ export function parseYahooFinancials(json: {
     netIncomeGrowth: fd.earningsGrowth?.raw != null ? fd.earningsGrowth.raw * 100 : undefined,
     pe: ks.trailingPE?.raw,
     pb: ks.priceToBook?.raw,
+    enterpriseValue: ks.enterpriseValue?.raw,
   };
+
+  // 现金流量表
+  const cfh = item.cashflowStatementHistory?.cashflowStatements?.[0];
+  if (cfh) {
+    metrics.freeCashFlow = cfh.freeCashFlow?.raw;
+    metrics.operatingCashFlow = cfh.totalCashFromOperatingActivities?.raw;
+    metrics.capitalExpenditure = cfh.capitalExpenditures?.raw;
+    metrics.depreciation = cfh.depreciation?.raw;
+  }
+
+  // 利润表
+  const ish = item.incomeStatementHistory?.incomeStatementHistory?.[0];
+  if (ish) {
+    metrics.ebitda = ish.ebitda?.raw;
+    metrics.interestExpense = ish.interestExpense?.raw;
+    metrics.netIncome = ish.netIncome?.raw;
+    metrics.revenue = ish.totalRevenue?.raw;
+  }
+
+  // 资产负债表
+  const bsh = item.balanceSheetHistory?.balanceSheetStatements?.[0];
+  if (bsh) {
+    // 两字段均缺失时保持 undefined（区别于"确认无债务"的 0）
+    const ltd = bsh.longTermDebt?.raw;
+    const std = bsh.shortLongTermDebt?.raw;
+    if (ltd != null || std != null) metrics.totalDebt = (ltd ?? 0) + (std ?? 0);
+    metrics.cash = bsh.cash?.raw;
+    metrics.sharesOutstanding = bsh.commonStockSharesOutstanding?.raw;
+  }
+
+  return metrics;
 }
 
 export async function fetchFundamentals(
@@ -69,7 +134,7 @@ export async function fetchFundamentals(
 async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetrics> {
   const cleaned = code.replace(/\D/g, '');
   if (!/^\d{6}$/.test(cleaned)) throw new Error(`无效的 A 股代码: ${code}`);
-  const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=WEIGHTAVG_ROE,XSJLL,XSMLL,ZCFZL,LD_RATIO,YYZSRTBZZ,GSJLRTBZZ&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
+  const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=WEIGHTAVG_ROE,XSJLL,XSMLL,ZCFZL,LD_RATIO,YYZSRTBZZ,GSJLRTBZZ,MGJYXJL&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
 
   const resp = await fetch(url, {
     headers: { Referer: 'https://emweb.securities.eastmoney.com' },
@@ -80,7 +145,7 @@ async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetric
 }
 
 async function fetchYahooFundamentals(symbol: string): Promise<FinancialMetrics> {
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=financialData,defaultKeyStatistics`;
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=financialData,defaultKeyStatistics,cashflowStatementHistory,incomeStatementHistory,balanceSheetHistory`;
 
   const resp = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0' },
