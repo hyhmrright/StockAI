@@ -1,5 +1,6 @@
 import type { KlinePoint } from '../../shared/types';
 import type { Signal, SubSignal, TechnicalResult } from './types';
+import { TRADING_DAYS_PER_YEAR } from '../../shared/constants';
 
 const MIN_DATA_POINTS = 60;
 
@@ -238,7 +239,7 @@ function volatilityAnalysis(kline: KlinePoint[]): SubSignal {
   }
   const mean = returns.reduce((s, v) => s + v, 0) / returns.length;
   const variance = returns.reduce((s, v) => s + (v - mean) ** 2, 0) / returns.length;
-  const hvol = Math.sqrt(variance * 252) * 100;
+  const hvol = Math.sqrt(variance * TRADING_DAYS_PER_YEAR) * 100;
 
   let score = 0;
   if (hvol < 20) score += 30;
@@ -321,7 +322,10 @@ export function analyzeTechnical(kline: KlinePoint[]): TechnicalResult {
     composite: {
       signal: classifySignal(normalizedScore, 15),
       confidence: Math.round(confidence),
-      details: Object.fromEntries(subSignals.map(s => [s.name, `${s.signal} (${s.score})`])),
+      details: {
+        ...subSignals.reduce<Record<string, number | string>>((acc, s) => Object.assign(acc, s.details), {}),
+        ...Object.fromEntries(subSignals.map(s => [s.name, `${s.signal} (${s.score})`])),
+      },
     },
   };
 }

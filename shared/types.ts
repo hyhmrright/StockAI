@@ -262,15 +262,6 @@ export interface DeepAnalysisResult {
   };
 }
 
-/** 深度分析完整响应（含新闻和量化数据） */
-export interface DeepAnalysisResponse {
-  symbol: string;
-  stockInfo?: StockInfo;
-  news: StockNews[];
-  quant?: QuantBundle;
-  deepAnalysis: DeepAnalysisResult;
-}
-
 /** 回测交易记录 */
 export interface TradeRecord {
   type: 'buy' | 'sell';

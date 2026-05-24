@@ -41,3 +41,9 @@ export const DEFAULT_SELECTED_MASTERS: string[] = [
   'cathie-wood',
   'aswath-damodaran',
 ];
+
+/** 年化交易日数 */
+export const TRADING_DAYS_PER_YEAR = 252;
+
+/** 年化无风险利率 */
+export const RISK_FREE_RATE = 0.045;

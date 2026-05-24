@@ -57,7 +57,6 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     fd.roe != null ? `ROE: ${fd.roe}%` : null,
     fd.pe != null ? `PE: ${fd.pe}` : null,
     '',
-    '',
     ...(quant.risk ? [
       '[风险调整]',
       `年化波动率: ${(quant.risk.annualizedVolatility * 100).toFixed(1)}%`,

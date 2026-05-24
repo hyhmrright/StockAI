@@ -19,6 +19,8 @@ export function useQuantData(symbol: string, fetcher: FetchFn = fetchQuantBundle
   const [error, setError] = useState<string | null>(null);
   const latestRequestId = useRef(0);
   const [trigger, setTrigger] = useState(0);
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
 
   useEffect(() => {
     if (!symbol) return;
@@ -27,7 +29,7 @@ export function useQuantData(symbol: string, fetcher: FetchFn = fetchQuantBundle
     setStep("fetching");
     setError(null);
 
-    fetcher(symbol)
+    fetcherRef.current(symbol)
       .then(bundle => {
         if (requestId !== latestRequestId.current) return;
         setQuant(bundle);
@@ -40,7 +42,7 @@ export function useQuantData(symbol: string, fetcher: FetchFn = fetchQuantBundle
         setStep("error");
         setQuant(null);
       });
-  }, [symbol, trigger, fetcher]);
+  }, [symbol, trigger]);
 
   function refetch() {
     setTrigger(t => t + 1);

@@ -78,7 +78,6 @@ const server = Bun.serve({
       }
 
       if (cmd === "start_analysis") {
-        // 尝试从环境变量获取 OpenAI Key 作为测试兜底
         const config = {
           provider: process.env.AI_PROVIDER || "openai",
           apiKey: process.env.OPENAI_API_KEY || "",
@@ -86,28 +85,34 @@ const server = Bun.serve({
           modelName: process.env.AI_MODEL || "gpt-4o-mini",
           deepMode: true
         };
-        
+
         console.log(`[Bridge] 使用配置: Provider=${config.provider}, Model=${config.modelName}`);
-        
-        const result = spawnSync(SIDECAR_PATH, [args.symbol, JSON.stringify(config)], { 
-          encoding: "utf-8",
-          env: { ...process.env } // 继承环境变量
-        });
-        
-        if (result.error) {
-          console.error("[Bridge] Sidecar 运行致命错误:", result.error);
-          return Response.json({ error: result.error.message }, { headers: { "Access-Control-Allow-Origin": CORS_ORIGIN } });
+
+        const tempPath = join(tmpdir(), `stockai-config-bridge-${process.pid}-${process.hrtime.bigint()}.json`);
+        writeFileSync(tempPath, JSON.stringify(config), { mode: 0o600 });
+        try {
+          const result = spawnSync(SIDECAR_PATH, [args.symbol, `@${tempPath}`], {
+            encoding: "utf-8",
+            env: { ...process.env }
+          });
+
+          if (result.error) {
+            console.error("[Bridge] Sidecar 运行致命错误:", result.error);
+            return Response.json({ error: result.error.message }, { headers: { "Access-Control-Allow-Origin": CORS_ORIGIN } });
+          }
+
+          console.log(`[Bridge] Sidecar 返回长度: ${result.stdout.length}`);
+          if (result.stderr) console.error(`[Bridge] Sidecar Stderr: ${result.stderr}`);
+
+          return new Response(result.stdout, {
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": CORS_ORIGIN
+            },
+          });
+        } finally {
+          try { unlinkSync(tempPath); } catch { /* ignore */ }
         }
-
-        console.log(`[Bridge] Sidecar 返回长度: ${result.stdout.length}`);
-        if (result.stderr) console.error(`[Bridge] Sidecar Stderr: ${result.stderr}`);
-
-        return new Response(result.stdout, {
-          headers: { 
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": CORS_ORIGIN 
-          },
-        });
       }
     }
 

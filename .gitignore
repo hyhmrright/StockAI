@@ -33,6 +33,11 @@ test-bun-build
 *.sln
 *.sw?
 
+# Environment files
+.env
+.env.*
+!.env.example
+
 # Worktrees
 .worktrees/
 worktrees/

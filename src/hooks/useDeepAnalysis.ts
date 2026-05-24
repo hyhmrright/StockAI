@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { DeepAnalysisResult, StockNews, QuantBundle } from "../../shared/types";
 import { deepAnalyze } from "../lib/ipc";
-import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from "./useAIAnalysis";
+import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from "./cache-utils";
 
 export interface UseDeepAnalysisResult {
   result: DeepAnalysisResult | null;
@@ -22,7 +22,7 @@ export function useDeepAnalysis(symbol: string, runner: DeepAnalyzeFn = deepAnal
   const analyze = useCallback(async (news: StockNews[], quant?: QuantBundle) => {
     if (!symbol) return;
     if (news.length === 0) {
-      setWithLRI(errorRef.current, symbol, "尚未抓到新闻，无法进行深度分析。", MAX_SYMBOLS_IN_CACHE);
+      setWithLRI(errorRef.current, symbol, "尚未抓到新闻，无法分析。请等待数据加载完成后再点击。", MAX_SYMBOLS_IN_CACHE);
       force(n => n + 1);
       return;
     }

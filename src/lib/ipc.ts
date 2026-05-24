@@ -183,15 +183,23 @@ export async function fetchQuantBundle(symbol: string): Promise<QuantBundle> {
 /** 拉取 K 线 */
 export async function fetchKline(req: KlineRequest): Promise<KlinePoint[]> {
   if (!isTauri()) return devBridgeInvoke<KlinePoint[]>("fetch_kline", { request: req }, MOCK_KLINE);
-  const raw = await invoke<string>("fetch_kline", { request: req });
-  return parseServiceResponse<KlinePoint[]>(raw);
+  try {
+    const raw = await invoke<string>("fetch_kline", { request: req });
+    return parseServiceResponse<KlinePoint[]>(raw);
+  } catch (error) {
+    rethrow(error);
+  }
 }
 
 /** 拉取实时报价 */
 export async function fetchRealtimeQuote(symbol: string): Promise<RealtimeQuote> {
   if (!isTauri()) return devBridgeInvoke<RealtimeQuote>("fetch_realtime_quote", { symbol }, MOCK_QUOTE);
-  const raw = await invoke<string>("fetch_realtime_quote", { symbol });
-  return parseServiceResponse<RealtimeQuote>(raw);
+  try {
+    const raw = await invoke<string>("fetch_realtime_quote", { symbol });
+    return parseServiceResponse<RealtimeQuote>(raw);
+  } catch (error) {
+    rethrow(error);
+  }
 }
 
 /** 运行量化回测 */

@@ -19,21 +19,8 @@ export interface UseAIAnalysisResult {
 
 type AnalyzeFn = (symbol: string, news: StockNews[], quant?: QuantBundle) => Promise<AIAnalysisResult>;
 
-/** cache/error Map 容量上限，超出按插入顺序淘汰最旧条目 */
-export const MAX_SYMBOLS_IN_CACHE = 50;
-
-/**
- * 按插入顺序淘汰最旧 key 的 Map.set 包装（容量已满且 key 不存在时触发淘汰）。
- * JS Map 天然保持插入顺序，keys().next() 即最旧条目；命中已有 key 不重排序。
- * 这是 LRI（Least Recently Inserted），不是严格 LRU，但与"最近分析过的 symbol 最可能再用"语义吻合。
- */
-export function setWithLRI<V>(map: Map<string, V>, key: string, value: V, capacity: number): void {
-  if (!map.has(key) && map.size >= capacity) {
-    const oldest = map.keys().next().value;
-    if (oldest !== undefined) map.delete(oldest);
-  }
-  map.set(key, value);
-}
+import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from "./cache-utils";
+export { MAX_SYMBOLS_IN_CACHE, setWithLRI };
 
 /**
  * AI 分析层：显式触发、按 symbol 维度隔离状态。

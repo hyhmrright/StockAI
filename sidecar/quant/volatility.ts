@@ -1,18 +1,9 @@
-import type { KlinePoint } from '../../shared/types';
-
-export interface RiskMetrics {
-  annualizedVolatility: number;
-  volatilityPercentile: number;
-  maxDrawdown: number;
-  sharpeProxy: number;
-  riskLevel: 'low' | 'medium' | 'high';
-}
+import type { KlinePoint, RiskSnapshot } from '../../shared/types';
+import { TRADING_DAYS_PER_YEAR, RISK_FREE_RATE } from '../../shared/constants';
 
 const MIN_DAYS = 30;
-const TRADING_DAYS = 252;
-const RISK_FREE_RATE = 0.045;
 
-export function computeRiskMetrics(kline: KlinePoint[]): RiskMetrics | null {
+export function computeRiskMetrics(kline: KlinePoint[]): RiskSnapshot | null {
   if (kline.length < MIN_DAYS) return null;
 
   const sorted = [...kline].sort((a, b) => a.time - b.time);
@@ -29,7 +20,7 @@ export function computeRiskMetrics(kline: KlinePoint[]): RiskMetrics | null {
   const mean = returns.reduce((s, r) => s + r, 0) / returns.length;
   const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / returns.length;
   const dailyStd = Math.sqrt(variance);
-  const annualizedVolatility = dailyStd * Math.sqrt(TRADING_DAYS);
+  const annualizedVolatility = dailyStd * Math.sqrt(TRADING_DAYS_PER_YEAR);
 
   // 波动率百分位（滚动 20 日窗口）
   const windowSize = 20;
@@ -38,13 +29,13 @@ export function computeRiskMetrics(kline: KlinePoint[]): RiskMetrics | null {
     const window = returns.slice(i - windowSize, i);
     const wMean = window.reduce((s, r) => s + r, 0) / windowSize;
     const wVar = window.reduce((s, r) => s + (r - wMean) ** 2, 0) / windowSize;
-    rollingVols.push(Math.sqrt(wVar) * Math.sqrt(TRADING_DAYS));
+    rollingVols.push(Math.sqrt(wVar) * Math.sqrt(TRADING_DAYS_PER_YEAR));
   }
   const currentVol = rollingVols.length > 0 ? rollingVols[rollingVols.length - 1] : annualizedVolatility;
-  const sortedVols = [...rollingVols].sort((a, b) => a - b);
-  const percentileIdx = sortedVols.findIndex(v => v >= currentVol);
-  const volatilityPercentile = sortedVols.length > 0
-    ? Math.round((percentileIdx >= 0 ? percentileIdx : sortedVols.length) / sortedVols.length * 100)
+  let belowCount = 0;
+  for (const v of rollingVols) { if (v < currentVol) belowCount++; }
+  const volatilityPercentile = rollingVols.length > 0
+    ? Math.round(belowCount / rollingVols.length * 100)
     : 50;
 
   // 最大回撤
@@ -57,7 +48,7 @@ export function computeRiskMetrics(kline: KlinePoint[]): RiskMetrics | null {
   }
 
   // 夏普比率代理（年化收益 - 无风险利率）/ 年化波动率
-  const annualizedReturn = mean * TRADING_DAYS;
+  const annualizedReturn = mean * TRADING_DAYS_PER_YEAR;
   const sharpeProxy = annualizedVolatility > 0
     ? (annualizedReturn - RISK_FREE_RATE) / annualizedVolatility
     : 0;
