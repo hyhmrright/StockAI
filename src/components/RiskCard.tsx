@@ -1,15 +1,8 @@
 import React from 'react';
-
-interface RiskData {
-  annualizedVolatility: number;
-  volatilityPercentile: number;
-  maxDrawdown: number;
-  sharpeProxy: number;
-  riskLevel: 'low' | 'medium' | 'high';
-}
+import type { RiskSnapshot } from '../../shared/types';
 
 interface RiskCardProps {
-  risk?: RiskData;
+  risk?: RiskSnapshot;
   loading?: boolean;
 }
 

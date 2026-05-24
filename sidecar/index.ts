@@ -84,6 +84,11 @@ const COMMAND_TABLE: CommandDef[] = [
     extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
   },
   {
+    // --backtest symbol
+    flag: '--backtest',
+    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
+  },
+  {
     // --deep-analysis config_json symbol news_path [quant_json]
     flag: '--deep-analysis',
     extract: (args, idx) => ({
@@ -114,7 +119,7 @@ function parseArgs(args: string[]): ParsedArgs {
 
 async function run() {
   const args = process.argv;
-  logToFile(`Full Argv: ${JSON.stringify(args)}`);
+  logToFile(`Argv: [${args.length} items] action=${args.find(a => a.startsWith('--')) ?? 'default'}`);
 
   // 健康自检逻辑 - 优先运行，不需要加载业务模块
   if (args.includes('--check')) {
@@ -199,6 +204,9 @@ async function run() {
       break;
     case '--quant':
       await Handlers.handleQuant(actionParam || '');
+      break;
+    case '--backtest':
+      await Handlers.handleBacktest(actionParam || '');
       break;
     case '--deep-analysis':
       try {

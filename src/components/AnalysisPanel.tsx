@@ -7,6 +7,7 @@ import QuantScoreCard from './QuantScoreCard';
 import ValuationCard from './ValuationCard';
 import RiskCard from './RiskCard';
 import DeepAnalysisPanel from './DeepAnalysis/DeepAnalysisPanel';
+import BacktestPanel from './Backtest/BacktestPanel';
 import type { AIAnalysisRecord } from '../hooks/useAIAnalysis';
 import type { StockInfo, QuantBundle, DeepAnalysisResult } from '../../shared/types';
 
@@ -68,6 +69,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       <ValuationCard valuation={quant?.valuation} loading={quantLoading} />
 
       <RiskCard risk={quant?.risk} loading={quantLoading} />
+
+      {stockInfo && <BacktestPanel symbol={stockInfo.code} />}
 
       {/* AI 触发卡片 — 永远显示，状态决定形态 */}
       <div className="mb-10">

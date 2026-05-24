@@ -1,6 +1,6 @@
-import type { QuantBundle, StockNews, MasterMeta, MasterSignal, SentimentSignal, DeepAnalysisResult } from '../../shared/types';
+import type { QuantBundle, StockNews, MasterMeta, MasterSignal } from '../../shared/types';
 
-export type { MasterMeta, MasterSignal, SentimentSignal, DeepAnalysisResult };
+export type { MasterSignal };
 
 /** LLM 聊天接口——从现有 provider 中抽出的最小接口，供 agent 使用 */
 export interface ChatProvider {

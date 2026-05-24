@@ -1,5 +1,4 @@
 import type { FinancialMetrics, ValuationResult } from './types';
-import { logger } from '../utils';
 
 export function computeValuation(metrics: FinancialMetrics): ValuationResult | null {
   const models: ValuationResult['models'] = {};
@@ -174,6 +173,3 @@ function computeRelativeValuation(m: FinancialMetrics): { signal: string; detail
   return { signal, details: signals.join('; ') };
 }
 
-// 导出供日志调试使用
-export { computeWACC };
-logger.debug?.('[valuation] module loaded');

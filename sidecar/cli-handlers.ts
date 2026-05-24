@@ -186,7 +186,10 @@ export function createHandlers(deps: HandlerDeps = {}) {
         }
         let quant: QuantBundle | undefined;
         if (quantJson) {
-          try { quant = JSON.parse(quantJson); } catch { logger.warn('quantJson 解析失败，跳过量化数据'); }
+          try { quant = JSON.parse(quantJson); } catch {
+            out(errorEnvelope('ERR_INVALID_PARAM', 'quantJson 格式无效'));
+            return;
+          }
         }
         const analyzeOnly = deps._analyzeOnly ?? (await import('./analysis')).analyzeNewsWithLLM;
         const analysis = await analyzeOnly(symbol, news, config.provider, {
@@ -214,6 +217,33 @@ export function createHandlers(deps: HandlerDeps = {}) {
       }
     },
 
+    async handleBacktest(symbol: string) {
+      if (!symbol) {
+        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
+        return;
+      }
+      try {
+        const { getKline } = await import('./kline');
+        const kline = await getKline({ symbol, period: '1d', range: '1y' });
+        if (kline.length < 60) {
+          out(errorEnvelope('ERR_INSUFFICIENT_DATA', `K 线数据不足（${kline.length} 天），需要至少 60 天`));
+          return;
+        }
+        const { runBacktest } = await import('./backtest/engine');
+        const result = runBacktest(kline, {
+          symbol,
+          period: kline.length,
+          buyThreshold: 65,
+          sellThreshold: 40,
+          initialCapital: 100000,
+          transactionCost: 0.001,
+        });
+        out(successEnvelope(result));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_BACKTEST', error));
+      }
+    },
+
     async handleDeepAnalysis(symbol: string, news: StockNews[], config: ResolvedConfig, quantJson?: string) {
       try {
         if (!Array.isArray(news) || news.length === 0) {
@@ -222,7 +252,10 @@ export function createHandlers(deps: HandlerDeps = {}) {
         }
         let quant: QuantBundle | undefined;
         if (quantJson) {
-          try { quant = JSON.parse(quantJson); } catch { logger.warn('quantJson 解析失败'); }
+          try { quant = JSON.parse(quantJson); } catch {
+            out(errorEnvelope('ERR_INVALID_PARAM', 'quantJson 格式无效'));
+            return;
+          }
         }
         if (!quant) {
           const { fetchQuantBundle } = await import('./quant');

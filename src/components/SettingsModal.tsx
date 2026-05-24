@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { X, Settings as SettingsIcon, Save, Bot, User, CheckCircle2 } from "lucide-react";
+import { X, Settings as SettingsIcon, Save, Bot, User, CheckCircle2, BrainCircuit } from "lucide-react";
 import { useSettings, Settings } from "../hooks/useSettings";
 import { GeneralForm } from "./settings/GeneralForm";
 import { ProviderSelector } from "./settings/ProviderSelector";
+import DeepAnalysisSettings from "./settings/DeepAnalysisSettings";
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type Tab = "general" | "providers";
+type Tab = "general" | "providers" | "masters";
 
 /**
  * 升级后的设置中心 - 参考 Cherry Studio 风格
@@ -56,6 +57,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {[
             { id: "general", label: "常规设置", icon: User },
             { id: "providers", label: "模型服务", icon: Bot },
+            { id: "masters", label: "大师分析", icon: BrainCircuit },
           ].map(tab => (
             <button
               key={tab.id}
@@ -81,7 +83,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* 内容头部 */}
           <header className="px-8 py-5 flex items-center justify-between border-b border-white/5 bg-panel/50 backdrop-blur-sm sticky top-0 z-10">
             <h3 className="text-base font-semibold text-gray-100">
-              {activeTab === "general" ? "常规设置" : "模型服务配置"}
+              {{ general: "常规设置", providers: "模型服务配置", masters: "大师分析设置" }[activeTab]}
             </h3>
             <button 
               onClick={onClose}
@@ -98,10 +100,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 settings={localSettings}
                 onChange={(s) => setLocalSettings({ ...localSettings, ...s })}
               />
-            ) : (
+            ) : activeTab === "providers" ? (
               <ProviderSelector
                 settings={localSettings}
                 onChange={(s) => setLocalSettings({ ...localSettings, ...s })}
+              />
+            ) : (
+              <DeepAnalysisSettings
+                masterAnalysis={localSettings.masterAnalysis}
+                selectedMasters={localSettings.selectedMasters}
+                onMasterAnalysisChange={(enabled) => setLocalSettings({ ...localSettings, masterAnalysis: enabled })}
+                onSelectedMastersChange={(ids) => setLocalSettings({ ...localSettings, selectedMasters: ids })}
               />
             )}
           </div>

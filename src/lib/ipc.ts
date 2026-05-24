@@ -8,6 +8,8 @@ import {
   StockNews,
   AIAnalysisResult,
   QuantBundle,
+  DeepAnalysisResult,
+  BacktestResult,
 } from "../../shared/types";
 import {
   MOCK_STOCKS,
@@ -17,6 +19,8 @@ import {
   MOCK_BUNDLE,
   MOCK_AI_RESULT,
   MOCK_QUANT,
+  MOCK_DEEP_ANALYSIS,
+  MOCK_BACKTEST,
 } from "./dev-mocks";
 
 /**
@@ -98,6 +102,12 @@ export async function listModels(provider: string, baseUrl: string): Promise<str
   }
 }
 
+/** 将非 Error 类型的 IPC 异常统一包装成 Error 后重新抛出 */
+function rethrow(error: unknown): never {
+  if (error instanceof Error) throw error;
+  throw new Error(typeof error === 'string' ? error : String(error));
+}
+
 /** 通过开发桥接器（3001）尝试拉真实数据；bridge 不在线时退回 mock，避免阻塞浏览器调试 */
 let bridgeWarnLogged = false;
 async function devBridgeInvoke<T>(cmd: string, args: Record<string, unknown>, fallback: T): Promise<T> {
@@ -128,8 +138,7 @@ export async function fetchMarketBundle(symbol: string): Promise<MarketBundle> {
     const raw = await invoke<string>("fetch_market_bundle", { symbol });
     return parseServiceResponse<MarketBundle>(raw);
   } catch (error) {
-    if (error instanceof Error) throw error;
-    throw new Error(typeof error === 'string' ? error : String(error));
+    rethrow(error);
   }
 }
 
@@ -144,8 +153,19 @@ export async function analyzeNews(symbol: string, news: StockNews[], quant?: Qua
     const raw = await invoke<string>("analyze_news", { symbol, news, quant: quantJson });
     return parseServiceResponse<AIAnalysisResult>(raw);
   } catch (error) {
-    if (error instanceof Error) throw error;
-    throw new Error(typeof error === 'string' ? error : String(error));
+    rethrow(error);
+  }
+}
+
+export async function deepAnalyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<DeepAnalysisResult> {
+  const quantJson = quant ? JSON.stringify(quant) : undefined;
+  if (!isTauri()) return devBridgeInvoke<DeepAnalysisResult>("deep_analyze", { symbol, news, quant: quantJson }, MOCK_DEEP_ANALYSIS);
+
+  try {
+    const raw = await invoke<string>("deep_analyze", { symbol, news, quant: quantJson });
+    return parseServiceResponse<DeepAnalysisResult>(raw);
+  } catch (error) {
+    rethrow(error);
   }
 }
 
@@ -156,8 +176,7 @@ export async function fetchQuantBundle(symbol: string): Promise<QuantBundle> {
     const raw = await invoke<string>("fetch_quant_bundle", { symbol });
     return parseServiceResponse<QuantBundle>(raw);
   } catch (error) {
-    if (error instanceof Error) throw error;
-    throw new Error(typeof error === 'string' ? error : String(error));
+    rethrow(error);
   }
 }
 
@@ -173,5 +192,17 @@ export async function fetchRealtimeQuote(symbol: string): Promise<RealtimeQuote>
   if (!isTauri()) return devBridgeInvoke<RealtimeQuote>("fetch_realtime_quote", { symbol }, MOCK_QUOTE);
   const raw = await invoke<string>("fetch_realtime_quote", { symbol });
   return parseServiceResponse<RealtimeQuote>(raw);
+}
+
+/** 运行量化回测 */
+export async function runBacktest(symbol: string): Promise<BacktestResult> {
+  if (!isTauri()) return devBridgeInvoke<BacktestResult>("run_backtest", { symbol }, MOCK_BACKTEST);
+
+  try {
+    const raw = await invoke<string>("run_backtest", { symbol });
+    return parseServiceResponse<BacktestResult>(raw);
+  } catch (error) {
+    rethrow(error);
+  }
 }
 
