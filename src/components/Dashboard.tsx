@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import PriceChart from './PriceChart';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
@@ -8,6 +8,7 @@ import { useQuantData } from '../hooks/useQuantData';
 import { useDeepAnalysis } from '../hooks/useDeepAnalysis';
 import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
+import { saveAnalysisRecord } from '../lib/db';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import AnalysisPanel from './AnalysisPanel';
@@ -44,6 +45,45 @@ const Dashboard: React.FC = () => {
     setAutoFlowSymbol(currentSymbol);
     analyze(news, quant ?? undefined);
   }, [step, news, currentSymbol, settings.autoAnalyze, autoFlowSymbol, analyze, quant, quantStep]);
+
+  // 自动持久化：分析完成时 fire-and-forget 存入历史数据库
+  const savedKeys = useRef<Record<string, string>>({});
+
+  const infoJson = useMemo(() => stockInfo ? JSON.stringify(stockInfo) : undefined, [stockInfo]);
+  const newsJsonStr = useMemo(() => news.length > 0 ? JSON.stringify(news) : undefined, [news]);
+
+  useEffect(() => {
+    if (!record) return;
+    const key = String(record.analyzedAt);
+    if (savedKeys.current.ai === key) return;
+    savedKeys.current.ai = key;
+    saveAnalysisRecord({
+      symbol: currentSymbol, analysisType: 'ai',
+      resultJson: JSON.stringify(record.result), stockInfoJson: infoJson, newsJson: newsJsonStr,
+    }).catch(e => console.error("保存 AI 分析历史失败:", e));
+  }, [record, currentSymbol, infoJson, newsJsonStr]);
+
+  useEffect(() => {
+    if (!deepAnalysis) return;
+    const key = `${currentSymbol}:${deepAnalysis.synthesis.confidence}:${deepAnalysis.synthesis.signal}`;
+    if (savedKeys.current.deep === key) return;
+    savedKeys.current.deep = key;
+    saveAnalysisRecord({
+      symbol: currentSymbol, analysisType: 'deep',
+      resultJson: JSON.stringify(deepAnalysis), stockInfoJson: infoJson, newsJson: newsJsonStr,
+    }).catch(e => console.error("保存深度分析历史失败:", e));
+  }, [deepAnalysis, currentSymbol, infoJson, newsJsonStr]);
+
+  useEffect(() => {
+    if (!quant) return;
+    const key = `${quant.symbol}:${quant.fetchedAt}`;
+    if (savedKeys.current.quant === key) return;
+    savedKeys.current.quant = key;
+    saveAnalysisRecord({
+      symbol: currentSymbol, analysisType: 'quant',
+      resultJson: JSON.stringify(quant), stockInfoJson: infoJson,
+    }).catch(e => console.error("保存量化分析历史失败:", e));
+  }, [quant, currentSymbol, infoJson]);
 
   function handleSearch(symbol: string) {
     setCurrentSymbol(symbol);
@@ -138,6 +178,7 @@ const Dashboard: React.FC = () => {
         </section>
 
         <AnalysisPanel
+          symbol={currentSymbol}
           stockInfo={stockInfo}
           record={record}
           analyzing={analyzing}
