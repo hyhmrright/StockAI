@@ -287,7 +287,14 @@ export interface BacktestResult {
 }
 
 /** 分析类型 */
-export type AnalysisType = 'ai' | 'deep' | 'quant' | 'backtest';
+export type AnalysisType = 'ai' | 'deep' | 'quant' | 'backtest' | 'screener';
+
+/** 筛选器单项结果 */
+export interface ScreenerResult {
+  symbol: string;
+  name: string;
+  quant: QuantBundle;
+}
 
 /** 分析历史记录摘要（列表查询用，不含 news_json） */
 export interface AnalysisRecordSummary {

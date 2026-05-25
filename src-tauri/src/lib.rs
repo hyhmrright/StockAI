@@ -504,6 +504,12 @@ pub fn run() {
             sql: include_str!("../migrations/001_create_history.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 2,
+            description: "drop type CHECK constraint for extensibility",
+            sql: include_str!("../migrations/002_drop_type_check.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

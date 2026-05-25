@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { getAnalysisDetail } from '../../lib/db';
-import type { AnalysisRecord, AIAnalysisResult, DeepAnalysisResult, QuantBundle, BacktestResult } from '../../../shared/types';
+import type { AnalysisRecord, AIAnalysisResult, DeepAnalysisResult, QuantBundle, BacktestResult, ScreenerResult } from '../../../shared/types';
 import QuantScoreCard from '../QuantScoreCard';
 import ValuationCard from '../ValuationCard';
 import RiskCard from '../RiskCard';
@@ -56,6 +56,8 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ recordId, onClo
           return <QuantDetail data={data} time={time} />;
         case 'backtest':
           return <BacktestDetail data={data} time={time} />;
+        case 'screener':
+          return <ScreenerDetail data={data} time={time} />;
         default:
           return <pre className="text-xs text-gray-400 overflow-auto">{record.resultJson}</pre>;
       }
@@ -142,6 +144,26 @@ function BacktestDetail({ data, time }: { data: BacktestResult; time: string }) 
         <Stat label="Sharpe" value={data.sharpeRatio?.toFixed(2) ?? '—'} />
         <Stat label="交易次数" value={String(data.totalTrades ?? 0)} />
       </div>
+    </div>
+  );
+}
+
+function ScreenerDetail({ data, time }: { data: ScreenerResult[]; time: string }) {
+  if (!Array.isArray(data)) return <p className="text-sm text-gray-500">无效筛选数据</p>;
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] text-gray-500">{time} · {data.length} 只股票</p>
+      {data.map(r => (
+        <div key={r.symbol} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+          <div>
+            <span className="text-xs font-bold text-gray-200">{r.symbol}</span>
+            <span className="text-[10px] text-gray-500 ml-2">{r.name}</span>
+          </div>
+          <span className="text-xs font-mono font-bold text-emerald-400">
+            {r.quant?.composite?.score?.toFixed(1) ?? '—'}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
