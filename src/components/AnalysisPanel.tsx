@@ -8,11 +8,13 @@ import ValuationCard from './ValuationCard';
 import RiskCard from './RiskCard';
 import DeepAnalysisPanel from './DeepAnalysis/DeepAnalysisPanel';
 import BacktestPanel from './Backtest/BacktestPanel';
+import AnalysisHistory from './AnalysisHistory';
 import { sentimentBgClass, sentimentBadgeClass } from '../lib/signal-styles';
 import type { AIAnalysisRecord } from '../hooks/useAIAnalysis';
 import type { StockInfo, QuantBundle, DeepAnalysisResult } from '../../shared/types';
 
 interface AnalysisPanelProps {
+  symbol: string;
   stockInfo?: StockInfo;
   record: AIAnalysisRecord | null;
   analyzing: boolean;
@@ -38,7 +40,7 @@ interface AnalysisPanelProps {
  *  3. 已完成：评分 / sentiment / 利好 / 利空（原 UI）
  */
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
-  stockInfo, record, analyzing, error, hasNews, providerLabel, modelLabel, onAnalyze,
+  symbol, stockInfo, record, analyzing, error, hasNews, providerLabel, modelLabel, onAnalyze,
   quant, quantLoading, quantError,
   deepAnalysis, deepAnalyzing, deepError, onDeepAnalyze, masterAnalysisEnabled,
 }) => {
@@ -49,6 +51,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   return (
     <aside className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-white/10 bg-panel p-6 lg:overflow-y-auto">
       {stockInfo && <StockInfoCard info={stockInfo} />}
+
+      <div className="mb-4 flex justify-end">
+        <AnalysisHistory symbol={symbol} />
+      </div>
 
       <QuantScoreCard quant={quant} loading={quantLoading} error={quantError} />
 
