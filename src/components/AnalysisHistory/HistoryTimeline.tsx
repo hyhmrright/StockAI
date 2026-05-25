@@ -7,6 +7,7 @@ const TYPE_LABELS: Record<AnalysisType, { text: string; color: string }> = {
   deep: { text: '深度', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
   quant: { text: '量化', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
   backtest: { text: '回测', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  screener: { text: '筛选', color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
 };
 
 function formatRelativeTime(ms: number): string {
@@ -33,6 +34,8 @@ function extractSummary(record: AnalysisRecordSummary): string {
         return `${data.composite?.signal ?? '—'} · 评分 ${data.composite?.score ?? '—'}`;
       case 'backtest':
         return `收益 ${((data.totalReturn ?? 0) * 100).toFixed(1)}% · 胜率 ${((data.winRate ?? 0) * 100).toFixed(0)}%`;
+      case 'screener':
+        return `${Array.isArray(data) ? data.length : 0} 只股票`;
       default:
         return '';
     }

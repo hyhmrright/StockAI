@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import { useWatchlist } from '../hooks/useWatchlist';
+import { useScreener } from '../hooks/useScreener';
+import { saveAnalysisRecord } from '../lib/db';
+import ScreenerPanel from './Screener/ScreenerPanel';
 
 interface WatchlistProps {
   currentSymbol: string;
@@ -13,6 +16,21 @@ interface WatchlistProps {
 const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
   const { items, add, remove } = useWatchlist();
   const [input, setInput] = useState('');
+  const [showScreener, setShowScreener] = useState(false);
+  const screener = useScreener();
+  const savedScreenerCount = useRef(0);
+
+  useEffect(() => {
+    if (screener.scanning || screener.results.length === 0) return;
+    if (screener.results.length === savedScreenerCount.current) return;
+    savedScreenerCount.current = screener.results.length;
+    const symbols = screener.results.map(r => r.symbol).join(',');
+    saveAnalysisRecord({
+      symbol: symbols,
+      analysisType: 'screener',
+      resultJson: JSON.stringify(screener.results),
+    }).catch(e => console.error("保存筛选结果失败:", e));
+  }, [screener.scanning, screener.results]);
 
   function handleAdd() {
     if (!input.trim()) return;
@@ -70,6 +88,24 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
           </div>
         ))}
       </div>
+
+      {/* 筛选器 */}
+      <button
+        onClick={() => setShowScreener(s => !s)}
+        className="text-xs text-gray-500 hover:text-gray-300 transition-colors text-left"
+      >
+        {showScreener ? '收起筛选' : '📊 批量筛选'}
+      </button>
+
+      {showScreener && (
+        <ScreenerPanel
+          results={screener.results}
+          scanning={screener.scanning}
+          progress={screener.progress}
+          onScan={() => screener.scan(items)}
+          onSelect={onSelect}
+        />
+      )}
     </aside>
   );
 };
