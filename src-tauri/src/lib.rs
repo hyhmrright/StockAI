@@ -519,6 +519,7 @@ pub fn run() {
                 .add_migrations("sqlite:history.db", migrations)
                 .build(),
         )
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
