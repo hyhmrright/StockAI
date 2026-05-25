@@ -20,6 +20,7 @@
       ]
     },
     "shell:allow-spawn",
+    "notification:default",
     "sql:default",
     "store:default"
   ]

@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Bell } from 'lucide-react';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useScreener } from '../hooks/useScreener';
+import { usePriceAlerts } from '../hooks/usePriceAlerts';
+import { useAlertMonitor } from '../hooks/useAlertMonitor';
 import { saveAnalysisRecord } from '../lib/db';
 import ScreenerPanel from './Screener/ScreenerPanel';
+import AlertConfig from './AlertConfig';
 
 interface WatchlistProps {
   currentSymbol: string;
@@ -17,7 +20,10 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
   const { items, add, remove } = useWatchlist();
   const [input, setInput] = useState('');
   const [showScreener, setShowScreener] = useState(false);
+  const [alertSymbol, setAlertSymbol] = useState<string | null>(null);
   const screener = useScreener();
+  const { alerts, setAlert, removeAlert } = usePriceAlerts();
+  useAlertMonitor(alerts);
   const savedScreenerCount = useRef(0);
 
   useEffect(() => {
@@ -64,29 +70,52 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
         {items.length === 0 && (
           <p className="text-gray-600 text-xs text-center pt-4">暂无关注，输入代码添加</p>
         )}
-        {items.map(item => (
-          <div
-            key={item.sym}
-            onClick={() => onSelect(item.sym)}
-            className={`group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-              currentSymbol === item.sym
-                ? 'bg-emerald-500/10 border-emerald-500/30'
-                : 'bg-white/5 border-white/5 hover:bg-white/10'
-            }`}
-          >
-            <span className={`font-bold text-sm transition-colors ${
-              currentSymbol === item.sym ? 'text-emerald-400' : 'text-gray-200 group-hover:text-emerald-400'
-            }`}>
-              {item.sym}
-            </span>
-            <button
-              onClick={e => { e.stopPropagation(); remove(item.sym); }}
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-500 hover:text-rose-400 transition-all"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
+        {items.map(item => {
+          const hasAlert = alerts[item.sym]?.enabled;
+          return (
+            <div key={item.sym}>
+              <div
+                onClick={() => onSelect(item.sym)}
+                className={`group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                  currentSymbol === item.sym
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-white/5 border-white/5 hover:bg-white/10'
+                }`}
+              >
+                <span className={`font-bold text-sm transition-colors ${
+                  currentSymbol === item.sym ? 'text-emerald-400' : 'text-gray-200 group-hover:text-emerald-400'
+                }`}>
+                  {item.sym}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={e => { e.stopPropagation(); setAlertSymbol(s => s === item.sym ? null : item.sym); }}
+                    className={`p-0.5 rounded transition-all ${
+                      hasAlert ? 'text-amber-400' : 'opacity-0 group-hover:opacity-100 text-gray-500 hover:text-amber-400'
+                    }`}
+                  >
+                    <Bell className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); remove(item.sym); }}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-500 hover:text-rose-400 transition-all"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+              {alertSymbol === item.sym && (
+                <AlertConfig
+                  symbol={item.sym}
+                  alert={alerts[item.sym]}
+                  onSave={setAlert}
+                  onRemove={removeAlert}
+                  onClose={() => setAlertSymbol(null)}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* 筛选器 */}
