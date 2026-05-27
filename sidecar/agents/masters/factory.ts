@@ -8,7 +8,19 @@ const LANG_INSTRUCTION: Record<Language, string> = {
   ja: '日本語で回答してください',
 };
 
-function parseResponse(raw: string, masterId: string): MasterSignal {
+const PARSE_FAIL_MSG: Record<Language, string> = {
+  zh: '响应解析失败',
+  en: 'Response parse failed',
+  ja: 'レスポンス解析失敗',
+};
+
+const SERVICE_UNAVAIL_MSG: Record<Language, string> = {
+  zh: '分析服务暂不可用',
+  en: 'Analysis service unavailable',
+  ja: '分析サービス利用不可',
+};
+
+function parseResponse(raw: string, masterId: string, lang: Language): MasterSignal {
   try {
     const parsed = JSON.parse(raw);
     const signal = ['bullish', 'bearish', 'neutral'].includes(parsed.signal) ? parsed.signal : 'neutral';
@@ -16,7 +28,7 @@ function parseResponse(raw: string, masterId: string): MasterSignal {
     const reasoning = String(parsed.reasoning || '').slice(0, 500);
     return { masterId, signal, confidence, reasoning };
   } catch {
-    return { masterId, signal: 'neutral', confidence: 50, reasoning: '响应解析失败' };
+    return { masterId, signal: 'neutral', confidence: 50, reasoning: PARSE_FAIL_MSG[lang] };
   }
 }
 
@@ -32,10 +44,10 @@ export function createMasterAgent(
       const localizedPrompt = systemPrompt.replace('用中文回复', LANG_INSTRUCTION[lang]);
       try {
         const raw = await ctx.chat.chat(localizedPrompt, buildUserPrompt(ctx));
-        return parseResponse(raw, meta.id);
+        return parseResponse(raw, meta.id, lang);
       } catch (err) {
         logger.warn(`[${meta.id}] 分析失败: ${toErrorMessage(err)}`);
-        return { masterId: meta.id, signal: 'neutral', confidence: 50, reasoning: '分析服务暂不可用' };
+        return { masterId: meta.id, signal: 'neutral', confidence: 50, reasoning: SERVICE_UNAVAIL_MSG[lang] };
       }
     },
   };

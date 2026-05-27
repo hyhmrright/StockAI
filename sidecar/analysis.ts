@@ -84,12 +84,19 @@ export async function analyzeNewsWithLLM(
   } catch (error) {
     const msg = toErrorMessage(error);
     logger.error(`AI 分析异常 (${symbol}): ${msg}`);
+    const lang = config.language ?? 'zh';
+    const FALLBACK: Record<string, { summary: string; pro: string; con: string }> = {
+      zh: { summary: `AI 分析服务暂不可用（可能未配置 API Key 或网络异常）。真实新闻数据已抓取，请参考上方列表。\n详细错误: ${msg}`, pro: '新闻抓取成功', con: 'AI 分析失败' },
+      en: { summary: `AI analysis unavailable (API key may be missing or network error). News data was fetched — see the list above.\nError: ${msg}`, pro: 'News fetched successfully', con: 'AI analysis failed' },
+      ja: { summary: `AI分析サービスが利用できません（APIキーが未設定またはネットワークエラーの可能性）。ニュースデータは取得済みです。\nエラー: ${msg}`, pro: 'ニュース取得成功', con: 'AI分析失敗' },
+    };
+    const fb = FALLBACK[lang] ?? FALLBACK.zh;
     return {
       rating: NEUTRAL_RATING,
       sentiment: 'neutral',
-      summary: `AI 分析服务暂不可用（可能未配置 API Key 或网络异常）。真实新闻数据已抓取，请参考上方列表。\n详细错误: ${msg}`,
-      pros: ["新闻抓取成功"],
-      cons: ["AI 分析失败"],
+      summary: fb.summary,
+      pros: [fb.pro],
+      cons: [fb.con],
     };
   }
 }

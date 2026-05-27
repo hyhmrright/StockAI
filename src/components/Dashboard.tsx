@@ -9,6 +9,7 @@ import { useDeepAnalysis } from '../hooks/useDeepAnalysis';
 import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import { saveAnalysisRecord } from '../lib/db';
+import { useLanguage } from '../hooks/useLanguage';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import AnalysisPanel from './AnalysisPanel';
@@ -31,6 +32,7 @@ const Dashboard: React.FC = () => {
   const { step: quantStep, quant, error: quantError } = useQuantData(currentSymbol);
   const { result: deepAnalysis, analyzing: deepAnalyzing, error: deepError, analyze: analyzeDeep } = useDeepAnalysis(currentSymbol);
   const { settings } = useSettings();
+  const { t } = useLanguage();
 
   const providerProfile = PROVIDER_PROFILES[settings.activeProvider];
   const providerLabel = settings.activeProvider;
@@ -95,7 +97,7 @@ const Dashboard: React.FC = () => {
 
   const loading = step === 'fetching';
   const busy = loading || analyzing;
-  const stepLabel = loading ? '正在抓取实时数据…' : analyzing ? 'AI 正在分析…' : '';
+  const stepLabel = loading ? t('fetching_data') : analyzing ? t('ai_analyzing') : '';
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-white relative">
@@ -118,14 +120,14 @@ const Dashboard: React.FC = () => {
             <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-3 text-rose-400">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <div>
-                <div className="font-bold">数据抓取出错</div>
+                <div className="font-bold">{t('data_fetch_error')}</div>
                 <div className="text-sm opacity-90">{dataError}</div>
               </div>
             </div>
           )}
 
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">分析详情 ({currentSymbol})</h2>
+            <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t('analysis_details', { symbol: currentSymbol })}</h2>
             {busy && (
               <div className="flex items-center gap-3 text-xs text-emerald-500 font-medium bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/20 animate-pulse">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -138,14 +140,14 @@ const Dashboard: React.FC = () => {
 
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
-              <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">最新价格 (Price)</div>
+              <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">{t('latest_price')}</div>
               <div className="text-2xl font-mono font-bold text-emerald-400">
-                {stockInfo?.price?.toFixed(2) || '暂无数据'}
+                {stockInfo?.price?.toFixed(2) || t('no_data')}
                 <span className="text-sm ml-2 text-gray-500">{stockInfo?.currency}</span>
               </div>
             </div>
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
-              <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">涨跌幅 (Change)</div>
+              <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">{t('price_change')}</div>
               <div className={`text-2xl font-mono font-bold ${(stockInfo?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {(stockInfo?.changePercent ?? 0) >= 0 ? '+' : ''}
                 {stockInfo?.changePercent?.toFixed(2) || '0.00'}%
@@ -155,7 +157,7 @@ const Dashboard: React.FC = () => {
 
           {news.length > 0 && (
             <div className="mt-10">
-              <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">最新相关新闻</h2>
+              <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">{t('latest_news')}</h2>
               <div className="space-y-4">
                 {news.map((n, i) => (
                   <a

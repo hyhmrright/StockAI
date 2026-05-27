@@ -85,5 +85,12 @@
   "history_consensus": "共识",
   "history_return": "收益",
   "history_win_rate": "胜率",
-  "history_stocks": "只股票"
+  "history_stocks": "只股票",
+  "fetching_data": "正在抓取实时数据…",
+  "ai_analyzing": "AI 正在分析…",
+  "data_fetch_error": "数据抓取出错",
+  "analysis_details": "分析详情 ({symbol})",
+  "latest_price": "最新价格 (Price)",
+  "price_change": "涨跌幅 (Change)",
+  "latest_news": "最新相关新闻"
 }

@@ -85,5 +85,12 @@
   "history_consensus": "Consensus",
   "history_return": "Return",
   "history_win_rate": "Win rate",
-  "history_stocks": "stocks"
+  "history_stocks": "stocks",
+  "fetching_data": "Fetching market data…",
+  "ai_analyzing": "AI analyzing…",
+  "data_fetch_error": "Data Error",
+  "analysis_details": "Analysis ({symbol})",
+  "latest_price": "Latest Price",
+  "price_change": "Change",
+  "latest_news": "Latest News"
 }

@@ -69,9 +69,14 @@ export async function synthesize(
     logger.warn(`综合研判 LLM 失败，使用本地计算: ${toErrorMessage(err)}`);
     const bullishCount = masterSignals.filter(s => s.signal === 'bullish').length;
     const bearishCount = masterSignals.filter(s => s.signal === 'bearish').length;
+    const FALLBACK_SUMMARY: Record<Language, (n: number, b: number, be: number, sig: string) => string> = {
+      zh: (n, b, be, sig) => `${n} 位大师中 ${b} 位看涨、${be} 位看跌。综合判断为${sig === 'bullish' ? '看涨' : sig === 'bearish' ? '看跌' : '中性'}。`,
+      en: (n, b, be, sig) => `${b} of ${n} analysts bullish, ${be} bearish. Overall: ${sig}.`,
+      ja: (n, b, be, sig) => `${n}人中${b}人が強気、${be}人が弱気。総合判断：${sig === 'bullish' ? '強気' : sig === 'bearish' ? '弱気' : '中立'}。`,
+    };
     synthesis = {
       signal: localSynthesis.signal, confidence: localSynthesis.confidence,
-      summary: `${masterSignals.length} 位大师中 ${bullishCount} 位看涨、${bearishCount} 位看跌。综合判断为${localSynthesis.signal === 'bullish' ? '看涨' : localSynthesis.signal === 'bearish' ? '看跌' : '中性'}。`,
+      summary: (FALLBACK_SUMMARY[lang] ?? FALLBACK_SUMMARY.zh)(masterSignals.length, bullishCount, bearishCount, localSynthesis.signal),
       consensus,
     };
   }

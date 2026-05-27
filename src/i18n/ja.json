@@ -85,5 +85,12 @@
   "history_consensus": "コンセンサス",
   "history_return": "リターン",
   "history_win_rate": "勝率",
-  "history_stocks": "銘柄"
+  "history_stocks": "銘柄",
+  "fetching_data": "市場データ取得中…",
+  "ai_analyzing": "AI 分析中…",
+  "data_fetch_error": "データエラー",
+  "analysis_details": "分析詳細 ({symbol})",
+  "latest_price": "最新価格",
+  "price_change": "変動率",
+  "latest_news": "最新ニュース"
 }

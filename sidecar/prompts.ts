@@ -13,9 +13,6 @@ export function getSystemPrompt(language: Language = 'zh'): string {
   return SYSTEM_PROMPTS[language];
 }
 
-/** 向后兼容：SYSTEM_PROMPT 常量保留为 zh 版本（供旧代码过渡期使用） */
-export const SYSTEM_PROMPT = SYSTEM_PROMPTS.zh;
-
 const ROLE_INSTRUCTIONS: Record<Language, string> = {
   zh: `请作为资深金融分析师，深入分析该股票的近期表现。\n你会收到一组抓取到的最新新闻及正文摘要，请根据这些信息进行客观、深度的研判。`,
   en: `As a senior financial analyst, provide an in-depth analysis of this stock's recent performance.\nYou will receive a set of the latest news articles with content summaries. Provide an objective, thorough assessment based on this information.`,

@@ -13,11 +13,18 @@ interface SentimentItem {
   sentiment: 'positive' | 'negative' | 'neutral';
 }
 
-function buildPrompt(news: StockNews[]): string {
+const USER_PROMPT_INTRO: Record<Language, (n: number) => string> = {
+  zh: (n) => `对以下 ${n} 条新闻逐条标注情绪（positive/negative/neutral）：`,
+  en: (n) => `Label the sentiment (positive/negative/neutral) of each of the following ${n} news items:`,
+  ja: (n) => `以下の${n}件のニュースそれぞれに感情（positive/negative/neutral）をラベル付けしてください：`,
+};
+
+function buildPrompt(news: StockNews[], lang: Language = 'zh'): string {
   const items = news.map((n, i) =>
     `${i + 1}. ${n.title}${n.content ? '\n   ' + n.content.substring(0, 300) : ''}`,
   ).join('\n\n');
-  return `对以下 ${news.length} 条新闻逐条标注情绪（positive/negative/neutral）：\n\n${items}\n\n返回格式：\n{\n  "items": [{"index": 1, "sentiment": "positive"}, ...],\n  "overall": "positive" | "negative" | "neutral"\n}`;
+  const intro = (USER_PROMPT_INTRO[lang] ?? USER_PROMPT_INTRO.zh)(news.length);
+  return `${intro}\n\n${items}\n\n返回格式：\n{\n  "items": [{"index": 1, "sentiment": "positive"}, ...],\n  "overall": "positive" | "negative" | "neutral"\n}`;
 }
 
 export function computeSentimentSignal(items: SentimentItem[]): SentimentSignal {
@@ -40,7 +47,7 @@ export async function analyzeSentiment(news: StockNews[], chat: ChatProvider, la
   const lang = language ?? 'zh';
   if (news.length === 0) return { signal: 'neutral', confidence: 50, newsBreakdown: { positive: 0, negative: 0, neutral: 0, total: 0 } };
   try {
-    const raw = await chat.chat(SYSTEM_PROMPTS[lang], buildPrompt(news));
+    const raw = await chat.chat(SYSTEM_PROMPTS[lang], buildPrompt(news, lang));
     const parsed = JSON.parse(raw) as { items?: SentimentItem[] };
     const items: SentimentItem[] = (parsed.items || []).map(it => ({
       index: it.index,

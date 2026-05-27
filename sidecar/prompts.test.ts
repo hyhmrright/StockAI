@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { buildAnalysisPrompt, buildEnhancedPrompt, SYSTEM_PROMPT, getSystemPrompt } from "./prompts";
+import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from "./prompts";
 import { createMockNews, createMockQuantBundle } from "../shared/test-utils";
 
 describe("SYSTEM_PROMPT", () => {
