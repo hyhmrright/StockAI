@@ -1,8 +1,8 @@
 import OpenAI from "openai";
-import type { AIAnalysisResult, StockNews, QuantBundle } from "../../shared/types";
+import type { AIAnalysisResult, StockNews, QuantBundle, Language } from "../../shared/types";
 import type { AIProvider, ProviderKind } from "../ai";
 import { PROVIDER_PROFILES } from "../config";
-import { buildAnalysisPrompt, buildEnhancedPrompt, SYSTEM_PROMPT } from "../prompts";
+import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from "../prompts";
 import { toErrorMessage, logger, parseJsonFromAi } from "../utils";
 
 /**
@@ -22,16 +22,17 @@ export class OpenAIProvider implements AIProvider {
     this.model = model;
   }
 
-  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult> {
+  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle, language?: Language): Promise<AIAnalysisResult> {
+    const lang = language ?? 'zh';
     const prompt = quant
-      ? buildEnhancedPrompt(symbol, news, quant, 'zh', PROVIDER_PROFILES.openai.contentLimit)
-      : buildAnalysisPrompt(symbol, news, 'zh', PROVIDER_PROFILES.openai.contentLimit);
+      ? buildEnhancedPrompt(symbol, news, quant, lang, PROVIDER_PROFILES.openai.contentLimit)
+      : buildAnalysisPrompt(symbol, news, lang, PROVIDER_PROFILES.openai.contentLimit);
 
     try {
       const response = await this.client.chat.completions.create({
         model: this.model,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: getSystemPrompt(lang) },
           { role: "user", content: prompt }
         ],
         response_format: { type: "json_object" }

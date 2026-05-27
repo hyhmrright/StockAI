@@ -1,8 +1,8 @@
 import { Ollama } from "ollama";
-import type { AIAnalysisResult, StockNews, QuantBundle } from "../../shared/types";
+import type { AIAnalysisResult, StockNews, QuantBundle, Language } from "../../shared/types";
 import type { AIProvider, ProviderKind } from "../ai";
 import { PROVIDER_PROFILES } from "../config";
-import { buildAnalysisPrompt, buildEnhancedPrompt, SYSTEM_PROMPT } from "../prompts";
+import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from "../prompts";
 import { toErrorMessage, withTimeout, logger, parseJsonFromAi } from "../utils";
 
 /**
@@ -18,17 +18,18 @@ export class OllamaProvider implements AIProvider {
     this.model = model;
   }
 
-  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult> {
+  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle, language?: Language): Promise<AIAnalysisResult> {
+    const lang = language ?? 'zh';
     const prompt = quant
-      ? buildEnhancedPrompt(symbol, news, quant, 'zh', PROVIDER_PROFILES.ollama.contentLimit)
-      : buildAnalysisPrompt(symbol, news, 'zh', PROVIDER_PROFILES.ollama.contentLimit);
+      ? buildEnhancedPrompt(symbol, news, quant, lang, PROVIDER_PROFILES.ollama.contentLimit)
+      : buildAnalysisPrompt(symbol, news, lang, PROVIDER_PROFILES.ollama.contentLimit);
 
     try {
       const response = await withTimeout(
         this.client.chat({
           model: this.model,
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: getSystemPrompt(lang) },
             { role: "user", content: prompt }
           ],
           format: "json"
