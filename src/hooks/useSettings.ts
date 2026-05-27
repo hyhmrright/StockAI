@@ -30,7 +30,6 @@ export const DEFAULT_SETTINGS: Settings = {
   ...SHARED_DEFAULT_SETTINGS,
   masterAnalysis: false,
   selectedMasters: DEFAULT_SELECTED_MASTERS,
-  language: 'zh',
   providerConfigs: {
     ollama: {
       apiKey: "",

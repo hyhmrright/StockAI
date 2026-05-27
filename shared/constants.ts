@@ -1,4 +1,4 @@
-import { ProviderType } from "./types";
+import { ProviderType, Language } from "./types";
 
 /**
  * 每个 Provider 的完整档案——baseUrl、model、内容截断、超时都在同一处。
@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS = {
   activeProvider: "ollama" as ProviderType,
   autoAnalyze: false,
   deepMode: true,
+  language: "zh" as Language,
 };
 
 /**
