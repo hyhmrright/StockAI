@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIAnalysisResult, StockNews, QuantBundle } from "../../shared/types";
+import type { AIAnalysisResult, StockNews, QuantBundle, Language } from "../../shared/types";
 import type { AIProvider, ProviderKind } from "../ai";
 import { PROVIDER_PROFILES } from "../config";
-import { buildAnalysisPrompt, buildEnhancedPrompt, SYSTEM_PROMPT } from "../prompts";
+import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from "../prompts";
 import { toErrorMessage, withTimeout, logger, parseJsonFromAi } from "../utils";
 
 /**
@@ -18,17 +18,18 @@ export class AnthropicProvider implements AIProvider {
     this.model = model;
   }
 
-  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult> {
+  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle, language?: Language): Promise<AIAnalysisResult> {
+    const lang = language ?? 'zh';
     const prompt = quant
-      ? buildEnhancedPrompt(symbol, news, quant, 'zh', PROVIDER_PROFILES.anthropic.contentLimit)
-      : buildAnalysisPrompt(symbol, news, 'zh', PROVIDER_PROFILES.anthropic.contentLimit);
+      ? buildEnhancedPrompt(symbol, news, quant, lang, PROVIDER_PROFILES.anthropic.contentLimit)
+      : buildAnalysisPrompt(symbol, news, lang, PROVIDER_PROFILES.anthropic.contentLimit);
 
     try {
       const response = await withTimeout(
         this.client.messages.create({
           model: this.model,
           max_tokens: 1024,
-          system: SYSTEM_PROMPT,
+          system: getSystemPrompt(lang),
           messages: [{ role: "user", content: prompt }],
         }),
         PROVIDER_PROFILES.anthropic.timeout,
