@@ -74,5 +74,16 @@
   "undervalued": "Undervalued",
   "overvalued": "Overvalued",
   "fairly_valued": "Fair Value",
-  "yi_unit": "B"
+  "yi_unit": "B",
+  "watchlist_title": "Watchlist",
+  "watchlist_placeholder": "Enter ticker, press Enter",
+  "expand_screener": "📊 Batch Screener",
+  "collapse_screener": "Hide Screener",
+  "delete_selected": "Delete selected ({n})",
+  "load_more": "Load more",
+  "history_rating": "Rating",
+  "history_consensus": "Consensus",
+  "history_return": "Return",
+  "history_win_rate": "Win rate",
+  "history_stocks": "stocks"
 }

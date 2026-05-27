@@ -7,6 +7,7 @@ import { useAlertMonitor } from '../hooks/useAlertMonitor';
 import { saveAnalysisRecord } from '../lib/db';
 import ScreenerPanel from './Screener/ScreenerPanel';
 import AlertConfig from './AlertConfig';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface WatchlistProps {
   currentSymbol: string;
@@ -25,6 +26,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
   const { alerts, setAlert, removeAlert } = usePriceAlerts();
   useAlertMonitor(alerts);
   const savedScreenerCount = useRef(0);
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (screener.scanning || screener.results.length === 0) return;
@@ -46,7 +48,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
 
   return (
     <aside className="w-1/4 border-r border-white/10 bg-panel p-6 overflow-y-auto hidden md:flex flex-col gap-4">
-      <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">关注列表</h2>
+      <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t('watchlist_title')}</h2>
 
       {/* 添加输入框 */}
       <div className="flex gap-2">
@@ -54,7 +56,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
-          placeholder="输入代码后回车"
+          placeholder={t('watchlist_placeholder')}
           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-emerald-500/40"
         />
         <button
@@ -68,7 +70,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
       {/* 列表 */}
       <div className="space-y-2 flex-1">
         {items.length === 0 && (
-          <p className="text-gray-600 text-xs text-center pt-4">暂无关注，输入代码添加</p>
+          <p className="text-gray-600 text-xs text-center pt-4">{t('no_watchlist')}</p>
         )}
         {items.map(item => {
           const hasAlert = alerts[item.sym]?.enabled;
@@ -123,7 +125,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
         onClick={() => setShowScreener(s => !s)}
         className="text-xs text-gray-500 hover:text-gray-300 transition-colors text-left"
       >
-        {showScreener ? '收起筛选' : '📊 批量筛选'}
+        {showScreener ? t('collapse_screener') : t('expand_screener')}
       </button>
 
       {showScreener && (

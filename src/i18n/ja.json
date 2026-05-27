@@ -74,5 +74,16 @@
   "undervalued": "割安",
   "overvalued": "割高",
   "fairly_valued": "適正",
-  "yi_unit": "億"
+  "yi_unit": "億",
+  "watchlist_title": "ウォッチリスト",
+  "watchlist_placeholder": "コードを入力してEnter",
+  "expand_screener": "📊 一括スクリーニング",
+  "collapse_screener": "スクリーニングを閉じる",
+  "delete_selected": "選択を削除 ({n})",
+  "load_more": "もっと見る",
+  "history_rating": "スコア",
+  "history_consensus": "コンセンサス",
+  "history_return": "リターン",
+  "history_win_rate": "勝率",
+  "history_stocks": "銘柄"
 }

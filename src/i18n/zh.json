@@ -74,5 +74,16 @@
   "undervalued": "低估",
   "overvalued": "高估",
   "fairly_valued": "合理",
-  "yi_unit": "亿"
+  "yi_unit": "亿",
+  "watchlist_title": "关注列表",
+  "watchlist_placeholder": "输入代码后回车",
+  "expand_screener": "📊 批量筛选",
+  "collapse_screener": "收起筛选",
+  "delete_selected": "删除已选 ({n})",
+  "load_more": "加载更多",
+  "history_rating": "评分",
+  "history_consensus": "共识",
+  "history_return": "收益",
+  "history_win_rate": "胜率",
+  "history_stocks": "只股票"
 }
