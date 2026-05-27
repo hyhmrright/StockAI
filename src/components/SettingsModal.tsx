@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { X, Settings as SettingsIcon, Save, Bot, User, CheckCircle2, BrainCircuit } from "lucide-react";
 import { useSettings, Settings } from "../hooks/useSettings";
+import { useLanguage } from "../hooks/useLanguage";
 import { GeneralForm } from "./settings/GeneralForm";
 import { ProviderSelector } from "./settings/ProviderSelector";
 import DeepAnalysisSettings from "./settings/DeepAnalysisSettings";
@@ -23,6 +24,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [appVersion, setAppVersion] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("providers");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const { t } = useLanguage();
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -51,13 +53,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
               <SettingsIcon className="w-4 h-4 text-emerald-500" />
             </div>
-            <span className="font-bold text-gray-100">系统设置</span>
+            <span className="font-bold text-gray-100">{t('settings_title')}</span>
           </div>
 
           {[
-            { id: "general", label: "常规设置", icon: User },
-            { id: "providers", label: "模型服务", icon: Bot },
-            { id: "masters", label: "大师分析", icon: BrainCircuit },
+            { id: "general", label: t('tab_general'), icon: User },
+            { id: "providers", label: t('tab_providers'), icon: Bot },
+            { id: "masters", label: t('tab_masters'), icon: BrainCircuit },
           ].map(tab => (
             <button
               key={tab.id}
@@ -83,7 +85,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* 内容头部 */}
           <header className="px-8 py-5 flex items-center justify-between border-b border-white/5 bg-panel/50 backdrop-blur-sm sticky top-0 z-10">
             <h3 className="text-base font-semibold text-gray-100">
-              {{ general: "常规设置", providers: "模型服务配置", masters: "大师分析设置" }[activeTab]}
+              {{ general: t('title_general'), providers: t('title_providers'), masters: t('title_masters') }[activeTab]}
             </h3>
             <button 
               onClick={onClose}
@@ -121,13 +123,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               {saveStatus === "saving" && (
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                  正在保存...
+                  {t('saving')}
                 </div>
               )}
               {saveStatus === "saved" && (
                 <div className="flex items-center gap-2 text-xs text-emerald-500 animate-in fade-in">
                   <CheckCircle2 className="w-4 h-4" />
-                  设置已成功保存
+                  {t('saved')}
                 </div>
               )}
             </div>
@@ -136,7 +138,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 onClick={onClose}
                 className="px-5 py-2 text-sm font-medium text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
               >
-                关闭
+                {t('close')}
               </button>
               <button
                 onClick={handleSave}
@@ -144,7 +146,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 className="flex items-center gap-2 px-6 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/20 transition-all active:scale-95 disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                保存更改
+                {t('save_changes')}
               </button>
             </div>
           </footer>

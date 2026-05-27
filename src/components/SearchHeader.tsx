@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Settings as SettingsIcon } from 'lucide-react';
 import { searchStocks } from '../lib/ipc';
+import { useLanguage } from '../hooks/useLanguage';
 import { StockSearchResult } from '../../shared/types';
 
 interface SearchHeaderProps {
@@ -19,6 +20,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
   onOpenSettings, 
   stepLabel 
 }) => {
+  const { t } = useLanguage();
   const [searchSymbol, setSearchSymbol] = useState('');
   const [results, setResults] = useState<StockSearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -85,7 +87,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
             value={searchSymbol}
             onChange={(e) => setSearchSymbol(e.target.value)}
             onFocus={() => results.length > 0 && setShowDropdown(true)}
-            placeholder="搜索股票代码或名称 (例如: AAPL, 隆基绿能, 300866)..."
+            placeholder={t('search_placeholder')}
             className="w-full bg-background border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
           />
           {isSearching && (
@@ -139,7 +141,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
           className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white font-medium rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          {loading ? '分析中...' : '开始分析'}
+          {loading ? t('analyzing') : t('start_analysis')}
         </button>
         {/* 在搜索栏显示当前分析进度 */}
         {loading && (

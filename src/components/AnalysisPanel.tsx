@@ -10,6 +10,7 @@ import DeepAnalysisPanel from './DeepAnalysis/DeepAnalysisPanel';
 import BacktestPanel from './Backtest/BacktestPanel';
 import AnalysisHistory from './AnalysisHistory';
 import { sentimentBgClass, sentimentBadgeClass } from '../lib/signal-styles';
+import { useLanguage } from '../hooks/useLanguage';
 import type { AIAnalysisRecord } from '../hooks/useAIAnalysis';
 import type { StockInfo, QuantBundle, DeepAnalysisResult } from '../../shared/types';
 
@@ -47,6 +48,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   const result = record?.result;
   const bgClass = result ? sentimentBgClass(result.sentiment) : '';
   const badgeClass = result ? sentimentBadgeClass(result.sentiment) : '';
+  const { t } = useLanguage();
 
   return (
     <aside className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l border-white/10 bg-panel p-6 lg:overflow-y-auto">
@@ -121,7 +123,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               {result.pros.map((pro, i) => (
                 <div key={`pro-${i}`} className="p-5 border-l-4 border-emerald-500 bg-emerald-500/5 rounded-r-xl">
                   <div className="text-xs text-emerald-500 mb-2 font-bold flex items-center gap-1.5">
-                    <TrendingUp className="w-3 h-3" />利多因素
+                    <TrendingUp className="w-3 h-3" />{t('pros')}
                   </div>
                   <div className="text-sm leading-snug">{pro}</div>
                 </div>
@@ -129,7 +131,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               {result.cons.map((con, i) => (
                 <div key={`con-${i}`} className="p-5 border-l-4 border-rose-500 bg-rose-500/5 rounded-r-xl">
                   <div className="text-xs text-rose-500 mb-2 font-bold flex items-center gap-1.5">
-                    <TrendingDown className="w-3 h-3" />风险提示
+                    <TrendingDown className="w-3 h-3" />{t('cons')}
                   </div>
                   <div className="text-sm leading-snug">{con}</div>
                 </div>
@@ -140,13 +142,13 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               <div className="mt-6 space-y-3">
                 {result.technicalView && (
                   <div className="p-4 bg-sky-500/5 border-l-4 border-sky-500 rounded-r-xl">
-                    <div className="text-xs text-sky-400 mb-1 font-bold">技术面解读</div>
+                    <div className="text-xs text-sky-400 mb-1 font-bold">{t('technical_view')}</div>
                     <div className="text-sm leading-snug">{result.technicalView}</div>
                   </div>
                 )}
                 {result.fundamentalView && (
                   <div className="p-4 bg-violet-500/5 border-l-4 border-violet-500 rounded-r-xl">
-                    <div className="text-xs text-violet-400 mb-1 font-bold">基本面解读</div>
+                    <div className="text-xs text-violet-400 mb-1 font-bold">{t('fundamental_view')}</div>
                     <div className="text-sm leading-snug">{result.fundamentalView}</div>
                   </div>
                 )}
@@ -164,7 +166,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             disabled={deepAnalyzing}
             className="w-full py-2 px-4 rounded-lg text-xs font-medium bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/30 disabled:opacity-50 transition-colors"
           >
-            {deepAnalyzing ? '深度分析中...' : '深度大师分析'}
+            {deepAnalyzing ? t('deep_analyzing') : t('deep_analysis')}
           </button>
           {deepError && <p className="mt-2 text-xs text-rose-400">{deepError}</p>}
         </div>
