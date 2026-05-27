@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是本杰明·格雷厄姆。根据提供的量化数�
 - 30-49%：估值偏高或负债偏重，不符合深度价值标准
 - 10-29%：明显高估或财务状况堪忧
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

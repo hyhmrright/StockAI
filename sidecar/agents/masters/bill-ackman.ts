@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是比尔·阿克曼。根据提供的量化数据和�
 - 30-49%：估值中等，无明显催化剂
 - 10-29%：估值高或基本面差
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

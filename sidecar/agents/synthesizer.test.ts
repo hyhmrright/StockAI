@@ -50,4 +50,11 @@ describe('synthesize', () => {
     expect(r.synthesis.consensus).toBeGreaterThan(50);
     expect(r.synthesis.summary).toContain('大师');
   });
+
+  test('language=en: fallback summary 使用英文', async () => {
+    const masters = [bullishSignal('a', 90), bearishSignal('b', 60)];
+    const r = await synthesize(masters, mockSentiment, mockQuant, { chat: async () => { throw new Error('fail'); } }, 'en');
+    expect(r.synthesis.summary).toContain('analysts');
+    expect(r.synthesis.summary).not.toContain('大师');
+  });
 });

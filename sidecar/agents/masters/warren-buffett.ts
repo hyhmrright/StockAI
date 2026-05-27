@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是沃伦·巴菲特。根据提供的量化数据和�
 - 30-49%：超出能力圈或基本面令人担忧
 - 10-29%：业务差或严重高估
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

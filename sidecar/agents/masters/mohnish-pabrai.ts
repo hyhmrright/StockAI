@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是莫尼什·帕布莱。根据提供的量化数据�
 - 30-49%：风险收益比接近 1:1
 - 10-29%：高风险低回报
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

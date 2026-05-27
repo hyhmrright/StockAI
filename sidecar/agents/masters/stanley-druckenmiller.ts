@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是斯坦利·德鲁肯米勒。根据提供的量化�
 - 30-49%：动能与基本面背离
 - 10-29%：下行趋势明确，基本面恶化
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

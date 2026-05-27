@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是菲利普·费雪。根据提供的量化数据和�
 - 30-49%：增长不稳定，缺乏长期成长逻辑
 - 10-29%：增长负面或管理层质量差
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

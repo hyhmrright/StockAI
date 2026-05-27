@@ -13,12 +13,13 @@ const meta: MasterMeta = {
   description: 'A test master agent',
 };
 
-function makeCtx(chatFn: (s: string, u: string) => Promise<string>): MasterAnalysisContext {
+function makeCtx(chatFn: (s: string, u: string) => Promise<string>, language?: 'zh' | 'en' | 'ja'): MasterAnalysisContext {
   return {
     symbol: 'AAPL',
     quant: createMockQuantBundle(),
     news: [createMockNews()],
     chat: { chat: chatFn },
+    language,
   };
 }
 
@@ -53,5 +54,28 @@ describe('createMasterAgent', () => {
     expect(result.signal).toBe('neutral');
     expect(result.confidence).toBe(50);
     expect(result.reasoning).toContain('分析服务暂不可用');
+  });
+
+  test('language=en: 非法 JSON → 英文回退消息', async () => {
+    const agent = createMasterAgent(meta, 'system', () => 'user');
+    const ctx = makeCtx(async () => 'not json', 'en');
+    const result = await agent.analyze(ctx);
+    expect(result.reasoning).toBe('Response parse failed');
+  });
+
+  test('language=en: LLM 抛错 → 英文服务不可用消息', async () => {
+    const agent = createMasterAgent(meta, 'system', () => 'user');
+    const ctx = makeCtx(async () => { throw new Error('fail'); }, 'en');
+    const result = await agent.analyze(ctx);
+    expect(result.reasoning).toBe('Analysis service unavailable');
+  });
+
+  test('language=en: system prompt 包含英文语言指令', async () => {
+    const agent = createMasterAgent(meta, 'system prompt', () => 'user');
+    let capturedSystem = '';
+    const ctx = makeCtx(async (s) => { capturedSystem = s; return JSON.stringify({ signal: 'neutral', confidence: 50, reasoning: 'ok' }); }, 'en');
+    await agent.analyze(ctx);
+    expect(capturedSystem).toContain('Respond in English');
+    expect(capturedSystem).not.toContain('用中文回复');
   });
 });

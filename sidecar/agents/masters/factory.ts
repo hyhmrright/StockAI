@@ -41,7 +41,7 @@ export function createMasterAgent(
     meta,
     async analyze(ctx: MasterAnalysisContext): Promise<MasterSignal> {
       const lang = ctx.language ?? 'zh';
-      const localizedPrompt = systemPrompt.replace('用中文回复', LANG_INSTRUCTION[lang]);
+      const localizedPrompt = `${systemPrompt}\n${LANG_INSTRUCTION[lang]}`;
       try {
         const raw = await ctx.chat.chat(localizedPrompt, buildUserPrompt(ctx));
         return parseResponse(raw, meta.id, lang);

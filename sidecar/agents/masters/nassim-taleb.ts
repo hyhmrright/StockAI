@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是纳西姆·塔勒布。根据提供的量化数据�
 - 30-49%：存在脆弱性信号（高负债或高波动）
 - 10-29%：严重脆弱，黑天鹅风险高
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

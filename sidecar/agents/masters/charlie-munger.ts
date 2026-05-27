@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是查理·芒格。根据提供的量化数据和新�
 - 30-49%：质量令人担忧或超出能力圈
 - 10-29%：低质量企业或严重高估
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

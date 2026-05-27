@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是拉凯什·金君瓦拉。根据提供的量化数�
 - 30-49%：质量平庸，长期成长逻辑薄弱
 - 10-29%：低质量企业，无长期持有价值
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是迈克尔·伯里。根据提供的量化数据和�
 - 30-49%：趋势顺势，无逆向机会
 - 10-29%：市场共识正确，逆向无依据
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {

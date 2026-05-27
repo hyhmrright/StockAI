@@ -71,6 +71,16 @@ describe("performFullAnalysis (Sociable Unit Tests)", () => {
     expect(result.analysis.sentiment).toBe('neutral');
     expect(result.analysis.summary).toContain("AI 分析服务暂不可用");
   });
+
+  test("AIProviderFailure_language=en_EnglishFallback", async () => {
+    const { deps } = makeDeps({ analyzeRejects: new Error("Invalid API Key") });
+
+    const result = await performFullAnalysis("AAPL", "openai", { language: 'en' }, deps);
+    expect(result.analysis.rating).toBe(50);
+    expect(result.analysis.sentiment).toBe('neutral');
+    expect(result.analysis.summary).toContain("unavailable");
+    expect(result.analysis.summary).not.toContain("AI 分析服务暂不可用");
+  });
 });
 
 describe("fetchMarketBundle (拆分后的纯抓取)", () => {

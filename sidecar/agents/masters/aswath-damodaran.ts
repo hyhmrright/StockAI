@@ -33,7 +33,7 @@ const SYSTEM_PROMPT = `你是阿斯瓦斯·达摩达兰。根据提供的量化�
 - 30-49%：数字与故事存在矛盾
 - 10-29%：估值明显偏离基本面
 
-用中文回复。推理控制在 200 字以内。只返回 JSON：
+推理控制在 200 字以内。只返回 JSON：
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "reasoning": "..."}`;
 
 function buildUserPrompt(ctx: MasterAnalysisContext): string {
