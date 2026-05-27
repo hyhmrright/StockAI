@@ -100,8 +100,8 @@ describe("buildEnhancedPrompt", () => {
 
   test("包含基本面指标值", () => {
     const prompt = buildEnhancedPrompt("AAPL", news, quant);
-    expect(prompt).toContain("ROE: 16.5%");
-    expect(prompt).toContain("PE: 22");
+    expect(prompt).toContain("ROE：16.5%");
+    expect(prompt).toContain("PE：22");
   });
 
   test("包含综合评分", () => {
