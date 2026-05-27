@@ -44,4 +44,19 @@ describe("resolveConfig", () => {
     expect(cfg.baseUrl).toBe("http://127.0.0.1:11434");
     expect(cfg.modelName).toBe("qwen3.5:4b");
   });
+
+  test("language 字段存在时正确读取", () => {
+    const cfg = resolveConfig({ ...validConfig, language: 'en' });
+    expect(cfg.language).toBe('en');
+  });
+
+  test("language 字段缺失时默认 zh", () => {
+    const cfg = resolveConfig(validConfig);
+    expect(cfg.language).toBe('zh');
+  });
+
+  test("language 值无效时回退到 zh", () => {
+    const cfg = resolveConfig({ ...validConfig, language: 'fr' });
+    expect(cfg.language).toBe('zh');
+  });
 });

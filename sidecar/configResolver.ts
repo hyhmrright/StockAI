@@ -1,5 +1,5 @@
 import { PROVIDER_PROFILES, CONFIG_VERSION, DEFAULT_SELECTED_MASTERS } from '../shared/constants';
-import { ProviderType } from '../shared/types';
+import type { ProviderType, Language } from '../shared/types';
 
 export interface ResolvedConfig {
   provider: ProviderType;
@@ -9,6 +9,7 @@ export interface ResolvedConfig {
   deepMode: boolean;
   masterAnalysis: boolean;
   selectedMasters: string[];
+  language: Language;
 }
 
 /**
@@ -34,6 +35,10 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
   const providerCfg: Record<string, string> = obj.providerConfigs?.[provider] ?? {};
   const defaults = PROVIDER_PROFILES[provider];
 
+  const VALID_LANGUAGES: Language[] = ['zh', 'en', 'ja'];
+  const rawLang = obj.language;
+  const language: Language = VALID_LANGUAGES.includes(rawLang) ? rawLang as Language : 'zh';
+
   return {
     provider,
     apiKey:    providerCfg.apiKey   ?? '',
@@ -42,5 +47,6 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
     deepMode:  obj.deepMode !== false,
     masterAnalysis: obj.masterAnalysis === true,
     selectedMasters: Array.isArray(obj.selectedMasters) ? obj.selectedMasters : DEFAULT_SELECTED_MASTERS,
+    language,
   };
 }
