@@ -1,4 +1,4 @@
-import type { AIAnalysisResult, FullAnalysisResponse, MarketBundle, StockInfo, StockNews, QuantBundle } from '../shared/types';
+import type { AIAnalysisResult, FullAnalysisResponse, MarketBundle, StockInfo, StockNews, QuantBundle, Language } from '../shared/types';
 import type { ParsedSymbol } from './parsers/exchange';
 import type { AIProvider } from './ai';
 import { scrapeStockNews as realScrape } from './scraper';
@@ -24,7 +24,7 @@ export interface AnalysisDeps {
   scrape?: typeof realScrape;
   fetchInfo?: (parsed: ParsedSymbol) => Promise<StockInfo | null>;
   enhance?: typeof realEnhance;
-  createProvider?: (type: string, cfg: { apiKey?: string; baseUrl?: string; model?: string }) => AIProvider;
+  createProvider?: (type: string, cfg: { apiKey?: string; baseUrl?: string; model?: string; language?: Language }) => AIProvider;
 }
 
 function resolveDeps(deps: AnalysisDeps): Required<AnalysisDeps> {
@@ -73,14 +73,14 @@ export async function analyzeNewsWithLLM(
   symbol: string,
   news: StockNews[],
   providerType: string = 'openai',
-  config: { apiKey?: string; baseUrl?: string; model?: string } = {},
+  config: { apiKey?: string; baseUrl?: string; model?: string; language?: Language } = {},
   quant?: QuantBundle,
   deps: AnalysisDeps = {},
 ): Promise<AIAnalysisResult> {
   const createProvider = deps.createProvider ?? realCreateProvider;
   try {
     const provider = createProvider(providerType, config);
-    return await provider.analyze(symbol, news, quant);
+    return await provider.analyze(symbol, news, quant, config.language);
   } catch (error) {
     const msg = toErrorMessage(error);
     logger.error(`AI 分析异常 (${symbol}): ${msg}`);
@@ -100,7 +100,7 @@ export async function analyzeNewsWithLLM(
 export async function performFullAnalysis(
   symbol: string,
   providerType: string = 'openai',
-  config: { apiKey?: string; baseUrl?: string; model?: string; deepMode?: boolean } = {},
+  config: { apiKey?: string; baseUrl?: string; model?: string; deepMode?: boolean; language?: Language } = {},
   deps: AnalysisDeps = {},
 ): Promise<FullAnalysisResponse> {
   const bundle = await fetchMarketBundle(symbol, config.deepMode ?? true, deps);

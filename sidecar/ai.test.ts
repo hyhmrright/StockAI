@@ -23,8 +23,8 @@ describe("AI Prompt 分析逻辑", () => {
   test("buildAnalysisPrompt 应该支持自定义 contentLimit", () => {
     const longContent = "A".repeat(2000);
     const news = [{ title: "Test", source: "Test", content: longContent }];
-    const prompt800 = buildAnalysisPrompt("TEST", news, 800);
-    const prompt1000 = buildAnalysisPrompt("TEST", news, 1000);
+    const prompt800 = buildAnalysisPrompt("TEST", news, 'zh', 800);
+    const prompt1000 = buildAnalysisPrompt("TEST", news, 'zh', 1000);
     // 800 截断应该比 1000 截断的结果短
     expect(prompt800.length).toBeLessThan(prompt1000.length);
   });
@@ -36,8 +36,8 @@ describe("AI Prompt 分析逻辑", () => {
     const newsShort = [{ title: "T", source: "S", content: shortContent }];
     const newsLong  = [{ title: "T", source: "S", content: longContent }];
 
-    const promptShort = buildAnalysisPrompt("TEST", newsShort, 500);
-    const promptLong  = buildAnalysisPrompt("TEST", newsLong,  500);
+    const promptShort = buildAnalysisPrompt("TEST", newsShort, 'zh', 500);
+    const promptLong  = buildAnalysisPrompt("TEST", newsLong,  'zh', 500);
 
     // 超出 500 字符的正文应被截断，导致 prompt 长度不随原始内容线性增长
     expect(promptLong.length).toBeLessThan(promptShort.length + longContent.length);

@@ -1,4 +1,4 @@
-import type { AIAnalysisResult, StockNews, QuantBundle } from '../shared/types';
+import type { AIAnalysisResult, StockNews, QuantBundle, Language } from '../shared/types';
 
 /** Provider 家族标识——工厂派发结果可被单测断言。
  * deepseek 复用 OpenAI 兼容协议，其 Provider 实例的 kind 为 'openai'，故不在此列。
@@ -17,5 +17,5 @@ export interface AIProvider {
    * @param symbol 股票代码
    * @param news 相关新闻列表
    */
-  analyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult>;
+  analyze(symbol: string, news: StockNews[], quant?: QuantBundle, language?: Language): Promise<AIAnalysisResult>;
 }
