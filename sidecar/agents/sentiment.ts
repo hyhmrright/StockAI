@@ -19,12 +19,18 @@ const USER_PROMPT_INTRO: Record<Language, (n: number) => string> = {
   ja: (n) => `以下の${n}件のニュースそれぞれに感情（positive/negative/neutral）をラベル付けしてください：`,
 };
 
+const FORMAT_FOOTER: Record<Language, string> = {
+  zh: '返回格式：\n{\n  "items": [{"index": 1, "sentiment": "positive"}, ...],\n  "overall": "positive" | "negative" | "neutral"\n}',
+  en: 'Return format:\n{\n  "items": [{"index": 1, "sentiment": "positive"}, ...],\n  "overall": "positive" | "negative" | "neutral"\n}',
+  ja: '返却フォーマット：\n{\n  "items": [{"index": 1, "sentiment": "positive"}, ...],\n  "overall": "positive" | "negative" | "neutral"\n}',
+};
+
 function buildPrompt(news: StockNews[], lang: Language = 'zh'): string {
   const items = news.map((n, i) =>
     `${i + 1}. ${n.title}${n.content ? '\n   ' + n.content.substring(0, 300) : ''}`,
   ).join('\n\n');
   const intro = (USER_PROMPT_INTRO[lang] ?? USER_PROMPT_INTRO.zh)(news.length);
-  return `${intro}\n\n${items}\n\n返回格式：\n{\n  "items": [{"index": 1, "sentiment": "positive"}, ...],\n  "overall": "positive" | "negative" | "neutral"\n}`;
+  return `${intro}\n\n${items}\n\n${FORMAT_FOOTER[lang] ?? FORMAT_FOOTER.zh}`;
 }
 
 export function computeSentimentSignal(items: SentimentItem[]): SentimentSignal {

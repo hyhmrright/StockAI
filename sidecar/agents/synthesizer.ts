@@ -17,6 +17,21 @@ Respond in English. Return only JSON:
 {"signal": "bullish|bearish|neutral", "confidence": 0-100, "summary": "200字以内の総合分析", "consensus": 0-100}`,
 };
 
+export const FALLBACK_SUMMARY: Record<Language, (n: number, b: number, be: number, sig: string) => string> = {
+  zh: (n, b, be, sig) => `${n} 位大师中 ${b} 位看涨、${be} 位看跌。综合判断为${sig === 'bullish' ? '看涨' : sig === 'bearish' ? '看跌' : '中性'}。`,
+  en: (n, b, be, sig) => `${b} of ${n} analysts bullish, ${be} bearish. Overall: ${sig}.`,
+  ja: (n, b, be, sig) => `${n}人中${b}人が強気、${be}人が弱気。総合判断：${sig === 'bullish' ? '強気' : sig === 'bearish' ? '弱気' : '中立'}。`,
+};
+
+const PROMPT_LABELS: Record<Language, {
+  masters: string; sentiment: string; quant: string;
+  signal: string; positive: string; composite: string; tech: string; fundamental: string;
+}> = {
+  zh: { masters: '各大师研判', sentiment: '情绪分析', quant: '量化评分', signal: '信号', positive: '正面新闻', composite: '综合', tech: '技术面', fundamental: '基本面' },
+  en: { masters: 'Master Analysts', sentiment: 'Sentiment', quant: 'Quant Score', signal: 'Signal', positive: 'Positive news', composite: 'Composite', tech: 'Technical', fundamental: 'Fundamental' },
+  ja: { masters: '投資マスター分析', sentiment: '感情分析', quant: '定量スコア', signal: 'シグナル', positive: 'ポジティブニュース', composite: '総合', tech: 'テクニカル', fundamental: 'ファンダメンタル' },
+};
+
 export function computeConsensus(signals: MasterSignal[]): number {
   if (signals.length === 0) return 0;
   const counts = { bullish: 0, bearish: 0, neutral: 0 };
@@ -43,9 +58,10 @@ function computeLocalSynthesis(signals: MasterSignal[]): { signal: 'bullish' | '
   return { signal, confidence: Math.round((maxW / total) * 100) };
 }
 
-function buildSynthesisPrompt(signals: MasterSignal[], sentiment: SentimentSignal, quant: QuantBundle): string {
+function buildSynthesisPrompt(signals: MasterSignal[], sentiment: SentimentSignal, quant: QuantBundle, lang: Language): string {
+  const L = PROMPT_LABELS[lang];
   const summary = signals.map(s => `- ${s.masterId}: ${s.signal} (${s.confidence}%) — ${s.reasoning.slice(0, 80)}`).join('\n');
-  return `[各大师研判]\n${summary}\n\n[情绪分析]\n信号: ${sentiment.signal}, 正面新闻 ${sentiment.newsBreakdown.positive}/${sentiment.newsBreakdown.total}\n\n[量化评分]\n综合: ${quant.composite.score}/100 (${quant.composite.signal})\n技术面: ${quant.technical.signal} (${quant.technical.confidence}%)\n基本面: ${quant.fundamental.signal} (${quant.fundamental.confidence}%)`;
+  return `[${L.masters}]\n${summary}\n\n[${L.sentiment}]\n${L.signal}: ${sentiment.signal}, ${L.positive} ${sentiment.newsBreakdown.positive}/${sentiment.newsBreakdown.total}\n\n[${L.quant}]\n${L.composite}: ${quant.composite.score}/100 (${quant.composite.signal})\n${L.tech}: ${quant.technical.signal} (${quant.technical.confidence}%)\n${L.fundamental}: ${quant.fundamental.signal} (${quant.fundamental.confidence}%)`;
 }
 
 export async function synthesize(
@@ -57,7 +73,7 @@ export async function synthesize(
   const localSynthesis = computeLocalSynthesis(masterSignals);
   let synthesis: DeepAnalysisResult['synthesis'];
   try {
-    const raw = await chat.chat(SYSTEM_PROMPTS[lang], buildSynthesisPrompt(masterSignals, sentiment, quant));
+    const raw = await chat.chat(SYSTEM_PROMPTS[lang], buildSynthesisPrompt(masterSignals, sentiment, quant, lang));
     const parsed = JSON.parse(raw);
     synthesis = {
       signal: ['bullish', 'bearish', 'neutral'].includes(parsed.signal) ? parsed.signal : localSynthesis.signal,
@@ -69,11 +85,6 @@ export async function synthesize(
     logger.warn(`综合研判 LLM 失败，使用本地计算: ${toErrorMessage(err)}`);
     const bullishCount = masterSignals.filter(s => s.signal === 'bullish').length;
     const bearishCount = masterSignals.filter(s => s.signal === 'bearish').length;
-    const FALLBACK_SUMMARY: Record<Language, (n: number, b: number, be: number, sig: string) => string> = {
-      zh: (n, b, be, sig) => `${n} 位大师中 ${b} 位看涨、${be} 位看跌。综合判断为${sig === 'bullish' ? '看涨' : sig === 'bearish' ? '看跌' : '中性'}。`,
-      en: (n, b, be, sig) => `${b} of ${n} analysts bullish, ${be} bearish. Overall: ${sig}.`,
-      ja: (n, b, be, sig) => `${n}人中${b}人が強気、${be}人が弱気。総合判断：${sig === 'bullish' ? '強気' : sig === 'bearish' ? '弱気' : '中立'}。`,
-    };
     synthesis = {
       signal: localSynthesis.signal, confidence: localSynthesis.confidence,
       summary: (FALLBACK_SUMMARY[lang] ?? FALLBACK_SUMMARY.zh)(masterSignals.length, bullishCount, bearishCount, localSynthesis.signal),

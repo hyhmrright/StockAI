@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { createMasterAgent } from './factory';
+import { createMasterAgent, PARSE_FAIL_MSG, SERVICE_UNAVAIL_MSG } from './factory';
 import { createMockQuantBundle, createMockNews } from '../../../shared/test-utils';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
@@ -43,7 +43,7 @@ describe('createMasterAgent', () => {
     expect(result.masterId).toBe('test-master');
     expect(result.signal).toBe('neutral');
     expect(result.confidence).toBe(50);
-    expect(result.reasoning).toBe('响应解析失败');
+    expect(result.reasoning).toBe(PARSE_FAIL_MSG['zh']);
   });
 
   test('LLM 抛错 → neutral 回退并含"暂不可用"', async () => {
@@ -53,7 +53,7 @@ describe('createMasterAgent', () => {
     expect(result.masterId).toBe('test-master');
     expect(result.signal).toBe('neutral');
     expect(result.confidence).toBe(50);
-    expect(result.reasoning).toContain('分析服务暂不可用');
+    expect(result.reasoning).toBe(SERVICE_UNAVAIL_MSG['zh']);
   });
 
   test('language=en: 非法 JSON → 英文回退消息', async () => {

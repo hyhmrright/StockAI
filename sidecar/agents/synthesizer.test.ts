@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { computeConsensus, synthesize } from './synthesizer';
+import { computeConsensus, synthesize, FALLBACK_SUMMARY } from './synthesizer';
 import type { MasterSignal, SentimentSignal, QuantBundle } from '../../shared/types';
 import type { ChatProvider } from './types';
 
@@ -48,7 +48,7 @@ describe('synthesize', () => {
     const r = await synthesize(masters, mockSentiment, mockQuant, { chat: async () => { throw new Error('fail'); } });
     expect(r.synthesis.signal).toBe('bullish');
     expect(r.synthesis.consensus).toBeGreaterThan(50);
-    expect(r.synthesis.summary).toContain('大师');
+    expect(r.synthesis.summary).toBe(FALLBACK_SUMMARY['zh'](masters.length, 2, 1, 'bullish'));
   });
 
   test('language=en: fallback summary 使用英文', async () => {

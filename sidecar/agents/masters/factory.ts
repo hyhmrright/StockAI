@@ -8,13 +8,13 @@ const LANG_INSTRUCTION: Record<Language, string> = {
   ja: '日本語で回答してください',
 };
 
-const PARSE_FAIL_MSG: Record<Language, string> = {
+export const PARSE_FAIL_MSG: Record<Language, string> = {
   zh: '响应解析失败',
   en: 'Response parse failed',
   ja: 'レスポンス解析失敗',
 };
 
-const SERVICE_UNAVAIL_MSG: Record<Language, string> = {
+export const SERVICE_UNAVAIL_MSG: Record<Language, string> = {
   zh: '分析服务暂不可用',
   en: 'Analysis service unavailable',
   ja: '分析サービス利用不可',
