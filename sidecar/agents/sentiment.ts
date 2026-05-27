@@ -1,9 +1,12 @@
-import type { SentimentSignal } from '../../shared/types';
+import type { SentimentSignal, Language, StockNews } from '../../shared/types';
 import type { ChatProvider } from './types';
-import type { StockNews } from '../../shared/types';
 import { logger, toErrorMessage } from '../utils';
 
-const SYSTEM_PROMPT = `你是金融新闻情绪分析专家。对每条新闻标注情绪倾向并给出整体判断。只返回 JSON。`;
+const SYSTEM_PROMPTS: Record<Language, string> = {
+  zh: `你是金融新闻情绪分析专家。对每条新闻标注情绪倾向并给出整体判断。只返回 JSON。`,
+  en: `You are a financial news sentiment analysis expert. Label the sentiment of each news item and give an overall judgment. Return only JSON.`,
+  ja: `あなたは金融ニュースの感情分析の専門家です。各ニュースの感情傾向にラベルを付け、全体的な判断を示してください。JSONのみを返してください。`,
+};
 
 interface SentimentItem {
   index: number;
@@ -33,10 +36,11 @@ export function computeSentimentSignal(items: SentimentItem[]): SentimentSignal 
   return { signal, confidence, newsBreakdown: breakdown };
 }
 
-export async function analyzeSentiment(news: StockNews[], chat: ChatProvider): Promise<SentimentSignal> {
+export async function analyzeSentiment(news: StockNews[], chat: ChatProvider, language?: Language): Promise<SentimentSignal> {
+  const lang = language ?? 'zh';
   if (news.length === 0) return { signal: 'neutral', confidence: 50, newsBreakdown: { positive: 0, negative: 0, neutral: 0, total: 0 } };
   try {
-    const raw = await chat.chat(SYSTEM_PROMPT, buildPrompt(news));
+    const raw = await chat.chat(SYSTEM_PROMPTS[lang], buildPrompt(news));
     const parsed = JSON.parse(raw) as { items?: SentimentItem[] };
     const items: SentimentItem[] = (parsed.items || []).map(it => ({
       index: it.index,

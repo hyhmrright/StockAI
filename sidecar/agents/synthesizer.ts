@@ -1,11 +1,21 @@
-import type { MasterSignal, SentimentSignal, DeepAnalysisResult, QuantBundle } from '../../shared/types';
+import type { MasterSignal, SentimentSignal, DeepAnalysisResult, QuantBundle, Language } from '../../shared/types';
 import type { ChatProvider } from './types';
 import { logger, toErrorMessage } from '../utils';
 
-const SYSTEM_PROMPT = `你是投资委员会主席。综合所有分析师的独立研判，给出最终投资建议。
+const SYSTEM_PROMPTS: Record<Language, string> = {
+  zh: `你是投资委员会主席。综合所有分析师的独立研判，给出最终投资建议。
 重点关注：多数分析师的共识方向、高置信度分析师的权重更大、不同风格间的分歧。
 用中文回复。只返回 JSON：
-{"signal": "bullish|bearish|neutral", "confidence": 0-100, "summary": "200字以内综合分析", "consensus": 0-100}`;
+{"signal": "bullish|bearish|neutral", "confidence": 0-100, "summary": "200字以内综合分析", "consensus": 0-100}`,
+  en: `You are the chair of the investment committee. Synthesize all analysts' independent assessments into a final recommendation.
+Focus on: the consensus direction, weight high-confidence analysts more heavily, and note divergences between styles.
+Respond in English. Return only JSON:
+{"signal": "bullish|bearish|neutral", "confidence": 0-100, "summary": "Summary in under 200 words", "consensus": 0-100}`,
+  ja: `あなたは投資委員会の議長です。全アナリストの独立した評価を総合して最終推奨を提示してください。
+重視すること：多数決の方向性、高い確信度のアナリストへの重み付け、スタイル間の乖離。
+日本語で回答してください。JSONのみを返してください：
+{"signal": "bullish|bearish|neutral", "confidence": 0-100, "summary": "200字以内の総合分析", "consensus": 0-100}`,
+};
 
 export function computeConsensus(signals: MasterSignal[]): number {
   if (signals.length === 0) return 0;
@@ -40,12 +50,14 @@ function buildSynthesisPrompt(signals: MasterSignal[], sentiment: SentimentSigna
 
 export async function synthesize(
   masterSignals: MasterSignal[], sentiment: SentimentSignal, quant: QuantBundle, chat: ChatProvider,
+  language?: Language,
 ): Promise<DeepAnalysisResult> {
+  const lang = language ?? 'zh';
   const consensus = computeConsensus(masterSignals);
   const localSynthesis = computeLocalSynthesis(masterSignals);
   let synthesis: DeepAnalysisResult['synthesis'];
   try {
-    const raw = await chat.chat(SYSTEM_PROMPT, buildSynthesisPrompt(masterSignals, sentiment, quant));
+    const raw = await chat.chat(SYSTEM_PROMPTS[lang], buildSynthesisPrompt(masterSignals, sentiment, quant));
     const parsed = JSON.parse(raw);
     synthesis = {
       signal: ['bullish', 'bearish', 'neutral'].includes(parsed.signal) ? parsed.signal : localSynthesis.signal,

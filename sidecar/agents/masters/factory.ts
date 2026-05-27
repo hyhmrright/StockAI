@@ -1,6 +1,12 @@
 import type { MasterAgent, MasterAnalysisContext, MasterSignal } from '../types';
-import type { MasterMeta } from '../../../shared/types';
+import type { MasterMeta, Language } from '../../../shared/types';
 import { logger, toErrorMessage } from '../../utils';
+
+const LANG_INSTRUCTION: Record<Language, string> = {
+  zh: '用中文回复',
+  en: 'Respond in English',
+  ja: '日本語で回答してください',
+};
 
 function parseResponse(raw: string, masterId: string): MasterSignal {
   try {
@@ -22,8 +28,10 @@ export function createMasterAgent(
   return {
     meta,
     async analyze(ctx: MasterAnalysisContext): Promise<MasterSignal> {
+      const lang = ctx.language ?? 'zh';
+      const localizedPrompt = systemPrompt.replace('用中文回复', LANG_INSTRUCTION[lang]);
       try {
-        const raw = await ctx.chat.chat(systemPrompt, buildUserPrompt(ctx));
+        const raw = await ctx.chat.chat(localizedPrompt, buildUserPrompt(ctx));
         return parseResponse(raw, meta.id);
       } catch (err) {
         logger.warn(`[${meta.id}] 分析失败: ${toErrorMessage(err)}`);

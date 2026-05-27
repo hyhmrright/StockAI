@@ -1,4 +1,4 @@
-import type { QuantBundle, StockNews, MasterMeta, MasterSignal } from '../../shared/types';
+import type { QuantBundle, StockNews, MasterMeta, MasterSignal, Language } from '../../shared/types';
 
 export type { MasterSignal };
 
@@ -13,6 +13,7 @@ export interface MasterAnalysisContext {
   quant: QuantBundle;
   news: StockNews[];
   chat: ChatProvider;
+  language?: Language;
 }
 
 /** 大师 Agent 接口 */

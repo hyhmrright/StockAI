@@ -1,4 +1,4 @@
-import type { QuantBundle, StockNews, DeepAnalysisResult, MasterSignal } from '../shared/types';
+import type { QuantBundle, StockNews, DeepAnalysisResult, MasterSignal, Language } from '../shared/types';
 import type { ChatProvider, MasterAgent, MasterAnalysisContext } from './agents/types';
 import { getSelectedMasters, DEFAULT_MASTER_IDS } from './agents/registry';
 import { analyzeSentiment } from './agents/sentiment';
@@ -26,10 +26,11 @@ export interface DeepAnalysisOptions {
   news: StockNews[];
   chat: ChatProvider;
   selectedMasters?: string[];
+  language?: Language;
 }
 
 export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAnalysisResult> {
-  const { symbol, quant, news, chat, selectedMasters = DEFAULT_MASTER_IDS } = opts;
+  const { symbol, quant, news, chat, selectedMasters = DEFAULT_MASTER_IDS, language } = opts;
 
   let masters = getSelectedMasters(selectedMasters);
   if (masters.length === 0) {
@@ -37,13 +38,13 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
     masters = getSelectedMasters(DEFAULT_MASTER_IDS);
   }
 
-  const ctx: MasterAnalysisContext = { symbol, quant, news, chat };
+  const ctx: MasterAnalysisContext = { symbol, quant, news, chat, language };
 
   const masterTasks = masters.map((m: MasterAgent) => () => m.analyze(ctx));
   const [masterResults, sentimentResult] = await Promise.all([
     runWithConcurrency<MasterSignal>(masterTasks, MAX_CONCURRENCY),
-    analyzeSentiment(news, chat),
+    analyzeSentiment(news, chat, language),
   ]);
 
-  return synthesize(masterResults, sentimentResult, quant, chat);
+  return synthesize(masterResults, sentimentResult, quant, chat, language);
 }
