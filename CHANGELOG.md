@@ -2,6 +2,22 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.10.0] - 2026-05-27
+
+### Added
+
+- **多语言支持（zh / en / ja）** — UI 全面国际化，覆盖所有组件、设置弹窗、搜索栏、分析面板、量化评分卡、情感分析、历史记录等；Settings 新增语言选择器。AI Agent 分析响应（提示词、结构标签、错误消息）同步支持三语言，由语言参数贯穿整个 Agent 调用链。
+- **自选股价格提醒** — 监听持仓涨跌，达到用户设定阈值时发出系统通知。
+- **批量量化筛选器** — 对自选股列表执行量化评分扫描，一键获取全部标的的技术/基本面/估值/波动率综合评分。
+- **分析历史持久化** — 基于 SQLite 的分析历史存储，支持回溯查看历次 AI 分析结果。
+
+### Fixed
+
+- **SentimentBreakdown 中性条宽度** — 中性占比改用直接比率计算，修复宽度渲染错误。
+- **HistoryTimeline 日期格式** — `toLocaleDateString` 现在根据当前语言选择正确的地区格式。
+- **AI Prompt 结构标签硬编码** — synthesizer 的 `buildSynthesisPrompt` 和 sentiment 的 `buildPrompt` 中的结构标签（`[各大师研判]`、`信号:`、`返回格式:` 等）改为多语言字典，不再混入中文。
+- **测试硬编码字符串** — factory / synthesizer 测试中的错误消息断言改为引用生产代码导出的常量，防止断言与实现脱节。
+
 ## [0.9.0] - 2026-05-24
 
 ### Added
