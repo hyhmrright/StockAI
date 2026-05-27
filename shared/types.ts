@@ -31,6 +31,9 @@ export type ServiceResponse<T> = SuccessEnvelope<T> | ErrorEnvelope;
 /** AI 服务提供商类型 */
 export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek" | "glm";
 
+/** 界面与 AI 回答语言 */
+export type Language = 'zh' | 'en' | 'ja';
+
 /**
  * 股票新闻数据接口
  */

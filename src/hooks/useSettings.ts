@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { getStore } from "../lib/store";
-import { ProviderType } from "../../shared/types";
+import { ProviderType, Language } from "../../shared/types";
 import { PROVIDER_PROFILES, DEFAULT_SETTINGS as SHARED_DEFAULT_SETTINGS, CONFIG_VERSION, DEFAULT_SELECTED_MASTERS } from "../../shared/constants";
 
-export type { ProviderType };
+export type { ProviderType, Language };
 
 export interface ProviderConfig {
   apiKey: string;
@@ -19,6 +19,7 @@ export interface Settings {
   deepMode: boolean;
   masterAnalysis: boolean;
   selectedMasters: string[];
+  language: Language;
 }
 
 // 重新导出常量以供 UI 组件使用
@@ -29,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ...SHARED_DEFAULT_SETTINGS,
   masterAnalysis: false,
   selectedMasters: DEFAULT_SELECTED_MASTERS,
+  language: 'zh',
   providerConfigs: {
     ollama: {
       apiKey: "",
