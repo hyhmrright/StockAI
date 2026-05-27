@@ -50,6 +50,8 @@ bun scripts/smoke-test.ts
 
 Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
+`shared/` 目录是跨层唯一来源：`types.ts`（DTO 类型）、`market.ts`（`detectMarket` 函数）、`constants.ts`（默认大师列表等）。前端与 Sidecar 各自 re-export，**不得在各层重复定义**。
+
 详细架构说明见 `.claude/rules/architecture.md`（需要时 Read 该文件）。
 
 ## Key Conventions
@@ -59,10 +61,12 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 - **Test decoupling**: 解析逻辑放在 `sidecar/parsers/` 目录（`exchange.ts` / `html.ts`），与网络层分离，离线测试见 `parsers/*.test.ts`。
 - **Adding a scrape strategy**: 实现 `sidecar/strategies/base.ts` 的 `ScrapeStrategy`，然后在 `sidecar/strategies/registry.ts` 的 `StrategyRegistry.strategies` 追加一行。能跳过 Chromium 的策略尽量排前。
 - **Adding an AI provider**: 兼容 OpenAI 协议时，在 `sidecar/config.ts` 的 `PROVIDER_PROFILES` 加默认值 + `providers/registry.ts` 的 `PROVIDER_FACTORIES` 追加一行；协议不兼容时在 `sidecar/providers/` 实现 `AIProvider` 接口（`sidecar/ai.ts`）。最后同步 `shared/types.ts` 的 `ProviderType`。
+- **i18n**: 多语言通过 `Language` 类型（`shared/types.ts`）传递；前端用 `useLanguage()` hook 获取翻译函数；`src/i18n/zh.json` 是翻译 key 的 TypeScript 类型来源（编译期校验），新增 UI 文字须先在此文件加 key。
 - Sidecar stderr is for debug logging; stdout must only contain the final JSON output.
 
 ## Workflow
 
+- **Claude Skills**：`/new-master-agent`（引导新增投资大师 Agent）、`/add-provider`（引导新增 AI Provider）。`.mcp.json` 已提交，重启 Claude Code 后 context7 MCP 生效（对话中说 `use context7` 查实时库文档）。
 - Pre-push 钩子 (`lefthook.yml`) 跑 `tsc --noEmit` 与 `cargo check`。
 - 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun scripts/sidecar-bridge.ts`（:3001 HTTP 端点）。浏览器 dev 模式下 `src/lib/ipc.ts` 自动走该桥接器，bridge 未启动时退回 mock 数据并 `console.warn` 一次。
 
