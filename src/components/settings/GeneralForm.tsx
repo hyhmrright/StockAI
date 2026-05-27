@@ -64,6 +64,7 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
         <div className="flex gap-2">
           {LANGUAGES.map(({ value, label }) => (
             <button
+              type="button"
               key={value}
               onClick={() => onChange({ language: value })}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
