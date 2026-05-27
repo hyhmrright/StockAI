@@ -20,8 +20,8 @@ export class AnthropicProvider implements AIProvider {
 
   async analyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult> {
     const prompt = quant
-      ? buildEnhancedPrompt(symbol, news, quant, PROVIDER_PROFILES.anthropic.contentLimit)
-      : buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.anthropic.contentLimit);
+      ? buildEnhancedPrompt(symbol, news, quant, 'zh', PROVIDER_PROFILES.anthropic.contentLimit)
+      : buildAnalysisPrompt(symbol, news, 'zh', PROVIDER_PROFILES.anthropic.contentLimit);
 
     try {
       const response = await withTimeout(

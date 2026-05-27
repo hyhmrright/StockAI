@@ -20,8 +20,8 @@ export class OllamaProvider implements AIProvider {
 
   async analyze(symbol: string, news: StockNews[], quant?: QuantBundle): Promise<AIAnalysisResult> {
     const prompt = quant
-      ? buildEnhancedPrompt(symbol, news, quant, PROVIDER_PROFILES.ollama.contentLimit)
-      : buildAnalysisPrompt(symbol, news, PROVIDER_PROFILES.ollama.contentLimit);
+      ? buildEnhancedPrompt(symbol, news, quant, 'zh', PROVIDER_PROFILES.ollama.contentLimit)
+      : buildAnalysisPrompt(symbol, news, 'zh', PROVIDER_PROFILES.ollama.contentLimit);
 
     try {
       const response = await withTimeout(
