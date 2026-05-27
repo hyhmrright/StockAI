@@ -59,5 +59,19 @@
   "company_profile": "公司概况 (Profile)",
   "sentiment_overview": "舆情概览 (Sentiment)",
   "ai_insights": "AI 实时洞察 (AI Insights)",
-  "system_settings": "系统设置"
+  "system_settings": "系统设置",
+  "quant_calculating": "正在计算量化指标…",
+  "composite_signal": "综合信号",
+  "bullish_pct": "看涨 {n}%",
+  "bearish_pct": "看跌 {n}%",
+  "volatility_percentile": "波动率百分位",
+  "annualized_volatility": "年化波动率",
+  "max_drawdown": "最大回撤",
+  "sharpe_ratio": "夏普比率",
+  "margin_of_safety": "安全边际",
+  "intrinsic_value": "内在价值",
+  "market_cap": "市值",
+  "undervalued": "低估",
+  "overvalued": "高估",
+  "fairly_valued": "合理"
 }

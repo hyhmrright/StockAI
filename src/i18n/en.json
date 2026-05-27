@@ -59,5 +59,19 @@
   "company_profile": "Company Profile",
   "sentiment_overview": "Sentiment Overview",
   "ai_insights": "AI Insights",
-  "system_settings": "System Settings"
+  "system_settings": "System Settings",
+  "quant_calculating": "Calculating quant metrics…",
+  "composite_signal": "Composite Signal",
+  "bullish_pct": "Bullish {n}%",
+  "bearish_pct": "Bearish {n}%",
+  "volatility_percentile": "Volatility Percentile",
+  "annualized_volatility": "Ann. Volatility",
+  "max_drawdown": "Max Drawdown",
+  "sharpe_ratio": "Sharpe Ratio",
+  "margin_of_safety": "Margin of Safety",
+  "intrinsic_value": "Intrinsic Value",
+  "market_cap": "Market Cap",
+  "undervalued": "Undervalued",
+  "overvalued": "Overvalued",
+  "fairly_valued": "Fair Value"
 }

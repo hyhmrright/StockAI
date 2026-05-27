@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface SentimentBarProps {
   /** 看涨百分比 (0-100) */
@@ -11,12 +12,13 @@ interface SentimentBarProps {
  */
 const SentimentBar: React.FC<SentimentBarProps> = ({ bullish }) => {
   const bearish = 100 - bullish;
+  const { t } = useLanguage();
 
   return (
     <div className="w-full space-y-2">
       <div className="flex justify-between text-xs font-medium">
-        <span className="text-emerald-500 font-bold">看涨 {bullish}%</span>
-        <span className="text-rose-500 font-bold">看跌 {bearish}%</span>
+        <span className="text-emerald-500 font-bold">{t('bullish_pct', { n: bullish })}</span>
+        <span className="text-rose-500 font-bold">{t('bearish_pct', { n: bearish })}</span>
       </div>
       <div className="h-2 w-full flex rounded-full overflow-hidden bg-gray-800">
         <div

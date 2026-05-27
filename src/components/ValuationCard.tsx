@@ -1,17 +1,10 @@
 import React from 'react';
 import type { ValuationSnapshot } from '../../shared/types';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface ValuationCardProps {
   valuation?: ValuationSnapshot;
   loading?: boolean;
-}
-
-function signalStyle(signal: string): { label: string; className: string } {
-  switch (signal) {
-    case 'undervalued': return { label: '低估', className: 'text-emerald-400' };
-    case 'overvalued':  return { label: '高估', className: 'text-rose-400' };
-    default:            return { label: '合理', className: 'text-amber-400' };
-  }
 }
 
 function formatYi(n: number): string {
@@ -20,6 +13,17 @@ function formatYi(n: number): string {
 }
 
 const ValuationCard: React.FC<ValuationCardProps> = ({ valuation, loading }) => {
+  const { t } = useLanguage();
+
+  // 估值信号样式映射，放在组件内以便引用 t()
+  function signalStyle(signal: string): { label: string; className: string } {
+    switch (signal) {
+      case 'undervalued': return { label: t('undervalued'), className: 'text-emerald-400' };
+      case 'overvalued':  return { label: t('overvalued'), className: 'text-rose-400' };
+      default:            return { label: t('fairly_valued'), className: 'text-amber-400' };
+    }
+  }
+
   if (loading) {
     return (
       <div className="mb-6 p-4 bg-white/5 rounded-2xl border border-white/5 animate-pulse">
@@ -34,21 +38,21 @@ const ValuationCard: React.FC<ValuationCardProps> = ({ valuation, loading }) => 
 
   return (
     <div className="mb-6">
-      <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">估值分析</h2>
+      <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">{t('valuation_analysis')}</h2>
       <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
         <div className="flex items-center justify-between">
           <span className={`text-sm font-bold ${className}`}>{label}</span>
           {valuation.marginOfSafety != null && (
             <span className="text-xs text-gray-400">
-              安全边际 {valuation.marginOfSafety > 0 ? '+' : ''}{(valuation.marginOfSafety * 100).toFixed(1)}%
+              {t('margin_of_safety')} {valuation.marginOfSafety > 0 ? '+' : ''}{(valuation.marginOfSafety * 100).toFixed(1)}%
             </span>
           )}
         </div>
 
         {valuation.intrinsicValue != null && valuation.marketCap != null && (
           <div className="flex justify-between text-xs text-gray-400">
-            <span>内在价值 ~{formatYi(valuation.intrinsicValue)}</span>
-            <span>市值 {formatYi(valuation.marketCap)}</span>
+            <span>{t('intrinsic_value')} ~{formatYi(valuation.intrinsicValue)}</span>
+            <span>{t('market_cap')} {formatYi(valuation.marketCap)}</span>
           </div>
         )}
 

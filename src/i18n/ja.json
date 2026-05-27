@@ -59,5 +59,19 @@
   "company_profile": "会社概要 (Profile)",
   "sentiment_overview": "市場心理 (Sentiment)",
   "ai_insights": "AI インサイト (AI Insights)",
-  "system_settings": "システム設定"
+  "system_settings": "システム設定",
+  "quant_calculating": "クオンツ指標計算中…",
+  "composite_signal": "総合シグナル",
+  "bullish_pct": "強気 {n}%",
+  "bearish_pct": "弱気 {n}%",
+  "volatility_percentile": "ボラティリティ百分位",
+  "annualized_volatility": "年率ボラティリティ",
+  "max_drawdown": "最大ドローダウン",
+  "sharpe_ratio": "シャープレシオ",
+  "margin_of_safety": "安全余裕率",
+  "intrinsic_value": "内在価値",
+  "market_cap": "時価総額",
+  "undervalued": "割安",
+  "overvalued": "割高",
+  "fairly_valued": "適正"
 }
