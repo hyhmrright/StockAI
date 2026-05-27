@@ -24,7 +24,7 @@ export interface AnalysisDeps {
   scrape?: typeof realScrape;
   fetchInfo?: (parsed: ParsedSymbol) => Promise<StockInfo | null>;
   enhance?: typeof realEnhance;
-  createProvider?: (type: string, cfg: { apiKey?: string; baseUrl?: string; model?: string; language?: Language }) => AIProvider;
+  createProvider?: (type: string, cfg: { apiKey?: string; baseUrl?: string; model?: string }) => AIProvider;
 }
 
 function resolveDeps(deps: AnalysisDeps): Required<AnalysisDeps> {

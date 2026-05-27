@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { AIAnalysisResult, StockNews, QuantBundle, Language } from "../../shared/types";
 import type { AIProvider, ProviderKind } from "../ai";
+import { resolveLanguage } from "../ai";
 import { PROVIDER_PROFILES } from "../config";
 import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from "../prompts";
 import { toErrorMessage, logger, parseJsonFromAi } from "../utils";
@@ -23,7 +24,7 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async analyze(symbol: string, news: StockNews[], quant?: QuantBundle, language?: Language): Promise<AIAnalysisResult> {
-    const lang = language ?? 'zh';
+    const lang = resolveLanguage(language);
     const prompt = quant
       ? buildEnhancedPrompt(symbol, news, quant, lang, PROVIDER_PROFILES.openai.contentLimit)
       : buildAnalysisPrompt(symbol, news, lang, PROVIDER_PROFILES.openai.contentLimit);
