@@ -101,10 +101,12 @@ interface QuantLabels {
   oversold: string; overbought: string; neutral_range: string;
   macd_expanding: string; macd_contracting: string;
   adx_strong: string; adx_weak: string;
+  confidence: string; macd_hist: string;
   ema_align: string; rsi: string; macd: string; adx: string; vol: string; vol_vs: string;
   composite: string;
   low_risk: string; medium_risk: string; high_risk: string;
   risk_level: string; vol_annual: string; max_dd: string; sharpe: string;
+  net_margin: string; revenue_growth: string; debt_to_asset: string;
 }
 
 const QUANT_LABELS: Record<Language, QuantLabels> = {
@@ -115,11 +117,13 @@ const QUANT_LABELS: Record<Language, QuantLabels> = {
     oversold: '（超卖）', overbought: '（超买）', neutral_range: '（中性区间）',
     macd_expanding: '放大', macd_contracting: '收缩',
     adx_strong: '（趋势明确）', adx_weak: '（趋势较弱）',
+    confidence: '置信度', macd_hist: '柱状量',
     ema_align: 'EMA 排列', rsi: 'RSI(14)', macd: 'MACD', adx: 'ADX',
     vol: '成交量比', vol_vs: '（相对20日均量）',
     composite: '综合量化评分',
     low_risk: '低风险', medium_risk: '中风险', high_risk: '高风险',
     risk_level: '风险等级', vol_annual: '年化波动率', max_dd: '最大回撤', sharpe: '夏普比率',
+    net_margin: '净利率', revenue_growth: '营收增长', debt_to_asset: '资产负债率',
   },
   en: {
     header: '[Quantitative Analysis Summary]', technical: 'Technical Signal', fundamental: 'Fundamental Signal',
@@ -128,11 +132,13 @@ const QUANT_LABELS: Record<Language, QuantLabels> = {
     oversold: ' (Oversold)', overbought: ' (Overbought)', neutral_range: ' (Neutral zone)',
     macd_expanding: 'expanding', macd_contracting: 'contracting',
     adx_strong: ' (Strong trend)', adx_weak: ' (Weak trend)',
-    ema_align: 'EMA alignment', rsi: 'RSI(14)', macd: 'MACD histogram', adx: 'ADX',
+    confidence: 'Confidence', macd_hist: 'histogram ',
+    ema_align: 'EMA alignment', rsi: 'RSI(14)', macd: 'MACD', adx: 'ADX',
     vol: 'Volume ratio', vol_vs: ' (vs 20-day avg)',
     composite: 'Composite quant score',
     low_risk: 'Low', medium_risk: 'Medium', high_risk: 'High',
     risk_level: 'Risk Level', vol_annual: 'Annualized volatility', max_dd: 'Max drawdown', sharpe: 'Sharpe ratio',
+    net_margin: 'Net margin', revenue_growth: 'Revenue growth', debt_to_asset: 'Debt/asset',
   },
   ja: {
     header: '[定量分析サマリー]', technical: 'テクニカルシグナル', fundamental: 'ファンダメンタルシグナル',
@@ -141,11 +147,13 @@ const QUANT_LABELS: Record<Language, QuantLabels> = {
     oversold: '（売られ過ぎ）', overbought: '（買われ過ぎ）', neutral_range: '（中立ゾーン）',
     macd_expanding: '拡大中', macd_contracting: '縮小中',
     adx_strong: '（トレンド明確）', adx_weak: '（トレンド弱い）',
+    confidence: '信頼度', macd_hist: '',
     ema_align: 'EMA配列', rsi: 'RSI(14)', macd: 'MACDヒストグラム', adx: 'ADX',
     vol: '出来高比率', vol_vs: '（20日平均比）',
     composite: '総合クオンツスコア',
     low_risk: '低', medium_risk: '中', high_risk: '高',
     risk_level: 'リスクレベル', vol_annual: '年率ボラティリティ', max_dd: '最大ドローダウン', sharpe: 'シャープレシオ',
+    net_margin: '純利益率', revenue_growth: '売上成長率', debt_to_asset: '負債比率',
   },
 };
 
@@ -153,7 +161,7 @@ interface ValuationLabels {
   header: string; intrinsic: string; market_cap: string; margin: string;
   signal: string; undervalued: string; overvalued: string; fair: string;
   dcf_wacc: string; bear: string; base: string; bull: string;
-  relative: string; owner_earnings: string;
+  relative: string; owner_earnings: string; unit: string;
 }
 
 const VALUATION_LABELS: Record<Language, ValuationLabels> = {
@@ -162,21 +170,21 @@ const VALUATION_LABELS: Record<Language, ValuationLabels> = {
     margin: '安全边际', signal: '估值信号',
     undervalued: '低估', overvalued: '高估', fair: '合理',
     dcf_wacc: 'DCF (WACC', bear: '悲观', base: '基准', bull: '乐观',
-    relative: '相对估值', owner_earnings: 'Owner Earnings',
+    relative: '相对估值', owner_earnings: 'Owner Earnings', unit: '亿',
   },
   en: {
     header: '[Valuation Analysis]', intrinsic: 'Intrinsic value estimate', market_cap: 'Current market cap',
     margin: 'Margin of safety', signal: 'Valuation signal',
     undervalued: 'Undervalued', overvalued: 'Overvalued', fair: 'Fair value',
     dcf_wacc: 'DCF (WACC', bear: 'bear', base: 'base', bull: 'bull',
-    relative: 'Relative valuation', owner_earnings: 'Owner Earnings',
+    relative: 'Relative valuation', owner_earnings: 'Owner Earnings', unit: 'B',
   },
   ja: {
     header: '[バリュエーション分析]', intrinsic: '内在価値推定', market_cap: '現在の時価総額',
     margin: '安全マージン', signal: 'バリュエーションシグナル',
     undervalued: '割安', overvalued: '割高', fair: '適正',
     dcf_wacc: 'DCF (WACC', bear: '悲観', base: '基準', bull: '楽観',
-    relative: '相対バリュエーション', owner_earnings: 'オーナー利益',
+    relative: '相対バリュエーション', owner_earnings: 'オーナー利益', unit: '億',
   },
 };
 
@@ -193,22 +201,22 @@ function formatQuantSummary(quant: QuantBundle, language: Language): string {
   const td = t.details;
   const fd = f.details;
 
-  const lines: string[] = [lbl.header, '', `${lbl.technical}：${translateSignal(t.signal, lbl)}，置信度 ${t.confidence}%`];
+  const lines: string[] = [lbl.header, '', `${lbl.technical}：${translateSignal(t.signal, lbl)}，${lbl.confidence} ${t.confidence}%`];
 
   if (td.alignment != null) lines.push(`- ${lbl.ema_align}：${td.alignment === 'bullish' ? lbl.bullish_align : td.alignment === 'bearish' ? lbl.bearish_align : lbl.mixed_align}`);
   if (td.rsi != null) lines.push(`- ${lbl.rsi}：${td.rsi}${Number(td.rsi) < 30 ? lbl.oversold : Number(td.rsi) > 70 ? lbl.overbought : lbl.neutral_range}`);
-  if (td.macd_trend != null) lines.push(`- ${lbl.macd}：柱状量${td.macd_trend === 'expanding' ? lbl.macd_expanding : lbl.macd_contracting}`);
+  if (td.macd_trend != null) lines.push(`- ${lbl.macd}：${lbl.macd_hist}${td.macd_trend === 'expanding' ? lbl.macd_expanding : lbl.macd_contracting}`);
   if (td.adx != null) lines.push(`- ${lbl.adx}：${td.adx}${Number(td.adx) > 25 ? lbl.adx_strong : lbl.adx_weak}`);
   if (td.volume_ratio != null) lines.push(`- ${lbl.vol}：${td.volume_ratio}${lbl.vol_vs}`);
 
-  lines.push('', `${lbl.fundamental}：${translateSignal(f.signal, lbl)}，置信度 ${f.confidence}%`);
+  lines.push('', `${lbl.fundamental}：${translateSignal(f.signal, lbl)}，${lbl.confidence} ${f.confidence}%`);
 
-  if (fd.roe != null) lines.push(`- ROE: ${fd.roe}%`);
-  if (fd.net_margin != null) lines.push(`- Net margin: ${fd.net_margin}%`);
-  if (fd.revenue_growth != null) lines.push(`- Revenue growth: ${fd.revenue_growth}%`);
-  if (fd.pe != null) lines.push(`- PE: ${fd.pe}`);
-  if (fd.pb != null) lines.push(`- PB: ${fd.pb}`);
-  if (fd.debt_to_asset != null) lines.push(`- Debt/asset: ${fd.debt_to_asset}%`);
+  if (fd.roe != null) lines.push(`- ROE：${fd.roe}%`);
+  if (fd.net_margin != null) lines.push(`- ${lbl.net_margin}：${fd.net_margin}%`);
+  if (fd.revenue_growth != null) lines.push(`- ${lbl.revenue_growth}：${fd.revenue_growth}%`);
+  if (fd.pe != null) lines.push(`- PE：${fd.pe}`);
+  if (fd.pb != null) lines.push(`- PB：${fd.pb}`);
+  if (fd.debt_to_asset != null) lines.push(`- ${lbl.debt_to_asset}：${fd.debt_to_asset}%`);
 
   lines.push('', `${lbl.composite}：${quant.composite.score}/100（${translateSignal(quant.composite.signal, lbl)}）`);
 
@@ -230,8 +238,8 @@ function formatValuationSummary(quant: QuantBundle, language: Language): string 
   const lbl = VALUATION_LABELS[language];
 
   const lines: string[] = [lbl.header, ''];
-  if (v.intrinsicValue != null) lines.push(`${lbl.intrinsic}: ${(v.intrinsicValue / 1e8).toFixed(0)}亿`);
-  if (v.marketCap != null) lines.push(`${lbl.market_cap}: ${(v.marketCap / 1e8).toFixed(0)}亿`);
+  if (v.intrinsicValue != null) lines.push(`${lbl.intrinsic}: ${(v.intrinsicValue / 1e8).toFixed(0)}${lbl.unit}`);
+  if (v.marketCap != null) lines.push(`${lbl.market_cap}: ${(v.marketCap / 1e8).toFixed(0)}${lbl.unit}`);
   if (v.marginOfSafety != null) {
     const pct = (v.marginOfSafety * 100).toFixed(1);
     lines.push(`${lbl.margin}: ${v.marginOfSafety > 0 ? '+' : ''}${pct}%`);
@@ -241,7 +249,7 @@ function formatValuationSummary(quant: QuantBundle, language: Language): string 
 
   if (v.models.ownerEarnings) lines.push(`- ${lbl.owner_earnings}: ${v.models.ownerEarnings.details}`);
   if (v.models.dcf) {
-    lines.push(`- ${lbl.dcf_wacc} ${(v.models.dcf.wacc * 100).toFixed(1)}%): ${lbl.bear} ${(v.models.dcf.bear / 1e8).toFixed(0)}亿 / ${lbl.base} ${(v.models.dcf.base / 1e8).toFixed(0)}亿 / ${lbl.bull} ${(v.models.dcf.bull / 1e8).toFixed(0)}亿`);
+    lines.push(`- ${lbl.dcf_wacc} ${(v.models.dcf.wacc * 100).toFixed(1)}%): ${lbl.bear} ${(v.models.dcf.bear / 1e8).toFixed(0)}${lbl.unit} / ${lbl.base} ${(v.models.dcf.base / 1e8).toFixed(0)}${lbl.unit} / ${lbl.bull} ${(v.models.dcf.bull / 1e8).toFixed(0)}${lbl.unit}`);
   }
   if (v.models.relative) lines.push(`- ${lbl.relative}: ${v.models.relative.details}`);
 
