@@ -32,7 +32,7 @@ const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
   records, loading, hasMore, onLoadMore, onSelect, onDelete,
 }) => {
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   function formatRelativeTime(ms: number): string {
     const diff = Date.now() - ms;
@@ -43,7 +43,7 @@ const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
     if (hours < 24) return t('hours_ago', { n: hours });
     const days = Math.floor(hours / 24);
     if (days < 30) return t('days_ago', { n: days });
-    return new Date(ms).toLocaleDateString();
+    return new Date(ms).toLocaleDateString(language);
   }
 
   function extractSummary(record: AnalysisRecordSummary): string {
