@@ -73,5 +73,6 @@
   "market_cap": "市值",
   "undervalued": "低估",
   "overvalued": "高估",
-  "fairly_valued": "合理"
+  "fairly_valued": "合理",
+  "yi_unit": "亿"
 }

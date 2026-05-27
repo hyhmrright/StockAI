@@ -73,5 +73,6 @@
   "market_cap": "Market Cap",
   "undervalued": "Undervalued",
   "overvalued": "Overvalued",
-  "fairly_valued": "Fair Value"
+  "fairly_valued": "Fair Value",
+  "yi_unit": "B"
 }

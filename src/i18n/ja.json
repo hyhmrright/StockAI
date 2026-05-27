@@ -73,5 +73,6 @@
   "market_cap": "時価総額",
   "undervalued": "割安",
   "overvalued": "割高",
-  "fairly_valued": "適正"
+  "fairly_valued": "適正",
+  "yi_unit": "億"
 }
