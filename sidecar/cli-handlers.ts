@@ -158,6 +158,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
           baseUrl: config.baseUrl,
           model: config.modelName,
           deepMode: config.deepMode,
+          language: config.language,
         });
         out(successEnvelope(result));
       } catch (error) {
@@ -197,6 +198,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
           apiKey: config.apiKey,
           baseUrl: config.baseUrl,
           model: config.modelName,
+          language: config.language,
         }, quant);
         out(successEnvelope(analysis));
       } catch (error) {
@@ -271,6 +273,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
           news,
           chat,
           selectedMasters: config.selectedMasters,
+          language: config.language,
         });
         out(successEnvelope(result));
       } catch (error) {
