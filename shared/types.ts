@@ -32,7 +32,7 @@ export type ServiceResponse<T> = SuccessEnvelope<T> | ErrorEnvelope;
 export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek" | "glm";
 
 /** 界面与 AI 回答语言 */
-export type Language = 'zh' | 'en' | 'ja';
+export type Language = "zh" | "en" | "ja";
 
 /**
  * 股票新闻数据接口
