@@ -82,6 +82,8 @@ const QuantScoreCard: React.FC<QuantScoreCardProps> = ({ quant, loading, error }
 
   if (error || !quant) return null;
 
+  const techStyle = getSignalStyle(quant.technical.signal);
+  const fundStyle = getSignalStyle(quant.fundamental.signal);
   const compositeStyle = getSignalStyle(quant.composite.signal);
 
   return (
@@ -92,20 +94,20 @@ const QuantScoreCard: React.FC<QuantScoreCardProps> = ({ quant, loading, error }
           signal={quant.technical}
           expanded={expanded === 'tech'}
           onToggle={() => setExpanded(expanded === 'tech' ? null : 'tech')}
-          label={getSignalStyle(quant.technical.signal).label}
-          color={getSignalStyle(quant.technical.signal).color}
-          bg={getSignalStyle(quant.technical.signal).bg}
-          Icon={getSignalStyle(quant.technical.signal).Icon}
+          label={techStyle.label}
+          color={techStyle.color}
+          bg={techStyle.bg}
+          Icon={techStyle.Icon}
         />
         <SignalCard
           title={t('fundamental')}
           signal={quant.fundamental}
           expanded={expanded === 'fund'}
           onToggle={() => setExpanded(expanded === 'fund' ? null : 'fund')}
-          label={getSignalStyle(quant.fundamental.signal).label}
-          color={getSignalStyle(quant.fundamental.signal).color}
-          bg={getSignalStyle(quant.fundamental.signal).bg}
-          Icon={getSignalStyle(quant.fundamental.signal).Icon}
+          label={fundStyle.label}
+          color={fundStyle.color}
+          bg={fundStyle.bg}
+          Icon={fundStyle.Icon}
         />
       </div>
       <div className={`p-2 rounded-lg text-center text-xs font-medium ${compositeStyle.bg} ${compositeStyle.color}`}>
