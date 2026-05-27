@@ -12,6 +12,8 @@ export interface ResolvedConfig {
   language: Language;
 }
 
+const VALID_LANGUAGES: Language[] = ['zh', 'en', 'ja'];
+
 /**
  * 从 Rust 传入的原始配置 JSON 中解析有效配置。
  * 仅支持当前格式版本（CONFIG_VERSION）；版本不匹配时抛出，
@@ -34,8 +36,6 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
   const provider: ProviderType = rawProvider in PROVIDER_PROFILES ? rawProvider as ProviderType : 'ollama';
   const providerCfg: Record<string, string> = obj.providerConfigs?.[provider] ?? {};
   const defaults = PROVIDER_PROFILES[provider];
-
-  const VALID_LANGUAGES: Language[] = ['zh', 'en', 'ja'];
   const rawLang = obj.language;
   const language: Language = VALID_LANGUAGES.includes(rawLang) ? rawLang as Language : 'zh';
 
