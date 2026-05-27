@@ -30,10 +30,26 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 
 **Sidecar CLI actions**（`sidecar/index.ts` 按 `process.argv` 分发，所有 handler 集中在 `cli-handlers.ts`）：
 - 无标志（默认）：`<symbol> <config-json>` → 完整 scrape+analyze pipeline
+- `--bundle <config-json> <symbol>`：仅抓取新闻，将结果写入临时文件并返回路径；供 `--analyze-only` 读取（Rust 两阶段调用，规避 macOS ARG_MAX 限制）
+- `--analyze-only <config-json> <symbol> <news_tmp_path> [quant_json]`：读取临时文件中的新闻直接进入 AI 分析，不重新抓取
+- `--quant <symbol>`：仅执行量化评分（技术面/基本面/估值/波动率），返回 QuantResult JSON
+- `--backtest <symbol>`：执行策略回测，返回 BacktestResult JSON
 - `--kline <request-json>`：拉取 K 线，多源容错（`sidecar/kline/` 下 eastmoney / tencent / yahoo 顺序回退）
 - `--quote <symbol>`：拉取实时报价
 - `--info <config-json> <symbol>` / `--search <config-json> <keyword>` / `--list-models <config-json>`：辅助查询
 - `--check`：健康自检（仅触发 BrowserManager 启动验证）
+
+## Multi-Agent 系统（`sidecar/agents/`）
+
+13 位投资大师 Agent（巴菲特、芒格、格雷厄姆、伯里、伍德等）各自持有独立的分析视角，统一实现 `MasterAgent` 接口（`agents/types.ts`）。数据流：`agents/registry.ts`（注册表）→ `agents/synthesizer.ts`（聚合评分）→ `agents/sentiment.ts`（情绪综合）。新增大师：在 `agents/masters/` 实现接口，然后在 `agents/registry.ts` 追加一行。`agents/chat-adapter.ts` 负责适配各 AI provider 的对话格式。
+
+## 量化评分子系统（`sidecar/quant/`）
+
+四个维度独立评分：`technical.ts` / `fundamental.ts` / `valuation.ts` / `volatility.ts`，由 `scoring.ts` 聚合为 `QuantResult`（类型定义在 `quant/types.ts`）。入口：`quant/index.ts`。通过 `--quant <symbol>` CLI flag 触发，前端对应 `useQuantData` hook 和 `QuantScoreCard` 组件。
+
+## 回测引擎（`sidecar/backtest/`）
+
+`engine.ts` 实现策略回测逻辑，类型定义在 `backtest/types.ts`。通过 `--backtest <symbol>` CLI flag 触发，前端对应 `src/components/Backtest/BacktestPanel.tsx`。
 
 ## PriceChart Subsystem
 
