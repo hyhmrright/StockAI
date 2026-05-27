@@ -54,5 +54,10 @@
   "just_now": "Just now",
   "minutes_ago": "{n}m ago",
   "hours_ago": "{n}h ago",
-  "days_ago": "{n}d ago"
+  "days_ago": "{n}d ago",
+  "ai_analysis": "AI Analysis",
+  "company_profile": "Company Profile",
+  "sentiment_overview": "Sentiment Overview",
+  "ai_insights": "AI Insights",
+  "system_settings": "System Settings"
 }

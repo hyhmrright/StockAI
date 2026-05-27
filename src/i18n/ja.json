@@ -54,5 +54,10 @@
   "just_now": "たった今",
   "minutes_ago": "{n}分前",
   "hours_ago": "{n}時間前",
-  "days_ago": "{n}日前"
+  "days_ago": "{n}日前",
+  "ai_analysis": "AI 分析",
+  "company_profile": "会社概要 (Profile)",
+  "sentiment_overview": "市場心理 (Sentiment)",
+  "ai_insights": "AI インサイト (AI Insights)",
+  "system_settings": "システム設定"
 }

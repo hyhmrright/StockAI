@@ -68,7 +68,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
       {/* AI 触发卡片 — 永远显示，状态决定形态 */}
       <div className="mb-10">
-        <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">AI 智能分析</h2>
+        <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">{t('ai_analysis')}</h2>
         <AnalysisTriggerCard
           analyzing={analyzing}
           hasNews={hasNews}
@@ -83,7 +83,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       {/* 公司概况区 (AI 提取) */}
       {result?.sector && (
         <div className="mb-10">
-          <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">公司概况 (Profile)</h2>
+          <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">{t('company_profile')}</h2>
           <div className="p-5 bg-white/5 rounded-2xl border border-white/5 space-y-4">
             <div className="flex gap-2 flex-wrap">
               <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20 font-medium">
@@ -102,7 +102,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       {result && (
         <>
           <div className="mb-10">
-            <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">舆情概览 (Sentiment)</h2>
+            <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">{t('sentiment_overview')}</h2>
             <div className="p-6 bg-white/5 rounded-2xl border border-white/5 shadow-inner">
               <SentimentBar bullish={result.rating} />
               <div className="mt-6 flex gap-3">
@@ -114,7 +114,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">AI 实时洞察 (AI Insights)</h2>
+              <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t('ai_insights')}</h2>
               <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${badgeClass}`}>
                 {result.sentiment}
               </div>

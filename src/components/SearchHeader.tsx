@@ -155,7 +155,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
       <button 
         onClick={onOpenSettings}
         className="p-2 hover:bg-white/5 rounded-full transition-colors group"
-        title="系统设置"
+        title={t('system_settings')}
       >
         <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white group-hover:rotate-45 transition-all duration-300" />
       </button>
