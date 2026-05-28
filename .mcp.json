@@ -7,6 +7,16 @@
         "@upstash/context7-mcp@3.0.0"
       ],
       "env": {}
+    },
+    "sqlite-history": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-sqlite-npx",
+        "${HOME}/Library/Application Support/com.hyh.stockai/history.db"
+      ],
+      "env": {}
     }
   }
 }

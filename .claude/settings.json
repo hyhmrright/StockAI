@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null); case \"$file\" in */sidecar/build-script.ts) ;; */sidecar/*.test.ts) ;; */sidecar/*.ts) hits=$(grep -nE 'console\\.log' \"$file\" 2>/dev/null); if [ -n \"$hits\" ]; then echo \"⚠️  Sidecar stdout 只能输出最终 JSON，以下 console.log 会污染输出，请改用 console.error / logger（最终结果用 utils.ts 的 writeStdout）：\" >&2; echo \"$hits\" >&2; fi ;; esac"
+          },
+          {
+            "type": "command",
+            "command": "file=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null); case \"$file\" in *.rs) command -v rustfmt >/dev/null 2>&1 && rustfmt --edition 2021 \"$file\" >/dev/null 2>&1; command -v cargo >/dev/null 2>&1 && cargo clippy --manifest-path \"$CLAUDE_PROJECT_DIR/src-tauri/Cargo.toml\" --quiet 2>&1 | tail -15 ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}
