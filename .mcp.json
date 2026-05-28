@@ -13,7 +13,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "mcp-server-sqlite-npx",
+        "mcp-server-sqlite-npx@0.8.0",
         "${HOME}/Library/Application Support/com.hyh.stockai/history.db"
       ],
       "env": {}
