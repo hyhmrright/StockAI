@@ -18,7 +18,7 @@ Sidecar 通过 `args.find(a => a.startsWith('{'))` 灵活定位 JSON 配置参�
 `{ provider, apiKey, baseUrl, modelName, deepMode }`
 前端 Settings 字段 `provider` 类型定义在 `shared/types.ts` 的 `ProviderType`：
 `"openai" | "ollama" | "anthropic" | "deepseek" | "glm"`。
-`deepseek` 与 `glm` 均走 OpenAI 兼容协议，在 `providers/registry.ts` 的工厂表中复用 `OpenAIProvider`，仅 `baseUrl`/`model` 默认值不同（集中在 `sidecar/config.ts` 的 `PROVIDER_PROFILES`）。
+`deepseek` 与 `glm` 均走 OpenAI 兼容协议，在 `providers/registry.ts` 的工厂表中复用 `OpenAIProvider`，仅 `baseUrl`/`model` 默认值不同（定义在 `shared/constants.ts` 的 `PROVIDER_PROFILES`，`sidecar/config.ts` 仅 re-export）。
 
 ## 3. Sidecar (`sidecar/`)
 
