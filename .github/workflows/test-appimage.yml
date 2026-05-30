@@ -1,0 +1,68 @@
+name: "Test AppImage Build (throwaway)"
+
+# 一次性验证 ubuntu-24.04 上 AppImage 打包修复，手动触发，不发布任何产物。
+# 验证通过后删除本文件，把修复合入 release.yml。
+on:
+  workflow_dispatch:
+
+jobs:
+  test-appimage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      # 关键修复：ubuntu-24.04 默认 kernel.apparmor_restrict_unprivileged_userns=1，
+      # 阻止 linuxdeploy(AppImage) 创建 unprivileged user namespace，导致 "failed to run linuxdeploy"。
+      - name: Relax AppArmor unprivileged userns restriction
+        run: |
+          echo "before: $(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo n/a)"
+          echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          echo "after:  $(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns)"
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Build sidecar binary
+        env:
+          BUN_TARGET: bun-linux-x64
+          OUTFILE: src-tauri/bin/stockai-backend-x86_64-unknown-linux-gnu
+        run: |
+          mkdir -p src-tauri/bin
+          bun sidecar/build-script.ts
+
+      - name: Build deb + appimage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bun tauri build --bundles deb,appimage
+
+      - name: Assert AppImage produced
+        run: |
+          echo "=== appimage bundle dir ==="
+          ls -la src-tauri/target/release/bundle/appimage/ || true
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -n1)
+          if [ -z "$APPIMAGE" ]; then
+            echo "❌ 未生成 .AppImage"
+            exit 1
+          fi
+          echo "✅ 生成 AppImage: $APPIMAGE"
+          ls -la "$APPIMAGE"*
