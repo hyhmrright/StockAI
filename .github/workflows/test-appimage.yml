@@ -7,7 +7,7 @@ on:
 
 jobs:
   test-appimage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 
@@ -53,12 +53,36 @@ jobs:
           mkdir -p src-tauri/bin
           bun sidecar/build-script.ts
 
-      - name: Build deb + appimage
+      - name: Build deb + appimage (verbose)
+        id: build
+        continue-on-error: true
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: bun tauri build --bundles deb,appimage
+        run: bun tauri build --verbose --bundles deb,appimage
+
+      # 抓 linuxdeploy 的真实 stderr（Tauri 吞掉了它，只剩 "failed to run linuxdeploy"）
+      - name: Diagnose linuxdeploy failure
+        if: steps.build.outcome == 'failure'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: |
+          set -x
+          APPDIR_BASE=src-tauri/target/release/bundle/appimage
+          echo "=== appimage 目录内容 ==="
+          ls -laR "$APPDIR_BASE" || true
+          echo "=== 找 linuxdeploy 二进制 ==="
+          LD=$(find "$APPDIR_BASE" -name 'linuxdeploy*x86_64.AppImage' | head -n1)
+          APPDIR=$(find "$APPDIR_BASE" -maxdepth 1 -name '*.AppDir' | head -n1)
+          echo "linuxdeploy=$LD  appdir=$APPDIR"
+          if [ -n "$LD" ] && [ -n "$APPDIR" ]; then
+            chmod +x "$LD"
+            echo "=== 手动运行 linuxdeploy 抓真实错误 ==="
+            "$LD" --appdir "$APPDIR" --output appimage 2>&1 | tail -40 || echo "exit=$?"
+          fi
+          echo "=== 是否有 build_appimage 脚本 ==="
+          find "$APPDIR_BASE" -name '*.sh' -exec echo '--- {} ---' \; -exec cat {} \; || true
 
       - name: Assert AppImage produced
         run: |
