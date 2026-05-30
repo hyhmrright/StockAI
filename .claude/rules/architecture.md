@@ -8,9 +8,10 @@ React + TypeScript + Vite. The sole IPC entry point is `src/lib/ipc.ts`, which c
 
 ## 2. Tauri Core (`src-tauri/src/lib.rs`)
 
-The Rust layer does exactly two things:
+The Rust layer does three things:
 - Reads config from `settings.json` (`tauri-plugin-store`) and produces an `AppConfig` via the pure function `resolve_config()`
 - Spawns the Sidecar subprocess, injects config as CLI args, captures stdout, and returns it to the frontend
+- 桌面端（`#[cfg(desktop)]`）注册 `tauri-plugin-updater` + `tauri-plugin-process`，支撑应用内自动更新（前端 `src/hooks/useUpdater.ts` + `UpdateBanner`/`settings/UpdateChecker`，启动静默检查 + 设置页手动按钮）。更新源与签名运维见 `release-checklist.md`。
 
 **Config field mapping** (frontend → Rust → Sidecar):
 Rust 层将 `AppConfig` 序列化为 JSON 字符串，作为 Sidecar 的第二个 CLI 参数传递。
