@@ -53,6 +53,17 @@ jobs:
           mkdir -p src-tauri/bin
           bun sidecar/build-script.ts
 
+      # 预置较新的 linuxdeploy 到 Tauri 缓存，覆盖其内置的 2024-07 老版本。
+      # 老版对 sidecar(Bun 大二进制)跑 ldd 失败会直接 abort；新版改为警告跳过。
+      - name: Pre-seed newer linuxdeploy into tauri cache
+        run: |
+          mkdir -p ~/.cache/tauri
+          curl -sSL --retry 5 -o ~/.cache/tauri/linuxdeploy-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x ~/.cache/tauri/linuxdeploy-x86_64.AppImage
+          echo "预置版本:"
+          APPIMAGE_EXTRACT_AND_RUN=1 ~/.cache/tauri/linuxdeploy-x86_64.AppImage --version 2>&1 | head -3 || true
+
       - name: Build deb + appimage (verbose)
         id: build
         continue-on-error: true
