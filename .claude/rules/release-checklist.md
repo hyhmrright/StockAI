@@ -44,6 +44,8 @@ CI（`release.yml`）会自动构建三平台产物并创建 **Draft Release**�
 
 > **自动更新前置条件（首次配置后长期有效）**：仓库 Secrets 须包含 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`（由 `bun tauri signer generate` 生成的 minisign 私钥及密码），且 `tauri.conf.json` 的 `plugins.updater.pubkey` 已填对应公钥。缺失时 CI 仍能出包，但**不会生成 `.sig` 与 `latest.json`**，自动更新失效。
 
+> **已知 flaky：AppImage 上传偶发超时**。Linux 的 `.AppImage`（~100MB）经 tauri-action 上传到 Release 时偶发 `Headers Timeout Error`（**非构建问题**，AppImage 已成功打出，仅上传失败）。处理：`gh run rerun <run-id> --failed` 重跑失败的 Linux job 即可，无需改代码或重打 tag。
+
 ## 5. 发布 GitHub Release
 
 CI 完成后，进入 GitHub → Releases → 编辑 Draft：
