@@ -20,7 +20,7 @@ jobs:
             sidecar-name: stockai-backend-aarch64-apple-darwin
 
           - platform: ubuntu-24.04
-            args: "--bundles deb,appimage"
+            args: "--bundles deb"
             bun-target: bun-linux-x64
             sidecar-name: stockai-backend-x86_64-unknown-linux-gnu
 
@@ -57,10 +57,7 @@ jobs:
             libjavascriptcoregtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf \
-            libfuse2t64
-          # libfuse2t64：linuxdeploy(本身是 AppImage)需 FUSE 才能挂载自身，
-          # ubuntu-24.04 默认不带；缺失会导致 AppImage 打包 "failed to run linuxdeploy"
+            patchelf
 
       - name: Install frontend dependencies
         run: bun install
@@ -157,8 +154,6 @@ jobs:
           # 自动更新器签名私钥，缺失时 tauri-action 仍会构建但不生成 .sig/latest.json
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # 绕过 GitHub runner 无 FUSE 导致的 linuxdeploy/AppImage 构建失败
-          APPIMAGE_EXTRACT_AND_RUN: 1
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"
