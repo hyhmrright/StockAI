@@ -92,5 +92,16 @@
   "analysis_details": "分析詳細 ({symbol})",
   "latest_price": "最新価格",
   "price_change": "変動率",
-  "latest_news": "最新ニュース"
+  "latest_news": "最新ニュース",
+  "update_check_label": "ソフトウェア更新",
+  "update_check_desc": "新しいバージョンがあるか確認します",
+  "update_check_button": "更新を確認",
+  "update_checking": "確認中…",
+  "update_uptodate": "最新バージョンです",
+  "update_available": "新しいバージョン v{version} が利用可能",
+  "update_now": "今すぐ更新",
+  "update_later": "後で",
+  "update_downloading": "更新をダウンロード中… {progress}%",
+  "update_restarting": "更新完了、再起動中…",
+  "update_error": "更新の確認に失敗しました。後でもう一度お試しください"
 }

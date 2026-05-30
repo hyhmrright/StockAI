@@ -92,5 +92,16 @@
   "analysis_details": "Analysis ({symbol})",
   "latest_price": "Latest Price",
   "price_change": "Change",
-  "latest_news": "Latest News"
+  "latest_news": "Latest News",
+  "update_check_label": "Software Update",
+  "update_check_desc": "Check whether a new version is available",
+  "update_check_button": "Check for Updates",
+  "update_checking": "Checking…",
+  "update_uptodate": "You're on the latest version",
+  "update_available": "New version v{version} available",
+  "update_now": "Update Now",
+  "update_later": "Later",
+  "update_downloading": "Downloading update… {progress}%",
+  "update_restarting": "Update complete, restarting…",
+  "update_error": "Update check failed, please try again later"
 }

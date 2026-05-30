@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::StoreExt;
-use serde::{Deserialize, Serialize};
 
 /**
  * RAII 临时文件守卫：drop 时自动删文件，覆盖 panic / async cancel / 提前 return 等所有退出路径。
@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 struct TempFileGuard(std::path::PathBuf);
 
 impl TempFileGuard {
-    fn path(&self) -> &std::path::Path { &self.0 }
+    fn path(&self) -> &std::path::Path {
+        &self.0
+    }
 }
 
 impl Drop for TempFileGuard {
@@ -18,7 +20,6 @@ impl Drop for TempFileGuard {
         let _ = std::fs::remove_file(&self.0);
     }
 }
-
 
 /**
  * 模型列表查询配置
@@ -37,10 +38,7 @@ struct SidecarManager;
 
 impl SidecarManager {
     // 取最后一行——Sidecar 协议保证每次运行只写一行 JSON 到 stdout。
-    async fn run(
-        app_handle: &tauri::AppHandle,
-        args: Vec<String>,
-    ) -> Result<String, String> {
+    async fn run(app_handle: &tauri::AppHandle, args: Vec<String>) -> Result<String, String> {
         let sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
@@ -73,9 +71,10 @@ impl SidecarManager {
             }
         }
         drop(child);
-        
+
         // 查找最后一个完整的 JSON 对象
-        let last_json = stdout_buffer.lines()
+        let last_json = stdout_buffer
+            .lines()
             .rev()
             .map(|l| l.trim())
             .find(|l| l.starts_with('{') && l.ends_with('}'))
@@ -84,11 +83,17 @@ impl SidecarManager {
 
         if last_json.is_empty() {
             let err_msg = if stderr_buffer.is_empty() {
-                format!("分析服务无响应 (ExitCode: {:?})。请尝试重新构建 Sidecar。", exit_code)
+                format!(
+                    "分析服务无响应 (ExitCode: {:?})。请尝试重新构建 Sidecar。",
+                    exit_code
+                )
             } else {
-                format!("分析服务异常 (ExitCode: {:?})。详情: {}", exit_code, stderr_buffer)
+                format!(
+                    "分析服务异常 (ExitCode: {:?})。详情: {}",
+                    exit_code, stderr_buffer
+                )
             };
-            
+
             // 使用 serde_json 安全序列化，防止特殊字符破坏 JSON 结构
             let err_json = serde_json::json!({
                 "error": {
@@ -117,8 +122,8 @@ impl SidecarManager {
         app_handle: &tauri::AppHandle,
         config: ModelListConfig,
     ) -> Result<String, String> {
-        let config_json = serde_json::to_string(&config)
-            .map_err(|e| format!("列表配置序列化失败: {}", e))?;
+        let config_json =
+            serde_json::to_string(&config).map_err(|e| format!("列表配置序列化失败: {}", e))?;
 
         Self::run(app_handle, vec!["--list-models".to_string(), config_json]).await
     }
@@ -128,7 +133,11 @@ impl SidecarManager {
         symbol: String,
         _config: serde_json::Value,
     ) -> Result<String, String> {
-        Self::run(app_handle, vec!["--info".to_string(), "{}".to_string(), symbol]).await
+        Self::run(
+            app_handle,
+            vec!["--info".to_string(), "{}".to_string(), symbol],
+        )
+        .await
     }
 
     async fn search_stocks(
@@ -136,22 +145,23 @@ impl SidecarManager {
         keyword: String,
         _config: serde_json::Value,
     ) -> Result<String, String> {
-        Self::run(app_handle, vec!["--search".to_string(), "{}".to_string(), keyword]).await
+        Self::run(
+            app_handle,
+            vec!["--search".to_string(), "{}".to_string(), keyword],
+        )
+        .await
     }
 
     async fn fetch_kline(
         app_handle: &tauri::AppHandle,
         request: serde_json::Value,
     ) -> Result<String, String> {
-        let request_json = serde_json::to_string(&request)
-            .map_err(|e| format!("K 线参数序列化失败: {}", e))?;
+        let request_json =
+            serde_json::to_string(&request).map_err(|e| format!("K 线参数序列化失败: {}", e))?;
         Self::run(app_handle, vec!["--kline".to_string(), request_json]).await
     }
 
-    async fn fetch_quote(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-    ) -> Result<String, String> {
+    async fn fetch_quote(app_handle: &tauri::AppHandle, symbol: String) -> Result<String, String> {
         Self::run(app_handle, vec!["--quote".to_string(), symbol]).await
     }
 
@@ -186,8 +196,8 @@ impl SidecarManager {
         ));
         #[cfg(unix)]
         {
-            use std::os::unix::fs::OpenOptionsExt;
             use std::io::Write;
+            use std::os::unix::fs::OpenOptionsExt;
             std::fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -205,14 +215,14 @@ impl SidecarManager {
     }
 
     fn write_temp_news(news: &serde_json::Value) -> Result<TempFileGuard, String> {
-        let news_json = serde_json::to_string(news)
-            .map_err(|e| format!("新闻序列化失败: {}", e))?;
+        let news_json =
+            serde_json::to_string(news).map_err(|e| format!("新闻序列化失败: {}", e))?;
         Self::write_temp_file("news", &news_json)
     }
 
     fn write_temp_config(config: &serde_json::Value) -> Result<TempFileGuard, String> {
-        let config_json = serde_json::to_string(config)
-            .map_err(|e| format!("配置序列化失败: {}", e))?;
+        let config_json =
+            serde_json::to_string(config).map_err(|e| format!("配置序列化失败: {}", e))?;
         Self::write_temp_file("config", &config_json)
     }
 
@@ -257,16 +267,12 @@ impl SidecarManager {
  * 搜索股票建议
  */
 #[tauri::command]
-async fn search_stocks(
-    app_handle: tauri::AppHandle,
-    keyword: String,
-) -> Result<String, String> {
+async fn search_stocks(app_handle: tauri::AppHandle, keyword: String) -> Result<String, String> {
     let store = app_handle
         .store("settings.json")
         .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
-    let settings_val = store.get("app_settings")
-        .unwrap_or(serde_json::json!({}));
+    let settings_val = store.get("app_settings").unwrap_or(serde_json::json!({}));
 
     SidecarManager::search_stocks(&app_handle, keyword, settings_val).await
 }
@@ -275,16 +281,12 @@ async fn search_stocks(
  * 获取股票基本信息
  */
 #[tauri::command]
-async fn get_stock_info(
-    app_handle: tauri::AppHandle,
-    symbol: String,
-) -> Result<String, String> {
+async fn get_stock_info(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
     let store = app_handle
         .store("settings.json")
         .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
-    let settings_val = store.get("app_settings")
-        .unwrap_or(serde_json::json!({}));
+    let settings_val = store.get("app_settings").unwrap_or(serde_json::json!({}));
 
     SidecarManager::get_stock_info(&app_handle, symbol, settings_val).await
 }
@@ -333,7 +335,8 @@ async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<
         .store("settings.json")
         .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
-    let settings_val = store.get("app_settings")
+    let settings_val = store
+        .get("app_settings")
         .filter(|v| !v.is_null())
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
@@ -352,7 +355,8 @@ async fn fetch_market_bundle(
         .store("settings.json")
         .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
-    let settings_val = store.get("app_settings")
+    let settings_val = store
+        .get("app_settings")
         .filter(|v| !v.is_null())
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
@@ -373,7 +377,8 @@ async fn analyze_news(
         .store("settings.json")
         .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
-    let settings_val = store.get("app_settings")
+    let settings_val = store
+        .get("app_settings")
         .filter(|v| !v.is_null())
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
@@ -394,7 +399,8 @@ async fn deep_analyze(
         .store("settings.json")
         .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
-    let settings_val = store.get("app_settings")
+    let settings_val = store
+        .get("app_settings")
         .filter(|v| !v.is_null())
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
@@ -413,10 +419,7 @@ async fn fetch_quant_bundle(
  * 运行量化回测
  */
 #[tauri::command]
-async fn run_backtest(
-    app_handle: tauri::AppHandle,
-    symbol: String,
-) -> Result<String, String> {
+async fn run_backtest(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
     SidecarManager::run(&app_handle, vec!["--backtest".to_string(), symbol]).await
 }
 
@@ -424,8 +427,7 @@ async fn run_backtest(
 mod tests {
     use super::*;
 
-    const EMPTY_STDOUT_RESPONSE: &str =
-        r#"{"error":{"code":"ERR_SIDECAR","message":"分析服务无响应 (ExitCode: None)。请尝试重新构建 Sidecar。"}}"#;
+    const EMPTY_STDOUT_RESPONSE: &str = r#"{"error":{"code":"ERR_SIDECAR","message":"分析服务无响应 (ExitCode: None)。请尝试重新构建 Sidecar。"}}"#;
 
     #[test]
     fn test_empty_stdout_fallback_is_valid_json_with_error_field() {
@@ -443,7 +445,10 @@ mod tests {
             base_url: "https://api.openai.com/v1".to_string(),
         };
         let json = serde_json::to_string(&cfg).unwrap();
-        assert!(json.contains("baseUrl"), "serde 应序列化为 camelCase baseUrl");
+        assert!(
+            json.contains("baseUrl"),
+            "serde 应序列化为 camelCase baseUrl"
+        );
         assert!(!json.contains("base_url"), "不应出现 snake_case base_url");
     }
 
@@ -459,7 +464,10 @@ mod tests {
             "url": "https://example.com"
         }]);
         let news_json = serde_json::to_string(&large_news).unwrap();
-        assert!(news_json.len() > 300_000, "构造样本必须超过 ARG_MAX 阈值才有意义");
+        assert!(
+            news_json.len() > 300_000,
+            "构造样本必须超过 ARG_MAX 阈值才有意义"
+        );
 
         let temp_path = std::env::temp_dir().join(format!(
             "stockai-news-roundtrip-{}-{}.json",
@@ -472,7 +480,10 @@ mod tests {
         std::fs::write(&temp_path, &news_json).expect("写入临时新闻文件应成功");
         let guard = TempFileGuard(temp_path);
         let read_back = std::fs::read_to_string(guard.path()).expect("读取临时新闻文件应成功");
-        assert_eq!(read_back, news_json, "临时文件应能完整 roundtrip 任意大小 news payload");
+        assert_eq!(
+            read_back, news_json,
+            "临时文件应能完整 roundtrip 任意大小 news payload"
+        );
         // guard.drop() here cleans up；上面 assert 失败也照样清理
     }
 
@@ -512,7 +523,17 @@ pub fn run() {
         },
     ];
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // 自动更新器仅桌面端可用，移动端不编译该插件
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
+    }
+
+    builder
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(
             tauri_plugin_sql::Builder::default()

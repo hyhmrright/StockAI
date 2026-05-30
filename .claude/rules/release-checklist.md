@@ -42,12 +42,15 @@ git push origin vx.y.z
 
 CI（`release.yml`）会自动构建三平台产物并创建 **Draft Release**。
 
+> **自动更新前置条件（首次配置后长期有效）**：仓库 Secrets 须包含 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`（由 `bun tauri signer generate` 生成的 minisign 私钥及密码），且 `tauri.conf.json` 的 `plugins.updater.pubkey` 已填对应公钥。缺失时 CI 仍能出包，但**不会生成 `.sig` 与 `latest.json`**，自动更新失效。
+
 ## 5. 发布 GitHub Release
 
 CI 完成后，进入 GitHub → Releases → 编辑 Draft：
 - **Release title**：`StockAI vx.y.z`
 - **Release notes**：使用下方双语模板，**中英文各一份，内容对等**，不得省略任一语言
-- 确认产物（`.dmg` / `.deb` / `.msi`）已全部上传
+- 确认产物（`.dmg` / `.deb` / `.AppImage` / `.msi`）已全部上传
+- **确认 `latest.json` 已上传**（自动更新清单，更新器据此比对版本；缺失则老用户收不到更新）
 - 点击 **Publish release**
 
 ### Release Notes 双语模板

@@ -20,7 +20,7 @@ jobs:
             sidecar-name: stockai-backend-aarch64-apple-darwin
 
           - platform: ubuntu-24.04
-            args: "--bundles deb"
+            args: "--bundles deb,appimage"
             bun-target: bun-linux-x64
             sidecar-name: stockai-backend-x86_64-unknown-linux-gnu
 
@@ -151,6 +151,11 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # 自动更新器签名私钥，缺失时 tauri-action 仍会构建但不生成 .sig/latest.json
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # 绕过 GitHub runner 无 FUSE 导致的 linuxdeploy/AppImage 构建失败
+          APPIMAGE_EXTRACT_AND_RUN: 1
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"
@@ -165,6 +170,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 即便 Apple 证书缺失，更新器仍需用 minisign 私钥签名产物
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"

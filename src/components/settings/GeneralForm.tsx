@@ -1,6 +1,7 @@
 import React from "react";
 import { Settings } from "../../hooks/useSettings";
 import type { Language } from "../../hooks/useLanguage";
+import { UpdateChecker } from "./UpdateChecker";
 
 interface GeneralFormProps {
   settings: Settings;
@@ -78,6 +79,7 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
           ))}
         </div>
       </div>
+      <UpdateChecker />
     </div>
   );
 };

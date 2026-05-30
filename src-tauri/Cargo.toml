@@ -26,4 +26,9 @@ tauri-plugin-notification = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-store = "2"
+tauri-plugin-process = "2"
+
+# updater 插件仅桌面端可用（更新器不支持移动端），单独声明避免移动端构建引入
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
 
