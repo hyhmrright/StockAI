@@ -2,6 +2,16 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.11.1] - 2026-05-30
+
+### Added
+
+- **Linux 应用内自动更新（AppImage）** — Linux 现新增发布 `.AppImage` 产物并接入自动更新，Linux 用户也能像 macOS / Windows 一样在软件内一键升级（`.deb` 仍保留给习惯 apt 管理的用户手动安装）。至此三平台自动更新全部就位。
+
+### Fixed
+
+- **修复 Linux AppImage 打包失败** — Tauri 内置的旧版 linuxdeploy 在处理 sidecar 二进制时崩溃，导致 v0.11.0 无法生成 `.AppImage`。改为在构建前预置较新版 linuxdeploy（并校验 SHA256）修复。
+
 ## [0.11.0] - 2026-05-30
 
 ### Added
