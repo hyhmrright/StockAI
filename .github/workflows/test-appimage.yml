@@ -7,7 +7,7 @@ on:
 
 jobs:
   test-appimage:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v6
 
@@ -29,13 +29,18 @@ jobs:
             librsvg2-dev \
             patchelf
 
-      # 关键修复：ubuntu-24.04 默认 kernel.apparmor_restrict_unprivileged_userns=1，
-      # 阻止 linuxdeploy(AppImage) 创建 unprivileged user namespace，导致 "failed to run linuxdeploy"。
-      - name: Relax AppArmor unprivileged userns restriction
+      # ubuntu-22.04 默认 apparmor_restrict_unprivileged_userns=0，理论上不需放宽；
+      # 若路径存在仍设为 0 兜底（不存在则跳过，不让步骤失败）。
+      - name: Relax AppArmor unprivileged userns restriction (if present)
         run: |
-          echo "before: $(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo n/a)"
-          echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
-          echo "after:  $(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns)"
+          P=/proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          if [ -e "$P" ]; then
+            echo "before: $(cat $P)"
+            echo 0 | sudo tee "$P"
+            echo "after:  $(cat $P)"
+          else
+            echo "sysctl 不存在（22.04 预期如此），跳过"
+          fi
 
       - name: Install frontend dependencies
         run: bun install
