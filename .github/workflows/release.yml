@@ -57,7 +57,10 @@ jobs:
             libjavascriptcoregtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            libfuse2t64
+          # libfuse2t64：linuxdeploy(本身是 AppImage)需 FUSE 才能挂载自身，
+          # ubuntu-24.04 默认不带；缺失会导致 AppImage 打包 "failed to run linuxdeploy"
 
       - name: Install frontend dependencies
         run: bun install
