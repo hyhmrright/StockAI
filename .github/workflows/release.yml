@@ -20,7 +20,7 @@ jobs:
             sidecar-name: stockai-backend-aarch64-apple-darwin
 
           - platform: ubuntu-24.04
-            args: "--bundles deb"
+            args: "--bundles deb,appimage"
             bun-target: bun-linux-x64
             sidecar-name: stockai-backend-x86_64-unknown-linux-gnu
 
@@ -58,6 +58,21 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf
+
+      # Tauri 内置的 linuxdeploy(2024-07 老版)给 AppDir 解析依赖时，对 sidecar
+      # (Bun 编译的大二进制)跑 ldd 失败会直接 abort，导致 AppImage 打包 "failed to run linuxdeploy"。
+      # 预置较新版 linuxdeploy(遇 ldd 失败改为警告跳过)到 Tauri 缓存覆盖之。
+      # pin SHA256 防供应链篡改：哈希不符则构建 loud 失败，需人工复核后更新此值。
+      - name: Pre-seed pinned linuxdeploy (Linux AppImage)
+        if: matrix.platform == 'ubuntu-24.04'
+        env:
+          LD_SHA256: f2aa8e8bb6265d0edc0b0c666c494dc8975650af589408748d75c9b99434b570
+        run: |
+          mkdir -p ~/.cache/tauri
+          curl -fsSL --retry 5 -o ~/.cache/tauri/linuxdeploy-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          echo "${LD_SHA256}  ${HOME}/.cache/tauri/linuxdeploy-x86_64.AppImage" | sha256sum -c -
+          chmod +x ~/.cache/tauri/linuxdeploy-x86_64.AppImage
 
       - name: Install frontend dependencies
         run: bun install
@@ -154,6 +169,8 @@ jobs:
           # 自动更新器签名私钥，缺失时 tauri-action 仍会构建但不生成 .sig/latest.json
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # linuxdeploy(AppImage 格式)嵌套调用时需自解压运行，避免 runner 无 FUSE
+          APPIMAGE_EXTRACT_AND_RUN: 1
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"
