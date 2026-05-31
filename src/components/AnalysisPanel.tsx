@@ -8,6 +8,7 @@ import ValuationCard from './ValuationCard';
 import RiskCard from './RiskCard';
 import DeepAnalysisPanel from './DeepAnalysis/DeepAnalysisPanel';
 import BacktestPanel from './Backtest/BacktestPanel';
+import MasterPortfolioPanel from './MasterPortfolio/MasterPortfolioPanel';
 import AnalysisHistory from './AnalysisHistory';
 import { sentimentBgClass, sentimentBadgeClass } from '../lib/signal-styles';
 import { useLanguage } from '../hooks/useLanguage';
@@ -67,6 +68,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       <RiskCard risk={quant?.risk} loading={quantLoading} />
 
       {stockInfo && <BacktestPanel symbol={stockInfo.code} />}
+
+      {/* 虚拟大师组合战绩榜（全局 · 前向跟踪，与当前 symbol 无关，懒加载） */}
+      <MasterPortfolioPanel />
 
       {/* AI 触发卡片 — 永远显示，状态决定形态 */}
       <div className="mb-10">

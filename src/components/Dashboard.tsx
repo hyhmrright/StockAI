@@ -88,8 +88,9 @@ const Dashboard: React.FC = () => {
       symbol: currentSymbol, analysisType: 'deep',
       resultJson: JSON.stringify(deepAnalysis), stockInfoJson: infoJson, newsJson: newsJsonStr,
     }).catch(e => console.error("保存深度分析历史失败:", e));
-    // 落账各大师 signal，供虚拟大师组合前向跟踪（命中率/净值后续统计用）
-    saveMasterSignals(currentSymbol, deepAnalysis.masterSignals)
+    // 落账各大师 signal + 当时价，供虚拟大师组合前向跟踪（命中率/净值后续统计用）
+    // 入场价缺失时统计会判为「待定」，故尽量带上 stockInfo.price
+    saveMasterSignals(currentSymbol, deepAnalysis.masterSignals, stockInfo?.price)
       .catch(e => console.error("保存大师 signal 失败:", e));
   }, [deepAnalysis, currentSymbol, infoJson, newsJsonStr]);
 

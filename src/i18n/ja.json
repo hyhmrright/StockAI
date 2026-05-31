@@ -110,5 +110,18 @@
   "update_later": "後で",
   "update_downloading": "更新をダウンロード中… {progress}%",
   "update_restarting": "更新完了、再起動中…",
-  "update_error": "更新の確認に失敗しました。後でもう一度お試しください"
+  "update_error": "更新の確認に失敗しました。後でもう一度お試しください",
+  "master_portfolio_title": "巨匠の成績表",
+  "master_portfolio_loading": "成績を集計中…",
+  "master_portfolio_error": "成績の読み込みに失敗しました",
+  "master_portfolio_empty": "記録された判断はまだありません。「ディープ巨匠分析」を実行すると、各巨匠の判断が本日から前向きに蓄積されます。待つ必要はありません。",
+  "master_portfolio_no_resolved": "判断は記録済みですが、評価可能なサンプルがまだありません（現在価格の取得成功かつ方向性のある判断が必要）。後で更新するか、分析を数回追加してください。",
+  "mp_col_master": "巨匠",
+  "mp_col_hitrate": "的中率",
+  "mp_col_return": "平均リターン",
+  "mp_col_samples": "サンプル",
+  "mp_nav": "基準価額",
+  "mp_pending": "保留",
+  "mp_refresh": "更新",
+  "master_portfolio_disclosure": "基準：{since} から前向き追跡 · 方向性のある判断のみ（中立を除く）· 記録価格から現在値で評価 · 基準価額は毎回等額フルポジションの順次複利を仮定（含み損益込み）· 有効サンプル {resolved}/{total}"
 }

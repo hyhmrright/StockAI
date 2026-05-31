@@ -6,6 +6,7 @@ import type {
   SaveAnalysisParams,
   HistoryQuery,
   MasterSignal,
+  MasterSignalRecord,
 } from "../../shared/types";
 
 let dbPromise: Promise<Database> | null = null;
@@ -118,6 +119,36 @@ export async function saveMasterSignals(symbol: string, signals: MasterSignal[],
       [s.masterId, symbol, s.signal, s.confidence, priceAt ?? null, recordedAt],
     );
   }
+}
+
+interface RawSignalRow {
+  id: number;
+  master_id: string;
+  symbol: string;
+  signal: string;
+  confidence: number;
+  price_at: number | null;
+  recorded_at: number;
+}
+
+/** 读取全部已落账的大师 signal，供虚拟组合命中率/净值聚合（前向跟踪 · 轨道 A）。 */
+export async function getAllMasterSignals(): Promise<MasterSignalRecord[]> {
+  if (!isTauri()) return [];
+
+  const db = await getDb();
+  const rows = await db.select<RawSignalRow[]>(
+    `SELECT id, master_id, symbol, signal, confidence, price_at, recorded_at
+     FROM master_signals ORDER BY recorded_at ASC`,
+  );
+  return rows.map(r => ({
+    id: r.id,
+    masterId: r.master_id,
+    symbol: r.symbol,
+    signal: r.signal as MasterSignalRecord["signal"],
+    confidence: r.confidence,
+    priceAt: r.price_at,
+    recordedAt: r.recorded_at,
+  }));
 }
 
 export async function deleteAnalysisRecords(ids: number[]): Promise<number> {

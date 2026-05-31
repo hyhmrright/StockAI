@@ -110,5 +110,18 @@
   "update_later": "Later",
   "update_downloading": "Downloading update… {progress}%",
   "update_restarting": "Update complete, restarting…",
-  "update_error": "Update check failed, please try again later"
+  "update_error": "Update check failed, please try again later",
+  "master_portfolio_title": "Master Track Record",
+  "master_portfolio_loading": "Aggregating track record…",
+  "master_portfolio_error": "Failed to load track record",
+  "master_portfolio_empty": "No signals logged yet. After you run a Deep Master Analysis, each master's calls start accumulating forward from today — no waiting required.",
+  "master_portfolio_no_resolved": "Signals are logged, but none are resolvable yet (needs a successful live-price lookup and a directional call). Refresh later or run a few more analyses.",
+  "mp_col_master": "Master",
+  "mp_col_hitrate": "Hit Rate",
+  "mp_col_return": "Avg Return",
+  "mp_col_samples": "Sample",
+  "mp_nav": "NAV",
+  "mp_pending": "Pending",
+  "mp_refresh": "Refresh",
+  "master_portfolio_disclosure": "Method: forward-tracked since {since} · directional calls only (neutral excluded) · marked to current from the logged price · NAV assumes equal-weight full-size sequential compounding (incl. open P&L) · valid sample {resolved}/{total}"
 }

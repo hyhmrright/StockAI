@@ -110,5 +110,18 @@
   "update_later": "稍后",
   "update_downloading": "正在下载更新… {progress}%",
   "update_restarting": "更新完成，正在重启…",
-  "update_error": "检查更新失败，请稍后再试"
+  "update_error": "检查更新失败，请稍后再试",
+  "master_portfolio_title": "大师战绩榜",
+  "master_portfolio_loading": "正在汇总战绩…",
+  "master_portfolio_error": "战绩加载失败",
+  "master_portfolio_empty": "暂无落账信号。完成「深度大师分析」后，各大师的判断会从今天起前向积累，无需等待。",
+  "master_portfolio_no_resolved": "信号已落账，但暂无可裁决样本（需成功回查现价且为方向信号）。稍后刷新或多攒几次分析。",
+  "mp_col_master": "大师",
+  "mp_col_hitrate": "命中率",
+  "mp_col_return": "平均收益",
+  "mp_col_samples": "样本",
+  "mp_nav": "净值",
+  "mp_pending": "待定",
+  "mp_refresh": "刷新",
+  "master_portfolio_disclosure": "口径：前向跟踪自 {since} 起 · 仅方向信号（排除中性）· 自记录价 mark-to-current · 净值假设每次等额全仓顺序复利（含未平仓浮盈）· 有效样本 {resolved}/{total}"
 }

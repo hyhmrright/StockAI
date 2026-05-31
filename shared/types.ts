@@ -291,6 +291,45 @@ export interface DeepAnalysisResult {
   };
 }
 
+/** 落账后的单条大师 signal（master_signals 表一行；虚拟组合前向跟踪原始记录） */
+export interface MasterSignalRecord {
+  id: number;
+  masterId: string;
+  symbol: string;
+  signal: 'bullish' | 'bearish' | 'neutral';
+  confidence: number;
+  priceAt: number | null;   // 落账当时价；null 表示未捕获到入场价，无法纳入命中率/净值
+  recordedAt: number;       // Unix 毫秒
+}
+
+/** 大师战绩榜单一行（命中率 + 平均收益，自记录至今 mark-to-current 口径） */
+export interface MasterLeaderboardEntry {
+  masterId: string;
+  total: number;        // 该大师落账的全部 signal 数（含中性/未定价）
+  resolved: number;     // 已可裁决的方向 signal 数（有入场价 + 有现价 + 非中性）
+  pending: number;      // 待定 signal 数（中性 / 缺价，未纳入统计）
+  hits: number;         // 方向兑现次数
+  hitRate: number | null;   // hits / resolved；resolved 为 0 时为 null
+  avgReturn: number | null; // 已裁决 signal 的方向调整收益均值；resolved 为 0 时为 null
+  lastSignalAt: number;     // 最近一次落账时间（Unix 毫秒）
+}
+
+/** 净值曲线一个点（按时间顺序等额全仓复利，含未平仓浮盈） */
+export interface MasterNavPoint {
+  time: number;   // 对应 signal 的 recordedAt（Unix 毫秒）
+  value: number;  // 归一化净值，起点 1.0
+}
+
+/** 虚拟大师组合展示层聚合结果 */
+export interface MasterPortfolioData {
+  leaderboard: MasterLeaderboardEntry[];      // 已按命中率降序排好
+  navCurves: Record<string, MasterNavPoint[]>; // masterId → 净值曲线
+  totalSignals: number;
+  resolvedSignals: number;
+  firstSignalAt: number | null;   // 样本起始（Unix 毫秒），披露时间窗用
+  asOf: number;                   // 计算时刻（Unix 毫秒）
+}
+
 /** 回测交易记录 */
 export interface TradeRecord {
   type: 'buy' | 'sell';
