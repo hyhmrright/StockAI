@@ -201,7 +201,9 @@ master_nav_daily(master_id, date, nav, benchmark_nav)
 
 **UI 落点**：`BacktestPanel` 旁加「大师战绩」Tab，或大师卡片加迷你净值 sparkline + 命中率徽章（呼应 Tickertape 傻瓜化结论 + Moomoo 虚拟交易大赛可玩性）。
 
-**MVP 切法**：① 轨道 A 落账（零 LLM 成本）✅ **已 ship（commit ef85992，master_signals 表 + 深度分析时落账）** → ② 命中率榜（signal vs 后续涨跌，复用 kline 回查 recorded_at 价；signal 落账后即可算，不等净值）→ ③ 净值曲线（复用 backtest 净值工具）→ ④ 轨道 B（**阻塞于历史财务数据**，见上方约束）。
+**MVP 切法**：① 轨道 A 落账（零 LLM 成本）✅ **已 ship（commit ef85992，master_signals 表 + 深度分析时落账）** → ② 命中率榜 + ③ 净值曲线 ✅ **已 ship（commit fbd231c，展示层）** → ④ 轨道 B（**阻塞于历史财务数据**，见上方约束）。
+
+> **②③ 落地实现说明（2026-05-31）**：偏离上文「新增 CLI action」方案——`master_signals` 是纯前端 `@tauri-apps/plugin-sql` 表，sidecar 独立进程读不到，故 `--master-leaderboard` 会破坏单向分层。改为**全前端聚合**：`src/lib/masterPortfolio.ts`（纯计算，命中率 + NAV 顺序复利，9 单测）+ `useMasterPortfolio`（懒加载、按 symbol 去重并发回查现价）+ `MasterPortfolio/` UI（折叠面板 + SVG 净值 sparkline + 诚实口径披露），挂在 `AnalysisPanel`。**口径**：仅方向信号(排除中性) · 自记录价 mark-to-current · NAV 等额全仓顺序复利(含未平仓浮盈)。**同时修了落账 bug**：此前 `saveMasterSignals` 没传 priceAt（恒 null，无法裁决），现传 `stockInfo.price`。**已知性能取舍**：刷新时对历史全部 symbol 各拉一次报价，随表增长无上限——表大了再上 SQL 侧聚合/缓存。
 
 **风险**：业绩展示必须诚实披露口径（样本量/是否模拟/时间窗）。Seeking Alpha「连卖出端都披露」是正面教材，Zacks/TipRanks「只晒买入端回测」是反面。
 
