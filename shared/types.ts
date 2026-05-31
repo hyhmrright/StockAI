@@ -45,6 +45,32 @@ export interface StockNews {
   url: string;     // 新闻原文链接
 }
 
+/** 对话式追问的单条历史消息（不含 system，system 由 sidecar 按上下文构建） */
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/** 对话式追问上下文：精简自当前股票的新闻/量化/已有分析，避免重复抓取与超长 payload */
+export interface ChatContext {
+  newsTitles?: string[];      // 近期新闻标题
+  quantSummary?: string;      // 量化评分摘要（如「综合 72/100，技术面看涨」）
+  analysisSummary?: string;   // 已有 AI 分析的结论摘要
+}
+
+/** 对话式追问请求（前端 → Rust → Sidecar） */
+export interface ChatPayload {
+  symbol: string;
+  question: string;
+  history: ChatMessage[];     // 之前的多轮对话
+  context: ChatContext;
+}
+
+/** 对话式追问响应 */
+export interface ChatResponse {
+  reply: string;
+}
+
 /**
  * AI 分析结果接口
  */

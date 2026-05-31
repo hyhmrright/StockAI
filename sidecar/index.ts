@@ -1,4 +1,4 @@
-import type { StockNews } from '../shared/types';
+import type { StockNews, ChatPayload } from '../shared/types';
 import type { RawConfig } from './cli-handlers';
 import { logger, toErrorMessage, outputJson, logToFile, errorEnvelope, errorEnvelopeFromUnknown } from './utils';
 import { tmpdir } from 'os';
@@ -98,6 +98,14 @@ const COMMAND_TABLE: CommandDef[] = [
       actionParam: args[idx + 2],
       newsJson: args[idx + 3],
       quantJson: args[idx + 4],
+    }),
+  },
+  {
+    // --chat config_json payload_path（payload 经临时文件传递，含上下文+历史，避免 ARG_MAX）
+    flag: '--chat',
+    extract: (args, idx) => ({
+      configStr: args[idx + 1] || '{}',
+      actionParam: args[idx + 2],
     }),
   },
 ];
@@ -238,6 +246,26 @@ async function run() {
           return;
         }
         await Handlers.handleDeepAnalysis(actionParam || '', news, config, quantJson);
+      } catch (error) {
+        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
+      }
+      break;
+    case '--chat':
+      try {
+        const config = resolveConfig(rawConfig);
+        if (!actionParam) {
+          outputJson(errorEnvelope('ERR_MISSING_PARAM', '未提供 chat payload 文件路径'));
+          return;
+        }
+        let payload: ChatPayload;
+        try {
+          // payload 始终通过临时文件传递（Rust 写入路径），避免 argv 撞 ARG_MAX
+          payload = JSON.parse(await Bun.file(actionParam).text());
+        } catch (err) {
+          outputJson(errorEnvelope('ERR_MISSING_PARAM', `读取 chat payload 失败: ${toErrorMessage(err)}`));
+          return;
+        }
+        await Handlers.handleChat(payload, config);
       } catch (error) {
         outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
       }

@@ -261,6 +261,23 @@ impl SidecarManager {
         }
         Self::run(app_handle, args).await
     }
+
+    async fn chat(
+        app_handle: &tauri::AppHandle,
+        payload: serde_json::Value,
+        config: serde_json::Value,
+    ) -> Result<String, String> {
+        let config_guard = Self::write_temp_config(&config)?;
+        let config_arg = format!("@{}", config_guard.path().to_string_lossy());
+        // payload（含上下文+多轮历史）复用临时文件写入，避免 argv 撞 ARG_MAX
+        let payload_guard = Self::write_temp_news(&payload)?;
+        let payload_arg = payload_guard.path().to_string_lossy().into_owned();
+        Self::run(
+            app_handle,
+            vec!["--chat".to_string(), config_arg, payload_arg],
+        )
+        .await
+    }
 }
 
 /**
@@ -407,6 +424,23 @@ async fn deep_analyze(
     SidecarManager::deep_analyze(&app_handle, symbol, news, settings_val, quant).await
 }
 
+/**
+ * 对话式追问 — 调用 Sidecar --chat 流程
+ */
+#[tauri::command]
+async fn chat(app_handle: tauri::AppHandle, payload: serde_json::Value) -> Result<String, String> {
+    let store = app_handle
+        .store("settings.json")
+        .map_err(|e| format!("无法打开配置存储: {}", e))?;
+
+    let settings_val = store
+        .get("app_settings")
+        .filter(|v| !v.is_null())
+        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
+
+    SidecarManager::chat(&app_handle, payload, settings_val).await
+}
+
 #[tauri::command]
 async fn fetch_quant_bundle(
     app_handle: tauri::AppHandle,
@@ -548,6 +582,7 @@ pub fn run() {
             fetch_market_bundle,
             analyze_news,
             deep_analyze,
+            chat,
             list_models,
             get_stock_info,
             search_stocks,

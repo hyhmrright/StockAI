@@ -10,6 +10,8 @@ import {
   QuantBundle,
   DeepAnalysisResult,
   BacktestResult,
+  ChatPayload,
+  ChatResponse,
 } from "../../shared/types";
 import {
   MOCK_STOCKS,
@@ -21,6 +23,7 @@ import {
   MOCK_QUANT,
   MOCK_DEEP_ANALYSIS,
   MOCK_BACKTEST,
+  MOCK_CHAT,
 } from "./dev-mocks";
 
 /**
@@ -164,6 +167,18 @@ export async function deepAnalyze(symbol: string, news: StockNews[], quant?: Qua
   try {
     const raw = await invoke<string>("deep_analyze", { symbol, news, quant: quantJson });
     return parseServiceResponse<DeepAnalysisResult>(raw);
+  } catch (error) {
+    rethrow(error);
+  }
+}
+
+/** 对话式追问：基于已抓上下文做多轮自然语言问答 */
+export async function chat(payload: ChatPayload): Promise<ChatResponse> {
+  if (!isTauri()) return devBridgeInvoke<ChatResponse>("chat", { payload }, MOCK_CHAT);
+
+  try {
+    const raw = await invoke<string>("chat", { payload });
+    return parseServiceResponse<ChatResponse>(raw);
   } catch (error) {
     rethrow(error);
   }

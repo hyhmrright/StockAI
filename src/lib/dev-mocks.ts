@@ -9,6 +9,7 @@ import type {
   QuantBundle,
   DeepAnalysisResult,
   BacktestResult,
+  ChatResponse,
 } from "../../shared/types";
 
 /**
@@ -136,4 +137,8 @@ export const MOCK_BACKTEST: BacktestResult = {
   symbol: 'MOCK', totalReturn: 0.15, annualizedReturn: 0.12, maxDrawdown: -0.08,
   winRate: 0.6, totalTrades: 8, sharpeRatio: 1.2, buyAndHoldReturn: 0.2,
   trades: [], equityCurve: [],
+};
+
+export const MOCK_CHAT: ChatResponse = {
+  reply: '（开发模式 mock 回复）这是一条占位回答。启动 sidecar bridge 可获得真实 AI 回复。',
 };

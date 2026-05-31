@@ -16,7 +16,7 @@ import type {
 } from './analysis';
 import { ScrapeEmptyError } from './analysis';
 import type { ResolvedConfig } from './configResolver';
-import type { StockNews, QuantBundle } from '../shared/types';
+import type { StockNews, QuantBundle, ChatPayload } from '../shared/types';
 
 function tryParseQuant(quantJson: string | undefined, out: typeof outputJson): QuantBundle | undefined | false {
   if (!quantJson) return undefined;
@@ -279,6 +279,29 @@ export function createHandlers(deps: HandlerDeps = {}) {
         out(successEnvelope(result));
       } catch (error) {
         out(errorEnvelopeFromUnknown('ERR_DEEP_ANALYSIS', error));
+      }
+    },
+
+    /**
+     * 对话式追问 — 基于已抓上下文做多轮自然语言问答，复用 provider 配置
+     */
+    async handleChat(payload: ChatPayload, config: ResolvedConfig) {
+      try {
+        if (!payload?.question?.trim()) {
+          out(errorEnvelope('ERR_MISSING_PARAM', '未提供问题'));
+          return;
+        }
+        const { runChat, buildChatMessages } = await import('./chat');
+        const messages = buildChatMessages(payload, config.language);
+        const reply = await runChat({
+          provider: config.provider,
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+          modelName: config.modelName,
+        }, messages);
+        out(successEnvelope({ reply }));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_CHAT', error));
       }
     },
   };

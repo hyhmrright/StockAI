@@ -32,6 +32,7 @@ interface AnalysisPanelProps {
   deepError: string | null;
   onDeepAnalyze: () => void;
   masterAnalysisEnabled: boolean;
+  chatSlot?: React.ReactNode;   // 对话式追问面板（由 Dashboard 注入）
 }
 
 /**
@@ -44,6 +45,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   symbol, stockInfo, record, analyzing, error, hasNews, providerLabel, modelLabel, onAnalyze,
   quant, quantLoading, quantError,
   deepAnalysis, deepAnalyzing, deepError, onDeepAnalyze, masterAnalysisEnabled,
+  chatSlot,
 }) => {
   const result = record?.result;
   const bgClass = result ? sentimentBgClass(result.sentiment) : '';
@@ -177,6 +179,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           <DeepAnalysisPanel result={deepAnalysis} />
         </div>
       )}
+
+      {chatSlot}
     </aside>
   );
 };

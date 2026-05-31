@@ -6,6 +6,7 @@ import { useStockData } from '../hooks/useStockData';
 import { useAIAnalysis } from '../hooks/useAIAnalysis';
 import { useQuantData } from '../hooks/useQuantData';
 import { useDeepAnalysis } from '../hooks/useDeepAnalysis';
+import { useChat } from '../hooks/useChat';
 import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import { saveAnalysisRecord } from '../lib/db';
@@ -13,6 +14,8 @@ import { useLanguage } from '../hooks/useLanguage';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import AnalysisPanel from './AnalysisPanel';
+import ChatPanel from './ChatPanel';
+import type { ChatContext } from '../../shared/types';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
@@ -40,6 +43,14 @@ const Dashboard: React.FC = () => {
   // 深度分析缓存指纹：provider/model/大师/语言任一变化即失效，避免显示陈旧结果
   const deepFingerprint = `${settings.activeProvider}:${modelLabel}:${settings.selectedMasters.join(',')}:${settings.language}`;
   const { result: deepAnalysis, analyzing: deepAnalyzing, error: deepError, analyze: analyzeDeep } = useDeepAnalysis(currentSymbol, deepFingerprint);
+
+  // 追问上下文：从已抓新闻/量化/已有分析精简，作为对话事实底座（不重复抓取）
+  const chatContext = useMemo<ChatContext>(() => ({
+    newsTitles: news.slice(0, 8).map(n => n.title),
+    quantSummary: quant ? `综合 ${quant.composite.score}/100（${quant.composite.signal}）` : undefined,
+    analysisSummary: record?.result?.summary ?? deepAnalysis?.synthesis.summary,
+  }), [news, quant, record, deepAnalysis]);
+  const { messages: chatMessages, sending: chatSending, error: chatError, ask: chatAsk, reset: chatReset } = useChat(currentSymbol, chatContext);
 
   // 自动模式：新闻 + 量化数据均就绪后触发一次 LLM
   useEffect(() => {
@@ -200,6 +211,16 @@ const Dashboard: React.FC = () => {
           deepError={deepError}
           onDeepAnalyze={() => analyzeDeep(news, quant ?? undefined)}
           masterAnalysisEnabled={settings.masterAnalysis}
+          chatSlot={
+            <ChatPanel
+              messages={chatMessages}
+              sending={chatSending}
+              error={chatError}
+              disabled={news.length === 0}
+              onAsk={chatAsk}
+              onReset={chatReset}
+            />
+          }
         />
       </main>
 
