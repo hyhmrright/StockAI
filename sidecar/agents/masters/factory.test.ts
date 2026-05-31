@@ -1,8 +1,12 @@
 import { describe, test, expect } from 'bun:test';
-import { createMasterAgent, PARSE_FAIL_MSG, SERVICE_UNAVAIL_MSG } from './factory';
+import { createMasterAgent, formatNewsForPrompt, PARSE_FAIL_MSG, SERVICE_UNAVAIL_MSG } from './factory';
 import { createMockQuantBundle, createMockNews } from '../../../shared/test-utils';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
+import type { MasterMeta, StockNews } from '../../../shared/types';
+
+function makeNews(title: string, content: string): StockNews {
+  return { title, content, source: 'test', date: '2026-05-31', url: 'https://example.com' };
+}
 
 const meta: MasterMeta = {
   id: 'test-master',
@@ -77,5 +81,36 @@ describe('createMasterAgent', () => {
     await agent.analyze(ctx);
     expect(capturedSystem).toContain('Respond in English');
     expect(capturedSystem).not.toContain('用中文回复');
+  });
+});
+
+describe('formatNewsForPrompt', () => {
+  test('有正文：标题后附正文摘要', () => {
+    const lines = formatNewsForPrompt([makeNews('利好消息', '公司发布了强劲财报')]);
+    expect(lines[0]).toBe('1. 利好消息\n   公司发布了强劲财报');
+  });
+
+  test('无正文（空字符串）：仅标题', () => {
+    const lines = formatNewsForPrompt([makeNews('仅标题新闻', '')]);
+    expect(lines[0]).toBe('1. 仅标题新闻');
+  });
+
+  test('正文超长按 bodyChars 截断', () => {
+    const lines = formatNewsForPrompt([makeNews('长文', 'x'.repeat(500))], 5, 200);
+    // "1. 长文\n   " 前缀 + 200 个 x
+    expect(lines[0].endsWith('x'.repeat(200))).toBe(true);
+    expect(lines[0]).not.toContain('x'.repeat(201));
+  });
+
+  test('超过 maxItems 只取前 N 条并保留序号', () => {
+    const news = Array.from({ length: 8 }, (_, i) => makeNews(`新闻${i}`, ''));
+    const lines = formatNewsForPrompt(news, 5);
+    expect(lines).toHaveLength(5);
+    expect(lines[4]).toBe('5. 新闻4');
+  });
+
+  test('仅空白的正文视为无正文', () => {
+    const lines = formatNewsForPrompt([makeNews('标题', '   \n  ')]);
+    expect(lines[0]).toBe('1. 标题');
   });
 });

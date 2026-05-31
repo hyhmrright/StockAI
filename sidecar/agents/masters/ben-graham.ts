@@ -1,4 +1,4 @@
-import { createMasterAgent } from './factory';
+import { createMasterAgent, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -66,7 +66,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     ] : []),
     '',
     `[近期新闻 (${news.length} 条)]`,
-    ...news.slice(0, 5).map((n, i) => `${i + 1}. ${n.title}`),
+    ...formatNewsForPrompt(news),
   ].filter(Boolean).join('\n');
 
   return facts;

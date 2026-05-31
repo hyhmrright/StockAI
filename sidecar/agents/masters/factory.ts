@@ -1,6 +1,24 @@
 import type { MasterAgent, MasterAnalysisContext, MasterSignal } from '../types';
-import type { MasterMeta, Language } from '../../../shared/types';
+import type { MasterMeta, Language, StockNews } from '../../../shared/types';
 import { logger, toErrorMessage } from '../../utils';
+
+/** deepMode 抓到的正文注入大师 prompt 时的截断长度（防 13 大师 token 膨胀） */
+const NEWS_BODY_MAX_CHARS = 200;
+
+/**
+ * 构建大师 prompt 的新闻段：标题 + 正文摘要。
+ * 深度模式下前几条新闻带完整正文，此处截断注入，让大师吃到正文而非仅标题。
+ */
+export function formatNewsForPrompt(
+  news: StockNews[],
+  maxItems = 5,
+  bodyChars = NEWS_BODY_MAX_CHARS,
+): string[] {
+  return news.slice(0, maxItems).map((n, i) => {
+    const body = n.content?.trim();
+    return body ? `${i + 1}. ${n.title}\n   ${body.slice(0, bodyChars)}` : `${i + 1}. ${n.title}`;
+  });
+}
 
 const LANG_INSTRUCTION: Record<Language, string> = {
   zh: '用中文回复',
