@@ -13,7 +13,7 @@ const DeepAnalysisPanel: React.FC<DeepAnalysisPanelProps> = ({ result }) => {
     <div className="space-y-4">
       <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">深度大师分析</h2>
       <SynthesisSummary synthesis={result.synthesis} totalMasters={result.masterSignals.length} />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
         {result.masterSignals.map(signal => (
           <MasterCard key={signal.masterId} signal={signal} />
         ))}
