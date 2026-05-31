@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { MasterSignal } from '../../../shared/types';
 import { getMasterMeta } from './master-meta';
 import { signalColor, signalLabel } from '../../lib/signal-styles';
@@ -11,9 +12,16 @@ const MasterCard: React.FC<MasterCardProps> = ({ signal }) => {
   const meta = getMasterMeta(signal.masterId);
   const name = meta?.nameZh ?? signal.masterId;
   const style = meta?.styleZh ?? '';
+  // 默认收起为 2 行，点击展开查看完整理由
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-2">
+    <button
+      type="button"
+      aria-expanded={expanded}
+      onClick={() => setExpanded(prev => !prev)}
+      className="w-full text-left p-4 bg-white/5 rounded-xl border border-white/5 space-y-2 hover:bg-white/[0.07] transition-colors"
+    >
       <div className="flex items-center justify-between">
         <div>
           <span className="text-sm font-medium text-white">{name}</span>
@@ -23,8 +31,13 @@ const MasterCard: React.FC<MasterCardProps> = ({ signal }) => {
           {signalLabel(signal.signal)} {signal.confidence}%
         </span>
       </div>
-      <p className="text-xs text-gray-400 line-clamp-2">{signal.reasoning}</p>
-    </div>
+      <div className="flex items-start gap-1.5">
+        <p className={`flex-1 text-xs text-gray-400 ${expanded ? '' : 'line-clamp-2'}`}>{signal.reasoning}</p>
+        {expanded
+          ? <ChevronUp className="w-3 h-3 text-gray-600 shrink-0 mt-0.5" />
+          : <ChevronDown className="w-3 h-3 text-gray-600 shrink-0 mt-0.5" />}
+      </div>
+    </button>
   );
 };
 
