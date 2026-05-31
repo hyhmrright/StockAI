@@ -40,20 +40,28 @@ git tag vx.y.z
 git push origin vx.y.z
 ```
 
-CI（`release.yml`）会自动构建三平台产物并创建 **Draft Release**。
+CI（`release.yml`）会自动构建三平台产物，**并直接发布（publish）为正式 Release**（不是 Draft）。也就是说，tag 一推、CI 一绿，Release 就公开上线、自动更新立即推送给老用户——**没有「人工 review Draft 再发布」这道闸门**，所以打 tag 前务必确认第 3 步 CI 全绿、版本号与 CHANGELOG 都已就绪。
 
 > **自动更新前置条件（首次配置后长期有效）**：仓库 Secrets 须包含 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`（由 `bun tauri signer generate` 生成的 minisign 私钥及密码），且 `tauri.conf.json` 的 `plugins.updater.pubkey` 已填对应公钥。缺失时 CI 仍能出包，但**不会生成 `.sig` 与 `latest.json`**，自动更新失效。
 
 > **已知 flaky：AppImage 上传偶发超时**。Linux 的 `.AppImage`（~100MB）经 tauri-action 上传到 Release 时偶发 `Headers Timeout Error`（**非构建问题**，AppImage 已成功打出，仅上传失败）。处理：`gh run rerun <run-id> --failed` 重跑失败的 Linux job 即可，无需改代码或重打 tag。
 
-## 5. 发布 GitHub Release
+## 5. 覆盖 Release Notes（CI 已自动发布，需事后覆盖）
 
-CI 完成后，进入 GitHub → Releases → 编辑 Draft：
-- **Release title**：`StockAI vx.y.z`
+⚠️ Release 已由 CI **自动发布**，默认带的是 GitHub 自动生成的简略说明（commit 列表，~100 字符）。必须事后用双语 notes 覆盖：
+
+```bash
+# 先把下方双语模板写入临时文件，再覆盖（不会动产物，只改正文）
+gh release edit vx.y.z --notes-file /tmp/stockai-vx.y.z-notes.md
+```
+
+覆盖后核对：
+- **Release title**：`StockAI vx.y.z`（CI 默认就是 tag 名，如需调整 `--title`）
 - **Release notes**：使用下方双语模板，**中英文各一份，内容对等**，不得省略任一语言
 - 确认产物（`.dmg` / `.deb` / `.AppImage` / `.msi`）已全部上传
 - **确认 `latest.json` 已上传**（自动更新清单，更新器据此比对版本；缺失则老用户收不到更新）
-- 点击 **Publish release**
+
+> 校验产物与正文长度：`gh release view vx.y.z --json assets,body -q '.assets|length, (.body|length)'`
 
 ### Release Notes 双语模板
 
@@ -78,8 +86,8 @@ Release Notes 分两块书写，中文在前、英文在后，中间用 `---` �
 
 ### 📦 安装 / Installation
 
-**macOS**
-1. 下载 `StockAI_x.y.z_aarch64.dmg`（Apple Silicon）或 `StockAI_x.y.z_x64.dmg`（Intel）
+**macOS**（当前构建矩阵仅出 Apple Silicon，无 Intel x64 dmg）
+1. 下载 `StockAI_x.y.z_aarch64.dmg`（Apple Silicon）
 2. 打开 DMG，将 StockAI 拖入 Applications
 3. 首次启动若提示「无法验证开发者」：系统设置 → 隐私与安全性 → 仍要打开
 
@@ -117,8 +125,8 @@ Release Notes 分两块书写，中文在前、英文在后，中间用 `---` �
 
 ### 📦 Installation
 
-**macOS**
-1. Download `StockAI_x.y.z_aarch64.dmg` (Apple Silicon) or `StockAI_x.y.z_x64.dmg` (Intel)
+**macOS** (current build matrix ships Apple Silicon only — no Intel x64 dmg)
+1. Download `StockAI_x.y.z_aarch64.dmg` (Apple Silicon)
 2. Open the DMG and drag StockAI into Applications
 3. If macOS says "cannot verify developer": System Settings → Privacy & Security → Open Anyway
 
