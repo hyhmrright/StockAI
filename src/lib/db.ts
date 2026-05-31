@@ -5,6 +5,7 @@ import type {
   AnalysisRecord,
   SaveAnalysisParams,
   HistoryQuery,
+  MasterSignal,
 } from "../../shared/types";
 
 let dbPromise: Promise<Database> | null = null;
@@ -99,6 +100,24 @@ export async function getAnalysisDetail(id: number): Promise<AnalysisRecord | nu
   if (rows.length === 0) return null;
   const r = rows[0];
   return { ...rowToSummary(r), newsJson: r.news_json ?? null };
+}
+
+/**
+ * 落账一次深度分析的各大师 signal（虚拟大师组合前向跟踪的数据基础）。
+ * priceAt 可空——缺失时后续命中率/净值统计可用 recorded_at + symbol 回查历史 K 线补价。
+ */
+export async function saveMasterSignals(symbol: string, signals: MasterSignal[], priceAt?: number): Promise<void> {
+  if (!isTauri() || signals.length === 0) return;
+
+  const db = await getDb();
+  const recordedAt = Date.now();
+  for (const s of signals) {
+    await db.execute(
+      `INSERT INTO master_signals (master_id, symbol, signal, confidence, price_at, recorded_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [s.masterId, symbol, s.signal, s.confidence, priceAt ?? null, recordedAt],
+    );
+  }
 }
 
 export async function deleteAnalysisRecords(ids: number[]): Promise<number> {

@@ -555,6 +555,12 @@ pub fn run() {
             sql: include_str!("../migrations/002_drop_type_check.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "create master_signals table for virtual master portfolio",
+            sql: include_str!("../migrations/003_create_master_signals.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default();

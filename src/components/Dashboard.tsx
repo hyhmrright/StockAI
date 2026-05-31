@@ -9,7 +9,7 @@ import { useDeepAnalysis } from '../hooks/useDeepAnalysis';
 import { useChat } from '../hooks/useChat';
 import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
-import { saveAnalysisRecord } from '../lib/db';
+import { saveAnalysisRecord, saveMasterSignals } from '../lib/db';
 import { useLanguage } from '../hooks/useLanguage';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
@@ -88,6 +88,9 @@ const Dashboard: React.FC = () => {
       symbol: currentSymbol, analysisType: 'deep',
       resultJson: JSON.stringify(deepAnalysis), stockInfoJson: infoJson, newsJson: newsJsonStr,
     }).catch(e => console.error("保存深度分析历史失败:", e));
+    // 落账各大师 signal，供虚拟大师组合前向跟踪（命中率/净值后续统计用）
+    saveMasterSignals(currentSymbol, deepAnalysis.masterSignals)
+      .catch(e => console.error("保存大师 signal 失败:", e));
   }, [deepAnalysis, currentSymbol, infoJson, newsJsonStr]);
 
   useEffect(() => {
