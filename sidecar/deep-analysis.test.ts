@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { runDeepAnalysis } from './deep-analysis';
+import { runDeepAnalysis, concurrencyForProvider } from './deep-analysis';
 import { createMockQuantBundle, createMockNews } from '../shared/test-utils';
 import type { ChatProvider } from './agents/types';
 
@@ -60,5 +60,41 @@ describe('runDeepAnalysis', () => {
     // 综合研判仍然产出有效结构
     expect(['bullish', 'bearish', 'neutral']).toContain(result.synthesis.signal);
     expect(result.synthesis.summary).toBeTruthy();
+  });
+
+  test('concurrency 限制大师并发峰值', async () => {
+    let active = 0;
+    let peak = 0;
+    const trackingChat: ChatProvider = {
+      chat: async () => {
+        active++;
+        peak = Math.max(peak, active);
+        await new Promise(r => setTimeout(r, 5));
+        active--;
+        return JSON.stringify({
+          signal: 'neutral', confidence: 50, reasoning: 'x',
+          items: [], overall: 'neutral', summary: 's', consensus: 50,
+        });
+      },
+    };
+    // 6 位大师 + 情绪分析共用 chat；concurrency=2 时峰值不应超过 2(大师) + 1(情绪并行)
+    await runDeepAnalysis({
+      symbol: 'AAPL', quant: mockQuant, news: mockNews, chat: trackingChat,
+      selectedMasters: ['warren-buffett', 'ben-graham', 'charlie-munger', 'michael-burry', 'cathie-wood', 'peter-lynch'],
+      concurrency: 2,
+    });
+    expect(peak).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('concurrencyForProvider', () => {
+  test('ollama 走低并发（本地单机防排队/OOM）', () => {
+    expect(concurrencyForProvider('ollama')).toBe(2);
+  });
+
+  test('云端 provider 走高并发', () => {
+    for (const p of ['openai', 'anthropic', 'deepseek', 'glm']) {
+      expect(concurrencyForProvider(p)).toBe(8);
+    }
   });
 });

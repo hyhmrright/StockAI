@@ -260,7 +260,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
           quant = await fetchQuantBundle(symbol);
         }
         const { createChatProvider } = await import('./agents/chat-adapter');
-        const { runDeepAnalysis } = await import('./deep-analysis');
+        const { runDeepAnalysis, concurrencyForProvider } = await import('./deep-analysis');
         const chat = createChatProvider({
           provider: config.provider,
           apiKey: config.apiKey,
@@ -274,6 +274,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
           chat,
           selectedMasters: config.selectedMasters,
           language: config.language,
+          concurrency: concurrencyForProvider(config.provider),
         });
         out(successEnvelope(result));
       } catch (error) {

@@ -30,13 +30,16 @@ const Dashboard: React.FC = () => {
   const { step, stockInfo, news, error: dataError } = useStockData(currentSymbol);
   const { record, analyzing, error: aiError, analyze } = useAIAnalysis(currentSymbol);
   const { step: quantStep, quant, error: quantError } = useQuantData(currentSymbol);
-  const { result: deepAnalysis, analyzing: deepAnalyzing, error: deepError, analyze: analyzeDeep } = useDeepAnalysis(currentSymbol);
   const { settings } = useSettings();
   const { t } = useLanguage();
 
   const providerProfile = PROVIDER_PROFILES[settings.activeProvider];
   const providerLabel = settings.activeProvider;
   const modelLabel = settings.providerConfigs[settings.activeProvider]?.model ?? providerProfile.model;
+
+  // 深度分析缓存指纹：provider/model/大师/语言任一变化即失效，避免显示陈旧结果
+  const deepFingerprint = `${settings.activeProvider}:${modelLabel}:${settings.selectedMasters.join(',')}:${settings.language}`;
+  const { result: deepAnalysis, analyzing: deepAnalyzing, error: deepError, analyze: analyzeDeep } = useDeepAnalysis(currentSymbol, deepFingerprint);
 
   // 自动模式：新闻 + 量化数据均就绪后触发一次 LLM
   useEffect(() => {

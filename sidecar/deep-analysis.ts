@@ -5,7 +5,12 @@ import { analyzeSentiment } from './agents/sentiment';
 import { synthesize } from './agents/synthesizer';
 import { logger } from './utils';
 
-const MAX_CONCURRENCY = 4;
+const DEFAULT_CONCURRENCY = 4;
+
+/** 大师分析的 LLM 并发上限：本地 Ollama 单机高并发会排队/OOM，云端 provider 可高并发 */
+export function concurrencyForProvider(provider: string): number {
+  return provider === 'ollama' ? 2 : 8;
+}
 
 async function runWithConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
   const results: T[] = new Array(tasks.length);
@@ -27,10 +32,12 @@ export interface DeepAnalysisOptions {
   chat: ChatProvider;
   selectedMasters?: string[];
   language?: Language;
+  /** 大师 LLM 并发上限；不传时用默认值。由 provider 决定，见 concurrencyForProvider */
+  concurrency?: number;
 }
 
 export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAnalysisResult> {
-  const { symbol, quant, news, chat, selectedMasters = DEFAULT_MASTER_IDS, language } = opts;
+  const { symbol, quant, news, chat, selectedMasters = DEFAULT_MASTER_IDS, language, concurrency = DEFAULT_CONCURRENCY } = opts;
 
   let masters = getSelectedMasters(selectedMasters);
   if (masters.length === 0) {
@@ -42,7 +49,7 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
 
   const masterTasks = masters.map((m: MasterAgent) => () => m.analyze(ctx));
   const [masterResults, sentimentResult] = await Promise.all([
-    runWithConcurrency<MasterSignal>(masterTasks, MAX_CONCURRENCY),
+    runWithConcurrency<MasterSignal>(masterTasks, concurrency),
     analyzeSentiment(news, chat, language),
   ]);
 
