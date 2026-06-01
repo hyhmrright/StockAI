@@ -75,3 +75,16 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 完整发版流程（含双语 Release Notes 模板）见 `.claude/rules/release-checklist.md`（发版时 Read 该文件）。
 
 版本号需同步 3 个文件：`src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml` / `package.json`，一键同步：`bun run bump-version <x.y.z> --write`。
+
+## 하네스：StockAI 开发编排
+
+**目标：** 把「审查 / 跨三层功能开发 / 发布」三类反复工作流交给专家 Agent 团队编排执行。
+
+**触发：** 代码改完要审查、跨层加新功能、发版出新版本，以及对这些结果的后续修改/重跑/补充时，使用 `stockai-orchestrator` 技能（它分诊到审查/功能/发布团队）。单点问题或单文件小改可直接处理，无需起团队。加 provider/大师/策略仍走对应生成技能（`/add-provider`、`/new-master-agent`、`/new-strategy`），发版双语 notes 走 `/release-notes`。
+
+**Agent**（`.claude/agents/`）：审查团队 = api-key-security-reviewer · i18n-consistency-reviewer · layer-boundary-reviewer · code-quality-reviewer；功能团队 = feature-architect · backend-engineer · frontend-engineer · integration-qa；发布 = release-manager。
+
+**变更历史：**
+| 日期 | 变更内容 | 对象 | 事由 |
+|------|----------|------|------|
+| 2026-06-01 | 初始构建（综合：审查 + 功能开发 + 发布团队 + 总编排分诊） | 全体 | 复用既有 2 审查员 + 4 生成技能，补齐编排层 |
