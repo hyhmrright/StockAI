@@ -1,10 +1,29 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect, afterAll } from 'bun:test';
+import * as fs from 'fs';
+import * as path from 'path';
+import { tmpdir } from 'os';
 import { runDeepAnalysis, concurrencyForProvider } from './deep-analysis';
 import { createMockQuantBundle, createMockNews } from '../shared/test-utils';
 import type { ChatProvider } from './agents/types';
 
 const mockQuant = createMockQuantBundle();
 const mockNews = [createMockNews({ title: 'Good news', source: 'Reuters' })];
+
+/** 计数型 chat 桩：记录 LLM 被调用次数，用于验证缓存命中时是否跳过调用 */
+function countingChat(): { provider: ChatProvider; calls: () => number } {
+  let calls = 0;
+  const provider: ChatProvider = {
+    chat: async () => {
+      calls++;
+      return JSON.stringify({
+        signal: 'bullish', confidence: 70, reasoning: 'x',
+        items: [{ index: 1, sentiment: 'positive' }], overall: 'positive',
+        summary: 's', consensus: 80,
+      });
+    },
+  };
+  return { provider, calls: () => calls };
+}
 
 // 返回所有角色都能消费的通用 JSON
 function happyChat(): ChatProvider {
@@ -84,6 +103,39 @@ describe('runDeepAnalysis', () => {
       concurrency: 2,
     });
     expect(peak).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('runDeepAnalysis 结果缓存', () => {
+  const dir = fs.mkdtempSync(path.join(tmpdir(), 'stockai-da-cache-'));
+  afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  test('相同输入二次调用命中缓存，跳过全部大师/情绪/综合 LLM 调用', async () => {
+    const c = countingChat();
+    const opts = {
+      symbol: 'AAPL', quant: mockQuant, news: mockNews, chat: c.provider,
+      selectedMasters: ['warren-buffett', 'ben-graham'],
+      cacheFingerprint: 'openai:gpt-4o', cache: { dir },
+    };
+    const first = await runDeepAnalysis(opts);
+    const afterFirst = c.calls();
+    expect(afterFirst).toBeGreaterThan(0);
+
+    const second = await runDeepAnalysis(opts);
+    expect(c.calls()).toBe(afterFirst); // 第二次零新增 LLM 调用
+    expect(second).toEqual(first); // 命中结果与首次一致
+  });
+
+  test('不传 cacheFingerprint 时禁用缓存（每次都重跑）', async () => {
+    const c = countingChat();
+    const opts = {
+      symbol: 'TSLA', quant: mockQuant, news: mockNews, chat: c.provider,
+      selectedMasters: ['warren-buffett'], cache: { dir },
+    };
+    await runDeepAnalysis(opts);
+    const afterFirst = c.calls();
+    await runDeepAnalysis(opts);
+    expect(c.calls()).toBeGreaterThan(afterFirst); // 无指纹 → 第二次仍调用 LLM
   });
 });
 

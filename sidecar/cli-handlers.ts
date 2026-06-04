@@ -275,6 +275,8 @@ export function createHandlers(deps: HandlerDeps = {}) {
           selectedMasters: config.selectedMasters,
           language: config.language,
           concurrency: concurrencyForProvider(config.provider),
+          // 缓存指纹含 provider+model：换模型即 miss，避免不同模型复用同一结果
+          cacheFingerprint: `${config.provider}:${config.modelName}`,
         });
         out(successEnvelope(result));
       } catch (error) {
