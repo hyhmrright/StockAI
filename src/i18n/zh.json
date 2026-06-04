@@ -71,6 +71,7 @@
   "composite_signal": "综合信号",
   "valuation_dimension": "估值",
   "risk_modulation": "风险调制",
+  "master_consensus": "大师共识分布",
   "bullish_pct": "看涨 {n}%",
   "bearish_pct": "看跌 {n}%",
   "volatility_percentile": "波动率百分位",

@@ -71,6 +71,7 @@
   "composite_signal": "総合シグナル",
   "valuation_dimension": "バリュエーション",
   "risk_modulation": "リスク調整",
+  "master_consensus": "マスター総意の分布",
   "bullish_pct": "強気 {n}%",
   "bearish_pct": "弱気 {n}%",
   "volatility_percentile": "ボラティリティ百分位",

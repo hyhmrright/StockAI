@@ -71,6 +71,7 @@
   "composite_signal": "Composite Signal",
   "valuation_dimension": "Valuation",
   "risk_modulation": "Risk Adj.",
+  "master_consensus": "Master Consensus",
   "bullish_pct": "Bullish {n}%",
   "bearish_pct": "Bearish {n}%",
   "volatility_percentile": "Volatility Percentile",
