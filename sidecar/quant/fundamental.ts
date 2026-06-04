@@ -1,4 +1,5 @@
 import type { FinancialMetrics, FundamentalResult, SubSignal } from './types';
+import type { CheckItem } from '../../shared/types';
 import { logger, toErrorMessage } from '../utils';
 
 export function parseEastmoneyFinancials(json: { data?: Record<string, number>[] }): FinancialMetrics {
@@ -155,20 +156,34 @@ async function fetchYahooFundamentals(symbol: string): Promise<FinancialMetrics>
   return parseYahooFinancials(json);
 }
 
-/** 判定单个指标的得分（1 = 优, 0 = 中, -1 = 差）；值为 null/undefined 则跳过 */
-type MetricGrader = { value: number | undefined; grade: (v: number) => number; key: string; decimals?: number };
+/**
+ * 判定单个指标的得分（1 = 优, 0 = 中, -1 = 差）；值为 null/undefined 则跳过。
+ * threshold/comparator 用于可下钻展示「实际值 vs 通过阈值」。
+ */
+type MetricGrader = {
+  value: number | undefined;
+  grade: (v: number) => number;
+  key: string;
+  threshold: number;
+  comparator: 'gte' | 'lte';
+  decimals?: number;
+};
 
-/** 将指标打分结果归一化为 SubSignal（共用逻辑） */
+/** 将指标打分结果归一化为 SubSignal（共用逻辑），同时产出可下钻的逐项检查 */
 function scoreDimension(name: string, graders: MetricGrader[]): SubSignal {
   let score = 0;
   let counted = 0;
   const details: Record<string, number> = {};
+  const checkItems: CheckItem[] = [];
 
-  for (const { value, grade, key, decimals } of graders) {
+  for (const { value, grade, key, decimals, threshold, comparator } of graders) {
     if (value == null) continue;
     counted++;
-    score += grade(value);
-    details[key] = Number(value.toFixed(decimals ?? 1));
+    const g = grade(value);
+    score += g;
+    const actual = Number(value.toFixed(decimals ?? 1));
+    details[key] = actual;
+    checkItems.push({ key, actual, threshold, comparator, passed: g > 0 ? true : g < 0 ? false : null });
   }
 
   const normalized = counted > 0 ? (score / counted) * 60 : 0;
@@ -176,35 +191,35 @@ function scoreDimension(name: string, graders: MetricGrader[]): SubSignal {
   if (normalized > 20) signal = 'bullish';
   else if (normalized < -20) signal = 'bearish';
   else signal = 'neutral';
-  return { name, signal, score: Math.round(normalized), weight: 0.25, details };
+  return { name, signal, score: Math.round(normalized), weight: 0.25, details, checkItems };
 }
 
 function scoreProfitability(m: FinancialMetrics): SubSignal {
   return scoreDimension('profitability', [
-    { value: m.roe, grade: v => v > 15 ? 1 : v > 8 ? 0 : -1, key: 'roe' },
-    { value: m.netMargin, grade: v => v > 10 ? 1 : v > 5 ? 0 : -1, key: 'net_margin' },
-    { value: m.grossMargin, grade: v => v > 30 ? 1 : v > 15 ? 0 : -1, key: 'gross_margin' },
+    { value: m.roe, grade: v => v > 15 ? 1 : v > 8 ? 0 : -1, key: 'roe', threshold: 15, comparator: 'gte' },
+    { value: m.netMargin, grade: v => v > 10 ? 1 : v > 5 ? 0 : -1, key: 'net_margin', threshold: 10, comparator: 'gte' },
+    { value: m.grossMargin, grade: v => v > 30 ? 1 : v > 15 ? 0 : -1, key: 'gross_margin', threshold: 30, comparator: 'gte' },
   ]);
 }
 
 function scoreGrowth(m: FinancialMetrics): SubSignal {
   return scoreDimension('growth', [
-    { value: m.revenueGrowth, grade: v => v > 10 ? 1 : v > 0 ? 0 : -1, key: 'revenue_growth' },
-    { value: m.netIncomeGrowth, grade: v => v > 10 ? 1 : v > 0 ? 0 : -1, key: 'net_income_growth' },
+    { value: m.revenueGrowth, grade: v => v > 10 ? 1 : v > 0 ? 0 : -1, key: 'revenue_growth', threshold: 10, comparator: 'gte' },
+    { value: m.netIncomeGrowth, grade: v => v > 10 ? 1 : v > 0 ? 0 : -1, key: 'net_income_growth', threshold: 10, comparator: 'gte' },
   ]);
 }
 
 function scoreFinancialHealth(m: FinancialMetrics): SubSignal {
   return scoreDimension('financial_health', [
-    { value: m.debtToAsset, grade: v => v < 60 ? 1 : v < 75 ? 0 : -1, key: 'debt_to_asset' },
-    { value: m.currentRatio, grade: v => v > 1.5 ? 1 : v > 1 ? 0 : -1, key: 'current_ratio', decimals: 2 },
+    { value: m.debtToAsset, grade: v => v < 60 ? 1 : v < 75 ? 0 : -1, key: 'debt_to_asset', threshold: 60, comparator: 'lte' },
+    { value: m.currentRatio, grade: v => v > 1.5 ? 1 : v > 1 ? 0 : -1, key: 'current_ratio', threshold: 1.5, comparator: 'gte', decimals: 2 },
   ]);
 }
 
 function scoreValuation(m: FinancialMetrics): SubSignal {
   return scoreDimension('valuation', [
-    { value: m.pe, grade: v => v < 25 ? 1 : v < 40 ? 0 : -1, key: 'pe' },
-    { value: m.pb, grade: v => v < 3 ? 1 : v < 5 ? 0 : -1, key: 'pb', decimals: 2 },
+    { value: m.pe, grade: v => v < 25 ? 1 : v < 40 ? 0 : -1, key: 'pe', threshold: 25, comparator: 'lte' },
+    { value: m.pb, grade: v => v < 3 ? 1 : v < 5 ? 0 : -1, key: 'pb', threshold: 3, comparator: 'lte', decimals: 2 },
   ]);
 }
 
@@ -239,6 +254,8 @@ export function scoreFundamentals(metrics: FinancialMetrics): FundamentalResult 
       signal,
       confidence: Math.round(confidence),
       details: Object.fromEntries(dimensions.map(d => [d.name, `${d.signal} (${d.score})`])),
+      // 汇总四维全部逐项检查，供前端下钻展示「凭哪几条判 bullish」
+      checks: dimensions.flatMap(d => d.checkItems ?? []),
     },
   };
 }

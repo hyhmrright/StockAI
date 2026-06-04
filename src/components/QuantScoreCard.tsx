@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Check, X, Loader2 } from 'lucide-react';
 import type { QuantBundle, AnalystSignal } from '../../shared/types';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -38,12 +38,30 @@ function SignalCard({ title, signal, expanded, onToggle, label, color, bg, Icon 
       <div className="text-xs text-gray-500 mt-1">{signal.confidence}/100</div>
       {expanded && (
         <div className="mt-2 pt-2 border-t border-white/5 space-y-1">
-          {Object.entries(signal.details).map(([k, v]) => (
-            <div key={k} className="text-[10px] text-gray-500 flex justify-between">
-              <span>{k}</span>
-              <span className="text-gray-300">{String(v)}</span>
-            </div>
-          ))}
+          {signal.checks?.length ? (
+            // 可下钻逐项检查：实际值 vs 通过阈值 + 通过/未通过/中性图标
+            signal.checks.map(c => (
+              <div key={c.key} className="text-[10px] flex items-center justify-between gap-1">
+                <span className="text-gray-400">{c.key}</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-gray-300">{c.actual}</span>
+                  <span className="text-gray-600">{c.comparator === 'gte' ? '≥' : '≤'} {c.threshold}</span>
+                  {c.passed === true
+                    ? <Check className="w-3 h-3 text-emerald-400" />
+                    : c.passed === false
+                      ? <X className="w-3 h-3 text-rose-400" />
+                      : <Minus className="w-3 h-3 text-amber-400" />}
+                </span>
+              </div>
+            ))
+          ) : (
+            Object.entries(signal.details).map(([k, v]) => (
+              <div key={k} className="text-[10px] text-gray-500 flex justify-between">
+                <span>{k}</span>
+                <span className="text-gray-300">{String(v)}</span>
+              </div>
+            ))
+          )}
         </div>
       )}
       <div className="mt-1 flex justify-center">

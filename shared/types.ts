@@ -206,10 +206,26 @@ export interface RealtimeQuote {
 }
 
 /** 单维度分析信号 */
+/** 可下钻的单项检查：让评分从黑箱变成「凭哪几条判 bullish」 */
+export interface CheckItem {
+  /** 指标 key，前端据此映射 i18n 标签（如 roe / net_margin / pe） */
+  key: string;
+  /** 实际值 */
+  actual: number;
+  /** 通过阈值 */
+  threshold: number;
+  /** actual 与 threshold 的比较方向：gte=越高越好，lte=越低越好 */
+  comparator: 'gte' | 'lte';
+  /** true=通过 / false=未通过 / null=中性（介于优劣阈值之间） */
+  passed: boolean | null;
+}
+
 export interface AnalystSignal {
   signal: 'bullish' | 'bearish' | 'neutral';
   confidence: number;
   details: Record<string, number | string>;
+  /** 可下钻的逐项检查（目前基本面四维提供；技术面为空） */
+  checks?: CheckItem[];
 }
 
 /** 估值快照 */

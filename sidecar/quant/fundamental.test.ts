@@ -203,3 +203,21 @@ describe('fetchFundamentals', () => {
     expect(result).toEqual({});
   });
 });
+
+describe('scoreFundamentals 可下钻 checks', () => {
+  test('逐项检查的 pass/fail 与阈值方向一致', () => {
+    const checks = scoreFundamentals({ roe: 18, netMargin: 3, debtToAsset: 50, pe: 12 }).composite.checks ?? [];
+    expect(checks.find(c => c.key === 'roe')).toMatchObject({ actual: 18, threshold: 15, comparator: 'gte', passed: true });
+    // netMargin 3 < 5 → 未通过
+    expect(checks.find(c => c.key === 'net_margin')).toMatchObject({ comparator: 'gte', passed: false });
+    // debt 50 < 60 → 通过（越低越好）
+    expect(checks.find(c => c.key === 'debt_to_asset')).toMatchObject({ threshold: 60, comparator: 'lte', passed: true });
+    // pe 12 < 25 → 通过（越低越好）
+    expect(checks.find(c => c.key === 'pe')).toMatchObject({ threshold: 25, comparator: 'lte', passed: true });
+  });
+
+  test('缺失指标不产生 check', () => {
+    const checks = scoreFundamentals({ roe: 20 }).composite.checks ?? [];
+    expect(checks.map(c => c.key)).toEqual(['roe']);
+  });
+});

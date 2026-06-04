@@ -1,4 +1,4 @@
-import type { AnalystSignal } from '../../shared/types';
+import type { AnalystSignal, CheckItem } from '../../shared/types';
 
 export type Signal = 'bullish' | 'bearish' | 'neutral';
 
@@ -8,6 +8,8 @@ export interface SubSignal {
   score: number;
   weight: number;
   details: Record<string, number | string>;
+  /** 可下钻的逐项检查（基本面各维提供） */
+  checkItems?: CheckItem[];
 }
 
 export interface TechnicalResult {
