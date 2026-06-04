@@ -1,6 +1,7 @@
 import React from 'react';
 import type { RiskSnapshot } from '../../shared/types';
 import { useLanguage } from '../hooks/useLanguage';
+import { computePositionGuidance } from '../lib/positionSizing';
 
 interface RiskCardProps {
   risk?: RiskSnapshot;
@@ -30,6 +31,8 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
   if (!risk) return null;
 
   const { label, className } = riskStyle(risk.riskLevel);
+  // 由波动率派生建议仓位上限（纯计算，缺数据时为 null 不渲染该行）
+  const guidance = computePositionGuidance(risk);
 
   return (
     <div className="mb-6">
@@ -53,6 +56,15 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
             <div className="text-sm text-white">{Number.isFinite(risk.sharpeProxy) ? risk.sharpeProxy.toFixed(2) : 'N/A'}</div>
           </div>
         </div>
+        {guidance && (
+          <div className="pt-2 mt-1 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">{t('suggested_position_cap')}</span>
+              <span className="text-sm font-bold text-sky-400">{guidance.maxPositionPct}%</span>
+            </div>
+            <p className="text-[10px] leading-tight text-gray-600 mt-1">{t('position_cap_basis')}</p>
+          </div>
+        )}
       </div>
     </div>
   );

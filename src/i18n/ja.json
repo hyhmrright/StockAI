@@ -75,6 +75,8 @@
   "annualized_volatility": "年率ボラティリティ",
   "max_drawdown": "最大ドローダウン",
   "sharpe_ratio": "シャープレシオ",
+  "suggested_position_cap": "推奨ポジション上限",
+  "position_cap_basis": "ボラティリティに基づく単一銘柄ポジション上限の参考値であり、投資助言ではありません",
   "margin_of_safety": "安全余裕率",
   "intrinsic_value": "内在価値",
   "market_cap": "時価総額",

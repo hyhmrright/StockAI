@@ -235,6 +235,16 @@ export interface RiskSnapshot {
   riskLevel: 'low' | 'medium' | 'high';
 }
 
+/** 仓位建议（由风险快照按波动率目标法派生，仅风险参考，非投资建议） */
+export interface PositionGuidance {
+  /** 建议单股仓位上限，整数百分比 0-100 */
+  maxPositionPct: number;
+  /** 风险档位，复用 RiskSnapshot.riskLevel 口径 */
+  riskLevel: 'low' | 'medium' | 'high';
+  /** 年化波动率（复用自 RiskSnapshot，便于前端展示口径一致） */
+  annualizedVolatility: number;
+}
+
 /** 量化分析数据包（技术面 + 基本面，不含情绪——情绪由 LLM 综合研判） */
 export interface QuantBundle {
   symbol: string;

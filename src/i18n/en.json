@@ -75,6 +75,8 @@
   "annualized_volatility": "Ann. Volatility",
   "max_drawdown": "Max Drawdown",
   "sharpe_ratio": "Sharpe Ratio",
+  "suggested_position_cap": "Suggested Position Cap",
+  "position_cap_basis": "Volatility-based single-stock position cap for reference only — not investment advice",
   "margin_of_safety": "Margin of Safety",
   "intrinsic_value": "Intrinsic Value",
   "market_cap": "Market Cap",
