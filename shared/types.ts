@@ -285,6 +285,24 @@ export interface CompositeBreakdown {
   riskPull?: number;
 }
 
+/** 个股资金流向（东财，最新一日，主力/超大/大/中/小单净流入，单位元；A 股专属，美股为空） */
+export interface FundFlowData {
+  /** 数据日期（YYYY-MM-DD，东财数据延迟约一日） */
+  date: string;
+  /** 主力净流入（元，正流入负流出） */
+  mainNet: number;
+  /** 超大单净流入（元） */
+  superLargeNet: number;
+  /** 大单净流入（元） */
+  largeNet: number;
+  /** 中单净流入（元） */
+  mediumNet: number;
+  /** 小单净流入（元） */
+  smallNet: number;
+  /** 主力净流入占成交额比例（%） */
+  mainNetPct: number;
+}
+
 /** 量化分析数据包（技术面 + 基本面 + 估值 + 风险，不含情绪——情绪由 LLM 综合研判） */
 export interface QuantBundle {
   symbol: string;
@@ -299,6 +317,8 @@ export interface QuantBundle {
   fetchedAt: number;
   valuation?: ValuationSnapshot;
   risk?: RiskSnapshot;
+  /** 资金流向（仅 A 股） */
+  fundFlow?: FundFlowData;
 }
 
 /** 投资大师元信息 */

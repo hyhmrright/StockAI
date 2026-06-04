@@ -6,6 +6,7 @@ import AnalysisTriggerCard from './AnalysisTriggerCard';
 import QuantScoreCard from './QuantScoreCard';
 import ValuationCard from './ValuationCard';
 import RiskCard from './RiskCard';
+import FundFlowCard from './FundFlowCard';
 import DeepAnalysisPanel from './DeepAnalysis/DeepAnalysisPanel';
 import BacktestPanel from './Backtest/BacktestPanel';
 import MasterPortfolioPanel from './MasterPortfolio/MasterPortfolioPanel';
@@ -66,6 +67,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       <ValuationCard valuation={quant?.valuation} loading={quantLoading} />
 
       <RiskCard risk={quant?.risk} loading={quantLoading} />
+
+      <FundFlowCard fundFlow={quant?.fundFlow} />
 
       {stockInfo && <BacktestPanel symbol={stockInfo.code} />}
 

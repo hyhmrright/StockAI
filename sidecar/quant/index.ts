@@ -6,6 +6,7 @@ import { fetchFundamentals, scoreFundamentals } from './fundamental';
 import { computeComposite } from './scoring';
 import { computeValuation } from './valuation';
 import { computeRiskMetrics } from './volatility';
+import { fetchFundFlow } from './fundflow';
 import { detectMarket } from '../../shared/market';
 import { logger, toErrorMessage } from '../utils';
 
@@ -13,6 +14,7 @@ export interface QuantDeps {
   getKline?: typeof getKline;
   getQuote?: typeof getQuote;
   fetchFundamentals?: typeof fetchFundamentals;
+  fetchFundFlow?: typeof fetchFundFlow;
 }
 
 export async function fetchQuantBundle(
@@ -22,17 +24,21 @@ export async function fetchQuantBundle(
   const _getKline = deps.getKline ?? getKline;
   const _getQuote = deps.getQuote ?? getQuote;
   const _fetchFundamentals = deps.fetchFundamentals ?? fetchFundamentals;
+  const _fetchFundFlow = deps.fetchFundFlow ?? fetchFundFlow;
 
   const market = detectMarket(symbol);
 
-  const [klineResult, quoteResult, fundamentalsResult] = await Promise.allSettled([
+  const [klineResult, quoteResult, fundamentalsResult, fundFlowResult] = await Promise.allSettled([
     _getKline({ symbol, period: '1d', range: '1y' }),
     _getQuote(symbol),
     _fetchFundamentals(symbol, market),
+    // 资金流仅 A 股有数据源，美股直接给 null（不发请求）
+    market === 'A股' ? _fetchFundFlow(symbol) : Promise.resolve(null),
   ]);
 
   const kline = klineResult.status === 'fulfilled' ? klineResult.value : [];
   const quote = quoteResult.status === 'fulfilled' ? quoteResult.value : null;
+  const fundFlow = fundFlowResult.status === 'fulfilled' ? fundFlowResult.value : null;
 
   const fundamentalsRaw: FinancialMetrics = {
     ...(fundamentalsResult.status === 'fulfilled' ? fundamentalsResult.value : {}),
@@ -63,5 +69,6 @@ export async function fetchQuantBundle(
     fetchedAt: Date.now(),
     valuation: valuationResult ?? undefined,
     risk: riskResult ?? undefined,
+    fundFlow: fundFlow ?? undefined,
   };
 }
