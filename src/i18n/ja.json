@@ -69,6 +69,8 @@
   "system_settings": "システム設定",
   "quant_calculating": "クオンツ指標計算中…",
   "composite_signal": "総合シグナル",
+  "valuation_dimension": "バリュエーション",
+  "risk_modulation": "リスク調整",
   "bullish_pct": "強気 {n}%",
   "bearish_pct": "弱気 {n}%",
   "volatility_percentile": "ボラティリティ百分位",

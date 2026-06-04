@@ -245,7 +245,19 @@ export interface PositionGuidance {
   annualizedVolatility: number;
 }
 
-/** 量化分析数据包（技术面 + 基本面，不含情绪——情绪由 LLM 综合研判） */
+/** 复合分维度分解（透明暴露各维贡献，仅当 valuation 或 risk 参与运算时存在） */
+export interface CompositeBreakdown {
+  /** 技术面映射分（0-100） */
+  technical: number;
+  /** 基本面映射分（0-100） */
+  fundamental: number;
+  /** 估值映射分（低估上偏 / 高估下偏，按估值置信度缩放）；缺估值数据时为空 */
+  valuation?: number;
+  /** 风险调制系数（high=0.85，其余=1）；<1 表示高波动把分数向中性 50 收敛 */
+  riskPull?: number;
+}
+
+/** 量化分析数据包（技术面 + 基本面 + 估值 + 风险，不含情绪——情绪由 LLM 综合研判） */
 export interface QuantBundle {
   symbol: string;
   technical: AnalystSignal;
@@ -253,6 +265,8 @@ export interface QuantBundle {
   composite: {
     signal: 'bullish' | 'bearish' | 'neutral';
     score: number;
+    /** 四维分解：缺 valuation 且缺 risk 时为空（复合分退化为技术+基本面两维，与历史口径一致） */
+    breakdown?: CompositeBreakdown;
   };
   fetchedAt: number;
   valuation?: ValuationSnapshot;

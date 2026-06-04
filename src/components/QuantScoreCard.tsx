@@ -113,6 +113,18 @@ const QuantScoreCard: React.FC<QuantScoreCardProps> = ({ quant, loading, error }
       <div className={`p-2 rounded-lg text-center text-xs font-medium ${compositeStyle.bg} ${compositeStyle.color}`}>
         {t('composite_signal')}：{compositeStyle.label} {quant.composite.score}/100
       </div>
+      {quant.composite.breakdown && (
+        <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-gray-500">
+          <span>{t('technical')} {quant.composite.breakdown.technical}</span>
+          <span>{t('fundamental')} {quant.composite.breakdown.fundamental}</span>
+          {quant.composite.breakdown.valuation != null && (
+            <span>{t('valuation_dimension')} {quant.composite.breakdown.valuation}</span>
+          )}
+          {quant.composite.breakdown.riskPull != null && quant.composite.breakdown.riskPull < 1 && (
+            <span>{t('risk_modulation')} ×{quant.composite.breakdown.riskPull.toFixed(2)}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

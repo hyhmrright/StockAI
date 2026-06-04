@@ -69,6 +69,8 @@
   "system_settings": "系统设置",
   "quant_calculating": "正在计算量化指标…",
   "composite_signal": "综合信号",
+  "valuation_dimension": "估值",
+  "risk_modulation": "风险调制",
   "bullish_pct": "看涨 {n}%",
   "bearish_pct": "看跌 {n}%",
   "volatility_percentile": "波动率百分位",

@@ -50,9 +50,10 @@ export async function fetchQuantBundle(
 
   const technicalResult = analyzeTechnical(kline);
   const fundamentalResult = scoreFundamentals(fundamentalsRaw);
-  const composite = computeComposite(technicalResult.composite, fundamentalResult.composite);
   const valuationResult = computeValuation(fundamentalsRaw);
   const riskResult = computeRiskMetrics(kline);
+  // 复合分四维化：技术+基本面为基准，blend 估值方向，按风险向中性收敛（缺 valuation/risk 自动降级）
+  const composite = computeComposite(technicalResult.composite, fundamentalResult.composite, valuationResult, riskResult);
 
   return {
     symbol,

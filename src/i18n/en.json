@@ -69,6 +69,8 @@
   "system_settings": "System Settings",
   "quant_calculating": "Calculating quant metrics…",
   "composite_signal": "Composite Signal",
+  "valuation_dimension": "Valuation",
+  "risk_modulation": "Risk Adj.",
   "bullish_pct": "Bullish {n}%",
   "bearish_pct": "Bearish {n}%",
   "volatility_percentile": "Volatility Percentile",
