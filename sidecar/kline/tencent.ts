@@ -106,6 +106,7 @@ export function parseTencentQuote(text: string, symbol: string): RealtimeQuote {
   const prevClose = parseFloat(f[4]);
   const change = parseFloat(f[31]) || (price - prevClose);
   const changePercent = parseFloat(f[32]) || ((change / prevClose) * 100);
+  const marketCapYi = parseFloat(f[45]); // 总市值（亿元），下方转为元
 
   return {
     symbol,
@@ -122,7 +123,7 @@ export function parseTencentQuote(text: string, symbol: string): RealtimeQuote {
     turnoverRate: parseFloat(f[38]) || undefined,
     pe: parseFloat(f[39]) || undefined,
     pb: parseFloat(f[46]) || undefined,
-    marketCap: parseFloat(f[45]) ? parseFloat(f[45]) * 1e8 : undefined,
+    marketCap: marketCapYi ? marketCapYi * 1e8 : undefined,
     timestamp: parseTencentTime(f[30]),
     currency: "CNY",
     market: "A股",
