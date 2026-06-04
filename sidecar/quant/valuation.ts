@@ -2,6 +2,37 @@ import type { FinancialMetrics } from './types';
 import type { ValuationSnapshot } from '../../shared/types';
 import { RISK_FREE_RATE } from '../../shared/constants';
 
+// 估值模型假设集中显式化，便于审计与调参（原散落各函数内联）
+const MOS_BAND = 0.15; // |安全边际| 超过此值判低估/高估
+const MODEL_CONFIDENCE = { absolute: 30, relative: 20 } as const; // 各模型对置信度贡献
+const OWNER_EARNINGS = {
+  maintenanceCapexRatio: 0.85, // 维护性 capex 占总 capex
+  growthScale: 0.7, // 营收增速折扣
+  growthCap: 0.08, // 成长率上限
+  discountRate: 0.10,
+  terminalGrowth: 0.025,
+  qualityDiscount: 0.85, // 整体质量折扣
+} as const;
+const WACC_PARAMS = {
+  marketPremium: 0.06,
+  beta: 1.0,
+  debtCostFallback: 0.03, // 无利息数据时 = riskFree + 此值
+  taxShieldRetention: 0.75, // 1 - 25% 有效税率
+  min: 0.06,
+  max: 0.20,
+} as const;
+const DCF = {
+  growthCap: 0.15,
+  qualityDiscount: 0.9,
+  terminalGrowthCap: 0.03,
+  terminalGrowthScale: 0.4,
+  scenarios: {
+    bear: { growthAdj: 0.5, waccAdj: 1.2 },
+    base: { growthAdj: 1.0, waccAdj: 1.0 },
+    bull: { growthAdj: 1.5, waccAdj: 0.9 },
+  },
+} as const;
+
 export function computeValuation(metrics: FinancialMetrics): ValuationSnapshot | null {
   const models: ValuationSnapshot['models'] = {};
   const values: number[] = [];
@@ -31,13 +62,13 @@ export function computeValuation(metrics: FinancialMetrics): ValuationSnapshot |
 
   if (intrinsicValue && marketCap && marketCap > 0) {
     marginOfSafety = (intrinsicValue - marketCap) / marketCap;
-    signal = marginOfSafety > 0.15 ? 'undervalued' : marginOfSafety < -0.15 ? 'overvalued' : 'fair';
+    signal = marginOfSafety > MOS_BAND ? 'undervalued' : marginOfSafety < -MOS_BAND ? 'overvalued' : 'fair';
   } else if (rel) {
     signal = rel.signal.includes('低估') ? 'undervalued' : rel.signal.includes('高估') ? 'overvalued' : 'fair';
   }
 
-  // 置信度：每个绝对估值模型贡献30分，相对估值补充20分
-  const confidence = Math.min(100, values.length * 30 + (rel ? 20 : 0));
+  // 置信度：每个绝对估值模型贡献固定分，相对估值补充
+  const confidence = Math.min(100, values.length * MODEL_CONFIDENCE.absolute + (rel ? MODEL_CONFIDENCE.relative : 0));
 
   return { intrinsicValue, marketCap, marginOfSafety, signal, confidence, models };
 }
@@ -50,15 +81,15 @@ function computeOwnerEarnings(m: FinancialMetrics): { value: number; details: st
   if (netIncome == null || capex == null) return undefined;
   if (netIncome <= 0) return undefined;
 
-  // 维护性资本支出约占总资本支出的85%，成长性资本支出15%
-  const maintenanceCapex = capex * 0.85;
+  // 维护性资本支出约占总资本支出，剩余为成长性
+  const maintenanceCapex = capex * OWNER_EARNINGS.maintenanceCapexRatio;
   const ownerEarnings = netIncome + depreciation - maintenanceCapex;
   if (ownerEarnings <= 0) return undefined;
 
-  // 成长率：营收增速打七折，上限8%
-  const growthRate = Math.min((m.revenueGrowth ?? 5) / 100, 0.08) * 0.7;
-  const discountRate = 0.10;
-  const terminalGrowth = 0.025;
+  // 成长率：营收增速打折，封顶
+  const growthRate = Math.min((m.revenueGrowth ?? 5) / 100, OWNER_EARNINGS.growthCap) * OWNER_EARNINGS.growthScale;
+  const discountRate = OWNER_EARNINGS.discountRate;
+  const terminalGrowth = OWNER_EARNINGS.terminalGrowth;
 
   // 第一阶段：高成长期5年
   let pv = 0;
@@ -78,8 +109,8 @@ function computeOwnerEarnings(m: FinancialMetrics): { value: number; details: st
   const terminalValue = finalEarnings * (1 + terminalGrowth) / (discountRate - terminalGrowth);
   pv += terminalValue / (1 + discountRate) ** 10;
 
-  // 整体打85折（质量折扣）
-  const value = pv * 0.85;
+  // 整体质量折扣
+  const value = pv * OWNER_EARNINGS.qualityDiscount;
   return {
     value,
     details: `Owner Earnings: ${(ownerEarnings / 1e8).toFixed(0)}亿, 增长率: ${(growthRate * 100).toFixed(1)}%`,
@@ -88,9 +119,9 @@ function computeOwnerEarnings(m: FinancialMetrics): { value: number; details: st
 
 function computeWACC(m: FinancialMetrics): number {
   const riskFreeRate = RISK_FREE_RATE;
-  const marketPremium = 0.06;
-  // beta 默认1.0（市场平均）
-  const costOfEquity = riskFreeRate + 1.0 * marketPremium;
+  const marketPremium = WACC_PARAMS.marketPremium;
+  // beta 默认市场平均
+  const costOfEquity = riskFreeRate + WACC_PARAMS.beta * marketPremium;
 
   const marketCap = m.marketCap ?? 0;
   const netDebt = Math.max((m.totalDebt ?? 0) - (m.cash ?? 0), 0);
@@ -101,15 +132,15 @@ function computeWACC(m: FinancialMetrics): number {
   // 实际负债成本：利息支出/有息负债；无数据时用无风险+3%
   const costOfDebt = m.interestExpense && m.totalDebt && m.totalDebt > 0
     ? Math.abs(m.interestExpense) / m.totalDebt
-    : riskFreeRate + 0.03;
+    : riskFreeRate + WACC_PARAMS.debtCostFallback;
 
   const wE = marketCap / totalValue;
   const wD = netDebt / totalValue;
-  // 税盾按25%有效税率
-  const wacc = wE * costOfEquity + wD * costOfDebt * 0.75;
+  // 债务成本计入税盾（保留比例 = 1 - 有效税率）
+  const wacc = wE * costOfEquity + wD * costOfDebt * WACC_PARAMS.taxShieldRetention;
 
-  // WACC 合理区间 6%～20%
-  return Math.max(0.06, Math.min(0.20, wacc));
+  // WACC 夹在合理区间
+  return Math.max(WACC_PARAMS.min, Math.min(WACC_PARAMS.max, wacc));
 }
 
 function computeDCF(m: FinancialMetrics): { base: number; bear: number; bull: number; wacc: number } | undefined {
@@ -119,12 +150,12 @@ function computeDCF(m: FinancialMetrics): { base: number; bear: number; bull: nu
   const fcf: number = rawFcf;
 
   const wacc = computeWACC(m);
-  const baseGrowth = Math.min((m.revenueGrowth ?? 5) / 100, 0.15);
+  const baseGrowth = Math.min((m.revenueGrowth ?? 5) / 100, DCF.growthCap);
 
   function dcfValue(growthAdj: number, waccAdj: number): number {
     const g = baseGrowth * growthAdj;
     const w = wacc * waccAdj;
-    const termG = Math.min(0.03, g * 0.4);
+    const termG = Math.min(DCF.terminalGrowthCap, g * DCF.terminalGrowthScale);
     let pv = 0;
 
     // 高速成长期3年
@@ -140,13 +171,13 @@ function computeDCF(m: FinancialMetrics): { base: number; bear: number; bull: nu
     if (w <= termG) return pv;
     pv += finalFCF * (1 + termG) / (w - termG) / (1 + w) ** 7;
 
-    return pv * 0.9; // 10%质量折扣
+    return pv * DCF.qualityDiscount;
   }
 
   return {
-    bear: dcfValue(0.5, 1.2),
-    base: dcfValue(1.0, 1.0),
-    bull: dcfValue(1.5, 0.9),
+    bear: dcfValue(DCF.scenarios.bear.growthAdj, DCF.scenarios.bear.waccAdj),
+    base: dcfValue(DCF.scenarios.base.growthAdj, DCF.scenarios.base.waccAdj),
+    bull: dcfValue(DCF.scenarios.bull.growthAdj, DCF.scenarios.bull.waccAdj),
     wacc: Math.round(wacc * 1000) / 1000,
   };
 }

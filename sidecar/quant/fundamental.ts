@@ -194,32 +194,53 @@ function scoreDimension(name: string, graders: MetricGrader[]): SubSignal {
   return { name, signal, score: Math.round(normalized), weight: 0.25, details, checkItems };
 }
 
+/**
+ * 基本面各指标判优(good)/判中(fair)阈值，集中管理便于审计调参。
+ * gte 维度：> good 判优、> fair 判中；lte 维度：< good 判优、< fair 判中。good 同时作为下钻展示的通过阈值。
+ */
+const FUND_THRESHOLDS = {
+  roe: { good: 15, fair: 8 },
+  netMargin: { good: 10, fair: 5 },
+  grossMargin: { good: 30, fair: 15 },
+  revenueGrowth: { good: 10, fair: 0 },
+  netIncomeGrowth: { good: 10, fair: 0 },
+  debtToAsset: { good: 60, fair: 75 },
+  currentRatio: { good: 1.5, fair: 1 },
+  pe: { good: 25, fair: 40 },
+  pb: { good: 3, fair: 5 },
+} as const;
+
+/** gte 维度评分闭包：> good →1, > fair →0, 否则 -1 */
+const gradeGte = (t: { good: number; fair: number }) => (v: number) => (v > t.good ? 1 : v > t.fair ? 0 : -1);
+/** lte 维度评分闭包：< good →1, < fair →0, 否则 -1（越低越好） */
+const gradeLte = (t: { good: number; fair: number }) => (v: number) => (v < t.good ? 1 : v < t.fair ? 0 : -1);
+
 function scoreProfitability(m: FinancialMetrics): SubSignal {
   return scoreDimension('profitability', [
-    { value: m.roe, grade: v => v > 15 ? 1 : v > 8 ? 0 : -1, key: 'roe', threshold: 15, comparator: 'gte' },
-    { value: m.netMargin, grade: v => v > 10 ? 1 : v > 5 ? 0 : -1, key: 'net_margin', threshold: 10, comparator: 'gte' },
-    { value: m.grossMargin, grade: v => v > 30 ? 1 : v > 15 ? 0 : -1, key: 'gross_margin', threshold: 30, comparator: 'gte' },
+    { value: m.roe, grade: gradeGte(FUND_THRESHOLDS.roe), key: 'roe', threshold: FUND_THRESHOLDS.roe.good, comparator: 'gte' },
+    { value: m.netMargin, grade: gradeGte(FUND_THRESHOLDS.netMargin), key: 'net_margin', threshold: FUND_THRESHOLDS.netMargin.good, comparator: 'gte' },
+    { value: m.grossMargin, grade: gradeGte(FUND_THRESHOLDS.grossMargin), key: 'gross_margin', threshold: FUND_THRESHOLDS.grossMargin.good, comparator: 'gte' },
   ]);
 }
 
 function scoreGrowth(m: FinancialMetrics): SubSignal {
   return scoreDimension('growth', [
-    { value: m.revenueGrowth, grade: v => v > 10 ? 1 : v > 0 ? 0 : -1, key: 'revenue_growth', threshold: 10, comparator: 'gte' },
-    { value: m.netIncomeGrowth, grade: v => v > 10 ? 1 : v > 0 ? 0 : -1, key: 'net_income_growth', threshold: 10, comparator: 'gte' },
+    { value: m.revenueGrowth, grade: gradeGte(FUND_THRESHOLDS.revenueGrowth), key: 'revenue_growth', threshold: FUND_THRESHOLDS.revenueGrowth.good, comparator: 'gte' },
+    { value: m.netIncomeGrowth, grade: gradeGte(FUND_THRESHOLDS.netIncomeGrowth), key: 'net_income_growth', threshold: FUND_THRESHOLDS.netIncomeGrowth.good, comparator: 'gte' },
   ]);
 }
 
 function scoreFinancialHealth(m: FinancialMetrics): SubSignal {
   return scoreDimension('financial_health', [
-    { value: m.debtToAsset, grade: v => v < 60 ? 1 : v < 75 ? 0 : -1, key: 'debt_to_asset', threshold: 60, comparator: 'lte' },
-    { value: m.currentRatio, grade: v => v > 1.5 ? 1 : v > 1 ? 0 : -1, key: 'current_ratio', threshold: 1.5, comparator: 'gte', decimals: 2 },
+    { value: m.debtToAsset, grade: gradeLte(FUND_THRESHOLDS.debtToAsset), key: 'debt_to_asset', threshold: FUND_THRESHOLDS.debtToAsset.good, comparator: 'lte' },
+    { value: m.currentRatio, grade: gradeGte(FUND_THRESHOLDS.currentRatio), key: 'current_ratio', threshold: FUND_THRESHOLDS.currentRatio.good, comparator: 'gte', decimals: 2 },
   ]);
 }
 
 function scoreValuation(m: FinancialMetrics): SubSignal {
   return scoreDimension('valuation', [
-    { value: m.pe, grade: v => v < 25 ? 1 : v < 40 ? 0 : -1, key: 'pe', threshold: 25, comparator: 'lte' },
-    { value: m.pb, grade: v => v < 3 ? 1 : v < 5 ? 0 : -1, key: 'pb', threshold: 3, comparator: 'lte', decimals: 2 },
+    { value: m.pe, grade: gradeLte(FUND_THRESHOLDS.pe), key: 'pe', threshold: FUND_THRESHOLDS.pe.good, comparator: 'lte' },
+    { value: m.pb, grade: gradeLte(FUND_THRESHOLDS.pb), key: 'pb', threshold: FUND_THRESHOLDS.pb.good, comparator: 'lte', decimals: 2 },
   ]);
 }
 

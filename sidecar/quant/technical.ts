@@ -16,6 +16,19 @@ function classifySignal(score: number, threshold: number): Signal {
   return 'neutral';
 }
 
+/**
+ * 各技术子信号判定方向的 |score| 阈值，集中管理。
+ * 异质值（动量类 20、波动 10、量能 15）反映各维信号的信心度差异，为有意设计。
+ */
+const SIGNAL_THRESHOLD = {
+  trend: 20,
+  meanReversion: 20,
+  momentum: 20,
+  volatility: 10,
+  volume: 15,
+  composite: 15,
+} as const;
+
 export function computeEMA(data: number[], period: number): number[] {
   const k = 2 / (period + 1);
   const result: number[] = [data[0]];
@@ -151,7 +164,7 @@ function trendFollowing(closes: number[], kline: KlinePoint[]): SubSignal {
 
   return {
     name: 'trend_following',
-    signal: classifySignal(score, 20),
+    signal: classifySignal(score, SIGNAL_THRESHOLD.trend),
     score: clampScore(score),
     weight: 0.25,
     details: {
@@ -181,7 +194,7 @@ function meanReversion(closes: number[]): SubSignal {
 
   return {
     name: 'mean_reversion',
-    signal: classifySignal(score, 20),
+    signal: classifySignal(score, SIGNAL_THRESHOLD.meanReversion),
     score: clampScore(score),
     weight: 0.20,
     details: {
@@ -214,7 +227,7 @@ function momentum(closes: number[]): SubSignal {
 
   return {
     name: 'momentum',
-    signal: classifySignal(score, 20),
+    signal: classifySignal(score, SIGNAL_THRESHOLD.momentum),
     score: clampScore(score),
     weight: 0.25,
     details: {
@@ -248,7 +261,7 @@ function volatilityAnalysis(kline: KlinePoint[]): SubSignal {
 
   return {
     name: 'volatility',
-    signal: classifySignal(score, 10),
+    signal: classifySignal(score, SIGNAL_THRESHOLD.volatility),
     score: clampScore(score),
     weight: 0.15,
     details: {
@@ -284,7 +297,7 @@ function volumeAnalysis(kline: KlinePoint[]): SubSignal {
 
   return {
     name: 'volume',
-    signal: classifySignal(score, 15),
+    signal: classifySignal(score, SIGNAL_THRESHOLD.volume),
     score: clampScore(score),
     weight: 0.15,
     details: {
@@ -320,7 +333,7 @@ export function analyzeTechnical(kline: KlinePoint[]): TechnicalResult {
   return {
     subSignals,
     composite: {
-      signal: classifySignal(normalizedScore, 15),
+      signal: classifySignal(normalizedScore, SIGNAL_THRESHOLD.composite),
       confidence: Math.round(confidence),
       details: {
         ...subSignals.reduce<Record<string, number | string>>((acc, s) => Object.assign(acc, s.details), {}),

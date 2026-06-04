@@ -7,15 +7,16 @@ const VALUATION_BLEND = 0.25;
 const VALUATION_OFFSET = 15;
 // 高波动风险把复合分向中性 50 收敛的系数（<1 即压缩，体现「不确定性高→少走极端」）。
 const HIGH_RISK_PULL = 0.85;
+// 信号→基准分映射；NEUTRAL 同时作为收敛/夹紧的中性锚点。
+const SIGNAL_SCORE = { bullish: 70, neutral: 50, bearish: 30 } as const;
+// 置信度对基准分的最大上下偏移（confidence 50→0 偏移，0/100→±此值）。
+const CONFIDENCE_SWING = 20;
+// 复合分→信号的判定边界：>= bullish 看涨，<= bearish 看跌，之间中性。
+const SIGNAL_BOUNDARY = { bullish: 60, bearish: 40 } as const;
 
 function signalToScore(s: AnalystSignal): number {
-  let base: number;
-  switch (s.signal) {
-    case 'bullish': base = 70; break;
-    case 'bearish': base = 30; break;
-    default: base = 50;
-  }
-  const offset = ((s.confidence - 50) / 50) * 20;
+  const base = SIGNAL_SCORE[s.signal] ?? SIGNAL_SCORE.neutral;
+  const offset = ((s.confidence - 50) / 50) * CONFIDENCE_SWING;
   return base + (s.signal === 'bearish' ? -offset : offset);
 }
 
@@ -55,7 +56,7 @@ export function computeComposite(
   }
 
   const score = Math.round(Math.max(1, Math.min(100, blended)));
-  const signal = score >= 60 ? 'bullish' : score <= 40 ? 'bearish' : 'neutral';
+  const signal = score >= SIGNAL_BOUNDARY.bullish ? 'bullish' : score <= SIGNAL_BOUNDARY.bearish ? 'bearish' : 'neutral';
 
   const breakdown: CompositeBreakdown | undefined = (valuation || risk)
     ? {
