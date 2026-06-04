@@ -44,8 +44,8 @@ describe("readCache / writeCache", () => {
     const dir = freshDir();
     const key = cacheKey(["ttl"]);
     writeCache(key, { v: 1 }, { dir });
-    // ttlMs 设为负数：任何非负 age 都判过期，确定性触发过期分支
-    expect(readCache(key, { dir, ttlMs: -1 })).toBeNull();
+    // 用负 ttl 确定性触发过期（避开 fs mtime 亚毫秒抖动导致 age 在 0 边界附近的不稳定）
+    expect(readCache(key, { dir, ttlMs: -1000 })).toBeNull();
   });
 
   test("LRU 修剪：文件数不超过 maxEntries", () => {

@@ -23,13 +23,9 @@ export function computeMasterConsensus(signals: MasterSignal[]): MasterConsensus
     else neutral++;
   }
   const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
-  return {
-    total,
-    bullish,
-    bearish,
-    neutral,
-    bullishPct: pct(bullish),
-    bearishPct: pct(bearish),
-    neutralPct: pct(neutral),
-  };
+  const bullishPct = pct(bullish);
+  const bearishPct = pct(bearish);
+  // 中性吸收取整余数，保证三者之和恒为 100（否则占比条会出现 1px 缝隙/溢出）；空数组全 0
+  const neutralPct = total > 0 ? Math.max(0, 100 - bullishPct - bearishPct) : 0;
+  return { total, bullish, bearish, neutral, bullishPct, bearishPct, neutralPct };
 }

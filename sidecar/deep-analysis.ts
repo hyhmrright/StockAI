@@ -55,6 +55,9 @@ function buildCacheKey(
     quant.technical.signal,
     quant.fundamental.signal,
     quant.risk?.riskLevel ?? '',
+    // 大师直接消费 quant.valuation：估值方向/置信度翻转必须 miss（否则命中旧结果即数据污染）
+    quant.valuation?.signal ?? '',
+    quant.valuation?.confidence ?? '',
   ].join(',');
   const newsParts = news.flatMap(n => [n.title, n.content ?? '']);
   return cacheKey([symbol, lang, [...masterIds].sort().join(','), fingerprint, quantFingerprint, ...newsParts]);

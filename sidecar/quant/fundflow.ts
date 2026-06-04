@@ -37,7 +37,11 @@ export async function fetchFundFlow(symbol: string): Promise<FundFlowData | null
     const { prefix, code } = parseChinaSymbol(symbol);
     const market = chinaPrefixToEastmoneyMarket(prefix);
     const url = `https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get?lmt=1&klt=101&secid=${market}.${code}&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65`;
-    const resp = await fetch(url, { headers: { Referer: 'https://data.eastmoney.com' } });
+    // 8s 超时：资金流走 Promise.allSettled，挂起会拖累整个 A 股 quant bundle
+    const resp = await fetch(url, {
+      headers: { Referer: 'https://data.eastmoney.com' },
+      signal: AbortSignal.timeout(8000),
+    });
     if (!resp.ok) throw new Error(`东财资金流 HTTP ${resp.status}`);
     return parseFundFlow(await resp.json());
   } catch (err) {

@@ -37,8 +37,9 @@ export function readCache<T>(key: string, opts: CacheOptions = {}): T | null {
   const file = path.join(dir, `${key}.json`);
   try {
     if (!fs.existsSync(file)) return null;
+    // age >= ttlMs 才算过期：使 ttlMs=0 能立即过期（禁用缓存），符合 TTL 语义
     const age = Date.now() - fs.statSync(file).mtimeMs;
-    if (age > ttlMs) {
+    if (age >= ttlMs) {
       try { fs.unlinkSync(file); } catch { /* 已被并发清理，忽略 */ }
       return null;
     }

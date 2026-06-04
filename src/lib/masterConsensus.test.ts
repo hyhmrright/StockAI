@@ -35,4 +35,10 @@ describe("computeMasterConsensus", () => {
     expect(c.bearishPct).toBe(0);
     expect(c.neutralPct).toBe(0);
   });
+
+  it("不均匀分布下三占比之和恒为 100", () => {
+    // 1/1/1 独立 round 会得 33+33+33=99，余数补偿后应为 100
+    const c = computeMasterConsensus([sig("bullish"), sig("bearish"), sig("neutral")]);
+    expect(c.bullishPct + c.bearishPct + c.neutralPct).toBe(100);
+  });
 });
