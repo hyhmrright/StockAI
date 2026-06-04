@@ -261,6 +261,18 @@ export interface PositionGuidance {
   annualizedVolatility: number;
 }
 
+/** 波动率区间：把年化 σ 翻译成「未来一段时间约 95% 概率落在 -X%~+Y%」（统计估算，非保证） */
+export interface VolatilityRange {
+  /** 下行幅度（百分比，负数，已按最大亏损 -100% 夹紧） */
+  downside: number;
+  /** 上行幅度（百分比，正数） */
+  upside: number;
+  /** 置信水平（百分比，如 95） */
+  confidence: number;
+  /** 区间对应的时间跨度（月） */
+  periodMonths: number;
+}
+
 /** 复合分维度分解（透明暴露各维贡献，仅当 valuation 或 risk 参与运算时存在） */
 export interface CompositeBreakdown {
   /** 技术面映射分（0-100） */

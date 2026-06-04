@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computePositionGuidance } from "./positionSizing";
+import { computePositionGuidance, computeVolatilityRange } from "./positionSizing";
 import type { RiskSnapshot } from "../../shared/types";
 
 // 测试构造助手：只关心波动率与档位，其余字段填默认
@@ -48,5 +48,31 @@ describe("computePositionGuidance", () => {
     const g = computePositionGuidance(risk({ annualizedVolatility: 0.45, riskLevel: "high" }));
     expect(g?.riskLevel).toBe("high");
     expect(g?.annualizedVolatility).toBe(0.45);
+  });
+});
+
+describe("computeVolatilityRange", () => {
+  it("缺数据或波动率非正时返回 null", () => {
+    expect(computeVolatilityRange(null)).toBeNull();
+    expect(computeVolatilityRange(risk({ annualizedVolatility: 0 }))).toBeNull();
+  });
+
+  it("30% 年化波动率 → 半年 95% 区间 ±41.6%", () => {
+    // 1.96 * 0.30 * √0.5 * 100 ≈ 41.6
+    const r = computeVolatilityRange(risk({ annualizedVolatility: 0.3 }));
+    expect(r?.upside).toBe(41.6);
+    expect(r?.downside).toBe(-41.6);
+    expect(r?.confidence).toBe(95);
+    expect(r?.periodMonths).toBe(6);
+  });
+
+  it("低波动 10% → ±13.9%", () => {
+    expect(computeVolatilityRange(risk({ annualizedVolatility: 0.1 }))?.upside).toBe(13.9);
+  });
+
+  it("极高波动下行按最大亏损 -100% 夹紧", () => {
+    const r = computeVolatilityRange(risk({ annualizedVolatility: 0.8 }));
+    expect(r?.downside).toBe(-100); // 原始 -110.9 被夹紧
+    expect(r?.upside).toBe(110.9); // 上行不夹
   });
 });

@@ -80,6 +80,8 @@
   "sharpe_ratio": "Sharpe Ratio",
   "suggested_position_cap": "Suggested Position Cap",
   "position_cap_basis": "Volatility-based single-stock position cap for reference only — not investment advice",
+  "volatility_range_label": "6M Range (95%)",
+  "volatility_range_disclaimer": "Statistical estimate from historical volatility — not a guaranteed range",
   "margin_of_safety": "Margin of Safety",
   "intrinsic_value": "Intrinsic Value",
   "market_cap": "Market Cap",

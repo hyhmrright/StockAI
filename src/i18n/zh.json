@@ -80,6 +80,8 @@
   "sharpe_ratio": "夏普比率",
   "suggested_position_cap": "建议仓位上限",
   "position_cap_basis": "基于波动率的单股仓位上限参考，非投资建议",
+  "volatility_range_label": "半年波动区间 (95%)",
+  "volatility_range_disclaimer": "基于历史波动率的统计估算，非保证区间",
   "margin_of_safety": "安全边际",
   "intrinsic_value": "内在价值",
   "market_cap": "市值",

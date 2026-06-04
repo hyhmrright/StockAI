@@ -1,4 +1,4 @@
-import type { RiskSnapshot, PositionGuidance } from "../../shared/types";
+import type { RiskSnapshot, PositionGuidance, VolatilityRange } from "../../shared/types";
 
 /**
  * 波动率目标法（volatility targeting）参数：
@@ -25,5 +25,26 @@ export function computePositionGuidance(
     maxPositionPct: Math.round(clamped * 100),
     riskLevel: risk.riskLevel,
     annualizedVolatility: risk.annualizedVolatility,
+  };
+}
+
+// 95% 置信区间的正态分位数，用于把年化波动率折算成区间宽度
+const Z_95 = 1.96;
+// 区间时间跨度：半年（年化 σ 按 √t 缩放）
+const HORIZON_YEARS = 0.5;
+
+/**
+ * 把年化波动率翻译成「未来半年约 95% 概率落在 -X%~+Y%」（对标 Nitrogen Risk Number）。
+ * 用 ±1.96σ√t 的正态近似；下行按最大亏损 -100% 夹紧。仅统计估算，非保证区间。
+ */
+export function computeVolatilityRange(risk: RiskSnapshot | null | undefined): VolatilityRange | null {
+  if (!risk || !(risk.annualizedVolatility > 0)) return null;
+  const halfWidthPct = Z_95 * risk.annualizedVolatility * Math.sqrt(HORIZON_YEARS) * 100;
+  const rounded = Math.round(halfWidthPct * 10) / 10;
+  return {
+    downside: Math.max(-100, -rounded),
+    upside: rounded,
+    confidence: 95,
+    periodMonths: 12 * HORIZON_YEARS,
   };
 }
