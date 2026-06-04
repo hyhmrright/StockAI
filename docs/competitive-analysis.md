@@ -1,4 +1,81 @@
-# StockAI 竞品分析与差距评估
+# StockAI 竞品差距重估报告（v2）
+
+> 更新日期：2026-06-04 · 上一版：本文档 v1（见下方附录，2026-05-31）
+> 本版基线：代码实测（见各处文件证据）· 调研：6 赛道（AI 研究工具 / 量化评级 / 多 Agent / A 股消费级 / 图表 AI / 风控组合），8-agent 并行工作流产出
+
+## A. 状态校正
+
+v1（2026-05-31）把「对话追问 / 虚拟大师组合 / 缓存」列为最高 ROI 三件套。实测结果：**前两项已 ship，缓存仍缺**，且多项 v1 判定需修正。
+
+| v1 P0/P1 项 | 实测状态 | 文件证据 |
+|---|---|---|
+| 对话式追问（v1 称最高 ROI 缺口） | ✅ **已做** | `sidecar/chat.ts`（system prompt 已含「不要编造财务数据」抗幻觉约束 + `buildContextBlock` 拼 news/quant/analysis）、`src/hooks/useChat.ts`、`src/components/ChatPanel.tsx` |
+| 虚拟大师组合 / 命中率榜 / 净值曲线 | ✅ **已做** | `src/lib/masterPortfolio.ts`、`useMasterPortfolio.ts`、`MasterPortfolio/MasterPortfolioPanel.tsx`；口径诚实（仅非中性信号计入、mark-to-current） |
+| 13 大师结果缓存（TTL/LRU） | ❌ **仍缺** | `deep-analysis.ts` 无任何缓存层。同股重复点全量重跑 15 次 LLM 调用 |
+| deepMode 正文喂大师 | ✅ **已修** | `factory.ts:12` `formatNewsForPrompt` 被各大师真实调用，正文截 200 字注入 prompt（v1 §8#2 已过时） |
+| 大师并发上限 4 保守 | ✅ **已修** | `cli-handlers.ts:277` 实传 `concurrencyForProvider`（云端 8 / Ollama 2）（v1 §8#3 已过时） |
+| 独立风控层（波动率→仓位上限%） | ❌ **仍缺** | `quant/volatility.ts` 无仓位逻辑；`risk` 仅作展示维度 |
+
+**需修正的 v1 判定：**
+
+1. **「对话是最高 ROI 缺口」已过时。** 对话本体已 ship。新真差距是**对话背后的财报/转录 RAG + inline 溯源**——竞品（Perplexity/Fiscal.ai/Bloomberg）的对话建立在文档 RAG 上，StockAI 的 `chat.ts` 上下文只有「新闻标题 + 量化摘要 + 分析结论」，问「营收为何下滑」时无据可依。
+
+2. **「四维量化评分」名不副实，被 v1 低估。** 实测 `scoring.ts:3` `WEIGHTS = { technical: 0.55, fundamental: 0.45 }`，`computeComposite` **只接 2 个参数**；`valuation`/`risk` 在 `quant/index.ts` 算完后只挂在 bundle 上展示，**从未进复合分**。所有竞品总分都综合 ≥3 维（Seeking Alpha 5 因子、Stockopedia QVM 三维）。改动极小、收益明确的真缺口（但会波及 backtest 阈值/screener 排序，需配测试重校准）。
+
+3. **「A 股原生 = 护城河」口径收窄。** StockAI 只是 `detectMarket` 代码识别沪深北，**真正的 A 股原生数据（资金流/龙虎榜/连板/概念/F10）一项都没有**。同时 TradingAgents 已能经 Yahoo `.SS/.SZ` + GLM/Qwen 中国端点跑 A 股。护城河应收窄为「桌面端 + 本地隐私 + 多 provider + 大师叙事 + 下载即用 + 中文打磨」。
+
+4. **「抗幻觉 = nice-to-have」升级为 must-have。** EU AI Act 对高风险金融 AI 合规截止 2026-08（要求可解释 + 准确性保证）；Fiscal/Perplexity/Bloomberg/东财妙想全员强制溯源。溯源已是 2026 全赛道**及格线**。
+
+## B. 2026 新动向（v1 未覆盖）
+
+- **抗幻觉从卖点变法规刚需**：EU AI Act 2026-08 合规截止；学界涌现 FinGround（atomic claim 验证 + 段落/单元格级 citation）等「LLM 当 critic/auditor」框架。**inline 可点击溯源**成赛道及格线。
+- **财报/转录 RAG 成标配**：Perplexity（via Quartr）、Fiscal.ai（无限转录）、Bloomberg（跨财报转录问答）全部把财报电话会 RAG 作为对话核心。**A 股财报/业绩说明会 RAG 在中文消费级几乎无竞品**——可独占差异化。
+- **A 股消费级整条赛道 v1 完全没覆盖**：同花顺 i 问财（NL 选股事实标准，日均 500 万用户）、东财妙想（2025-03 全量开放，EDB+ 公告信源标注抗幻觉）、券商系涨乐（2026 评测综评反超传统软件）。**NL 选股 + 诊股卡 + 资金流/概念**是 A 股用户认知里「正经炒股软件」的门面。
+- **图表 × AI 是独立新赛道**：TradingView 2026-04 才上线对话式 AI Chart Copilot（窗口期仍早）；ChartingLens 把「对话在图上画线 + NL 回测 + 权益曲线叠加」打成 $9.99/月产品。StockAI 后端（quant/backtest/scraper）已具备，缺的只是前端用 `createPriceLine`/`setMarkers` 叠加——而这两个 API **已在 `ChartCanvas.tsx:131/207/210` 使用**。
+- **风控/组合是成熟独立赛道**：PortfolioPilot（组合分 0-1000 信用分隐喻）、Nitrogen（Risk Number 1-99 + 「95% 概率 -7%~+12%」翻译）、ai-hedge-fund 精确公式 `position_limit = 0.20 × vol_multiplier × corr_multiplier`。**A 股端几乎无消费级风控竞品 → 蓝海**。
+- **多 Agent 标杆迭代**：ai-hedge-fund 扩到 14 位具名大师 + 引入「近期更准 agent 动态加权」；TradingAgents v0.2.4 加「持久化决策日志让 agent 从历史交易学习」。**StockAI 的 `master_signals` 已落账但只喂净值展示，未回流为动态权重**。
+- **北向资金硬约束**：2024-05 起监管已取消实时披露、改季度。**任何「实时北向资金」功能都是做废弃功能**，必须剔除。
+
+## C. 更新版差距清单（按 ROI 排序）
+
+> 已剔除已 ship 项（chat、master portfolio、13 大师、四维评分子系统本体、三语、多 provider、K 线图、deepMode 正文注入、provider 感知并发）。仅保留实测确认未做的。
+
+| # | 缺口 | 对标谁 | 差异化价值 | 成本 | 三层实现要点 | 优先级 |
+|---|---|---|---|---|---|---|
+| 1 | **valuation/risk 回灌复合分** | Seeking Alpha 5 因子 / Stockopedia QVM | 「四维评分」名副其实；当前 2 维让两维白算 | low | Sidecar：`scoring.ts` 扩 `computeComposite` 接 valuation/risk + 重校准 backtest 阈值 | **P0** |
+| 2 | **13 大师结果缓存（LRU+TTL）** | ai-hedge-fund Cache | 同股重复点从 15 次 LLM → 秒级；直接省 token/钱 | low | Sidecar 新增 `cache.ts`，key=`symbol+newsHash+masterSet+lang+model`，在 `deep-analysis.ts` 前插中间层，<100 行 | **P0** |
+| 3 | **独立风控层：波动率→建议仓位上限%** | ai-hedge-fund `risk_manager.py` / Nitrogen | 把分析转成可执行动作；A 股无竞品=蓝海 | low | Sidecar 新增 `quant/position-sizer.ts`（`risk.volatilityPercentile` 已算→阶梯映射 base 20%×vol_mult）；前端结果卡加「建议仓位 X%」 | **P0** |
+| 4 | **量化评分可下钻 pass/fail check 清单** | Simply Wall St 雪花 / Seeking Alpha 因子下钻 | 打开黑箱「凭啥判 bullish」；补 2026 可解释入场券 | med | Sidecar：各 scorer 已有 if 阈值判断，结构化吐 `{check,passed,actual,threshold}[]`；前端 QuantScoreCard 折叠面板 | **P0** |
+| 5 | **大师分歧度可视化** | TradingAgents bull/bear 辩论 | 「13 人中 9 看涨 4 看跌」比单一共识度信息量大 | low | `computeConsensus`（`synthesizer.ts:35`）已有数据；前端加多空计数柱状图，纯展示层 | **P1** |
+| 6 | **AI 结论叠加到 K 线图（支撑/阻力/目标/止损价格线）** | TradingView Copilot / ChartingLens | 「低成本高感知」；后端已有、API 已用 | low | Sidecar quant/analysis 多吐 `levels:{price,label,type}[]`；前端 `ChartCanvas` 循环 `createPriceLine`（已在用） | **P1** |
+| 7 | **回测结果叠加主图（买卖 marker + 权益曲线）** | ChartingLens / TrendSpider | BacktestPanel 与 PriceChart 当前割裂 | med | 前端用 `setMarkers`（已在用）打买卖箭头 + SubChart 加 equity line | **P1** |
+| 8 | **波动率翻译成「亏多少」+ 单一风险数字** | Nitrogen「95% 概率 -7%~+12%」| σ 散户看不懂；翻译后秒懂 | low | `volatility.ts` 已有年化 σ，用 ±1.96σ√t 折算半年区间；前端波动率维度旁加一行 | **P1** |
+| 9 | **AI 回答 inline 溯源徽章** | 东财妙想 EDB / Fiscal.ai / Perplexity | 2026 法规级刚需；抗幻觉最强信号 | med | prompt 要求 LLM 输出 `sourceRef`→新闻 index/财务字段；前端渲染可点击角标 | **P1** |
+| 10 | **A 股特色数据（资金流/概念板块/龙虎榜/F10）** | 同花顺/东财/大智慧 | A 股「是不是正经炒股软件」的门面 | med-high | Sidecar 加 AKShare 风格抓取策略（资金流/概念/涨停池免费可爬）；分阶段做 | **P1** |
+| 11 | **财报/转录 RAG（喂对话+反哺历史财务）** | Perplexity/Fiscal.ai/Bloomberg | A 股财报 RAG 中文消费级无竞品；解轨道 B 历史财务阻塞 | high | A 股走巨潮/互动易转录；先 BM25 检索存现有 SQLite | **P2** |
+| 12 | **大师专属因子代码预计算** | ai-hedge-fund（`analyze_moat`/DCF） | 抗幻觉硬底座 | high | 前置依赖多期历史财务；各大师加 `computeFactors()` | **P2** |
+| 13 | **大师信号回流为 synthesizer 动态权重** | ai-hedge-fund「近期更准 agent 加权」 | 复用已落账 `master_signals` | med | `synthesizer.ts` 本地加权投票读历史命中率 | **P2** |
+| 14 | **NL 选股 + 全市场基本面快照** | 同花顺 i 问财 | 从「个股分析器」升级为「选股入口」 | high | Sidecar `--screen <nl>`：LLM 解析 NL→结构化条件 | **P2** |
+| — | 手动画线工具 / 实时北向资金 / 代客下单 | — | 偏离定位 / 监管已废弃 / 合规风险 | — | — | **skip** |
+
+## D. 本会话实现（2026-06-04）
+
+挑选标准：low 成本 + 高 ROI + 纯局部 + 实测确认未做。本会话落地 **#2 缓存 + #3 风控层**（#1 因波及回测阈值/screener 排序，blast radius 大，留后续单独处理）。
+
+- **#2 13 大师结果缓存**：新增 `sidecar/cache.ts`（LRU + TTL），`deep-analysis.ts` 入口加缓存中间层。验收：同 symbol+config 二次调用不触发 LLM、TTL 过期重算、改 lang/model/newsHash 即 miss、LRU 上限防内存泄漏。
+- **#3 波动率→建议仓位上限%**：新增 `sidecar/quant/position-sizer.ts`（纯公式，base 20%×波动率阶梯），`shared/types.ts` 加 `positionGuidance` 字段，前端结果卡加一行 + 三语 i18n。UI 文案明示「仓位上限参考，非投资建议」。
+
+## E. 一句话结论
+
+StockAI 的护城河是**「下载即用 + 免费自带 key + 桌面本地隐私 + 13 大师中文叙事 + 多 provider + 三语」的产品化打磨**（而非「A 股原生」——A 股特色数据一项未做、开源框架已能跑 A 股）；最该补的那一刀是 **把「算了却没用」的资产接通**——valuation/risk 回灌复合分(#1)、13 大师缓存(#2)、波动率转仓位上限(#3)——三项全是 low 成本、纯局部、复用现成数据，且同时补齐「四维名副其实 + 抗幻觉可解释 + 可执行风控」这三条 2026 入场券。
+
+---
+
+# 附录：v1 首版分析（2026-05-31，历史版本）
+
+> 下方为首版分析，部分判定已被上方 v2 校正（chat / 虚拟组合已 ship、正文白抓已修、并发已改）。保留作为 ai-hedge-fund 逐文件比对（§3）、虚拟大师组合设计（§7）、性能体检（§8）的参考底稿。
+
+## v1 · StockAI 竞品分析与差距评估
 
 > 调研时间：2026-05-31 · 数据窗口 2024–2026。本文为产品规划内部参考，业绩数字多为各家自报回测（含幸存者/前视偏差风险），价格随促销浮动，引用处已注明。
 
