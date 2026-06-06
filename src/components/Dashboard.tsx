@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PriceChart from './PriceChart';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
@@ -9,7 +9,7 @@ import { useDeepAnalysis } from '../hooks/useDeepAnalysis';
 import { useChat } from '../hooks/useChat';
 import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
-import { saveAnalysisRecord, saveMasterSignals } from '../lib/db';
+import { usePersistAnalysisResults } from '../hooks/usePersistAnalysisResults';
 import { useLanguage } from '../hooks/useLanguage';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
@@ -62,48 +62,8 @@ const Dashboard: React.FC = () => {
     analyze(news, quant ?? undefined);
   }, [step, news, currentSymbol, settings.autoAnalyze, autoFlowSymbol, analyze, quant, quantStep]);
 
-  // 自动持久化：分析完成时 fire-and-forget 存入历史数据库
-  const savedKeys = useRef<Record<string, string>>({});
-
-  const infoJson = useMemo(() => stockInfo ? JSON.stringify(stockInfo) : undefined, [stockInfo]);
-  const newsJsonStr = useMemo(() => news.length > 0 ? JSON.stringify(news) : undefined, [news]);
-
-  useEffect(() => {
-    if (!record) return;
-    const key = String(record.analyzedAt);
-    if (savedKeys.current.ai === key) return;
-    savedKeys.current.ai = key;
-    saveAnalysisRecord({
-      symbol: currentSymbol, analysisType: 'ai',
-      resultJson: JSON.stringify(record.result), stockInfoJson: infoJson, newsJson: newsJsonStr,
-    }).catch(e => console.error("保存 AI 分析历史失败:", e));
-  }, [record, currentSymbol, infoJson, newsJsonStr]);
-
-  useEffect(() => {
-    if (!deepAnalysis) return;
-    const key = `${currentSymbol}:${deepAnalysis.synthesis.confidence}:${deepAnalysis.synthesis.signal}`;
-    if (savedKeys.current.deep === key) return;
-    savedKeys.current.deep = key;
-    saveAnalysisRecord({
-      symbol: currentSymbol, analysisType: 'deep',
-      resultJson: JSON.stringify(deepAnalysis), stockInfoJson: infoJson, newsJson: newsJsonStr,
-    }).catch(e => console.error("保存深度分析历史失败:", e));
-    // 落账各大师 signal + 当时价，供虚拟大师组合前向跟踪（命中率/净值后续统计用）
-    // 入场价缺失时统计会判为「待定」，故尽量带上 stockInfo.price
-    saveMasterSignals(currentSymbol, deepAnalysis.masterSignals, stockInfo?.price)
-      .catch(e => console.error("保存大师 signal 失败:", e));
-  }, [deepAnalysis, currentSymbol, infoJson, newsJsonStr]);
-
-  useEffect(() => {
-    if (!quant) return;
-    const key = `${quant.symbol}:${quant.fetchedAt}`;
-    if (savedKeys.current.quant === key) return;
-    savedKeys.current.quant = key;
-    saveAnalysisRecord({
-      symbol: currentSymbol, analysisType: 'quant',
-      resultJson: JSON.stringify(quant), stockInfoJson: infoJson,
-    }).catch(e => console.error("保存量化分析历史失败:", e));
-  }, [quant, currentSymbol, infoJson]);
+  // 分析结果自动持久化（AI/深度/量化存历史 + 落账大师 signal），逻辑抽至 hook 以收敛组件行数
+  usePersistAnalysisResults({ symbol: currentSymbol, stockInfo, news, record, deepAnalysis, quant });
 
   function handleSearch(symbol: string) {
     setCurrentSymbol(symbol);
