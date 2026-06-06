@@ -28,7 +28,8 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
     const resp = await fetch(url, {
       headers: {
         'Referer': 'https://finance.sina.com.cn',
-      }
+      },
+      signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
     });
 
     if (!resp.ok) return [];
@@ -99,7 +100,8 @@ async function enrichWithQuotes(results: StockSearchResult[]): Promise<void> {
 
   try {
     const resp = await fetch(url, {
-      headers: { 'Referer': 'https://finance.sina.com.cn' }
+      headers: { 'Referer': 'https://finance.sina.com.cn' },
+      signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
     });
 
     if (!resp.ok) {

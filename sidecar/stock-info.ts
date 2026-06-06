@@ -130,6 +130,7 @@ async function fetchWithSinaReferer(url: string): Promise<string | null> {
       headers: {
         Referer: 'https://finance.sina.com.cn',
       },
+      signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
     });
     if (!resp.ok) return null;
     const buffer = await resp.arrayBuffer();

@@ -139,6 +139,7 @@ async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetric
 
   const resp = await fetch(url, {
     headers: { Referer: 'https://emweb.securities.eastmoney.com' },
+    signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
   });
   if (!resp.ok) throw new Error(`东财财务 HTTP ${resp.status}`);
   const json = await resp.json();
@@ -150,6 +151,7 @@ async function fetchYahooFundamentals(symbol: string): Promise<FinancialMetrics>
 
   const resp = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0' },
+    signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
   });
   if (!resp.ok) throw new Error(`Yahoo Finance HTTP ${resp.status}`);
   const json = await resp.json();

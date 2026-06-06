@@ -1,4 +1,5 @@
 import type { KlinePoint, RealtimeQuote, KlineRange, NormalizedRequest } from "./types";
+import { KLINE_FETCH_TIMEOUT_MS } from "./types";
 
 /**
  * 把 UI 选择的范围映射为 Yahoo Chart API 的 (range, interval)
@@ -30,7 +31,7 @@ export async function fetchYahooKline(req: NormalizedRequest): Promise<KlinePoin
   const symbol = req.rawSymbol.replace(/^gb_/i, "").toUpperCase();
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=true`;
 
-  const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+  const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS) });
   if (!resp.ok) throw new Error(`Yahoo K 线响应 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseYahooChart(json);
@@ -108,7 +109,7 @@ export function parseYahooChart(json: YahooChartResponse): KlinePoint[] {
 export async function fetchYahooQuote(symbol: string): Promise<RealtimeQuote> {
   const upper = symbol.replace(/^gb_/i, "").toUpperCase();
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(upper)}?range=1d&interval=1m&includePrePost=true`;
-  const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+  const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS) });
   if (!resp.ok) throw new Error(`Yahoo Quote 响应 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseYahooQuote(json, upper);

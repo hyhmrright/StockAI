@@ -1,4 +1,5 @@
 import type { KlinePoint, RealtimeQuote, KlinePeriod, KlineRange, AdjustMode, NormalizedRequest } from "./types";
+import { KLINE_FETCH_TIMEOUT_MS } from "./types";
 import { parseChinaSymbol } from "./symbol";
 
 /** 把通用周期映射为腾讯 param */
@@ -28,7 +29,7 @@ export async function fetchTencentKline(req: NormalizedRequest): Promise<KlinePo
     ? `https://web.ifzq.gtimg.cn/appstock/app/kline/mkline?param=${tencentSymbol},${period},,${count}`
     : `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${tencentSymbol},${period},,,${count},${adjust}`;
 
-  const resp = await fetch(endpoint);
+  const resp = await fetch(endpoint, { signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS) });
   if (!resp.ok) throw new Error(`腾讯 K 线 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseTencentKline(json, tencentSymbol, req.adjust, period);
@@ -80,7 +81,7 @@ export async function fetchTencentQuote(symbol: string): Promise<RealtimeQuote> 
   const { prefix, code } = parseChinaSymbol(symbol);
   const tencentSymbol = `${prefix}${code}`;
   const url = `https://web.sqt.gtimg.cn/q=${tencentSymbol}`;
-  const resp = await fetch(url, { headers: { Referer: "https://gu.qq.com" } });
+  const resp = await fetch(url, { headers: { Referer: "https://gu.qq.com" }, signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS) });
   if (!resp.ok) throw new Error(`腾讯报价 HTTP ${resp.status}`);
   const buf = await resp.arrayBuffer();
   const text = new TextDecoder("gbk").decode(buf);
