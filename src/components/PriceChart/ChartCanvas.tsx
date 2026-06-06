@@ -15,9 +15,10 @@ import {
 } from "lightweight-charts";
 import type { KlinePoint } from "../../../shared/types";
 import { upColor, downColor } from "../../lib/market-hours";
-import { sma, boll } from "../../lib/indicators";
+import { sma } from "../../lib/indicators";
 import { maPeriodsForMarket, MA_COLORS } from "./types";
 import { CHART_THEME } from "./chart-theme";
+import { useBollOverlay } from "./useBollOverlay";
 
 interface Props {
   data: KlinePoint[];
@@ -149,33 +150,8 @@ const ChartCanvas: React.FC<Props> = ({
     });
   }, [logScale]);
 
-  // BOLL 上下轨叠加（主图）
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
-
-    const bandOpts = { priceLineVisible: false as const, lastValueVisible: false as const };
-    if (showBoll && !bollRef.current) {
-      bollRef.current = {
-        upper: chart.addLineSeries({ color: CHART_THEME.bollBand, lineWidth: 1, lineStyle: LineStyle.Dashed, ...bandOpts }),
-        mid:   chart.addLineSeries({ color: CHART_THEME.bollMid,  lineWidth: 1, ...bandOpts }),
-        lower: chart.addLineSeries({ color: CHART_THEME.bollBand, lineWidth: 1, lineStyle: LineStyle.Dashed, ...bandOpts }),
-      };
-    } else if (!showBoll && bollRef.current) {
-      const b = bollRef.current;
-      chart.removeSeries(b.upper); chart.removeSeries(b.mid); chart.removeSeries(b.lower);
-      bollRef.current = null;
-    }
-    if (showBoll && bollRef.current && data.length > 0) {
-      const { upper, mid, lower } = boll(data.map((p) => p.close));
-      const times = data.map((p) => p.time as UTCTimestamp);
-      const toLine = (vs: (number | null)[]): LineData<UTCTimestamp>[] =>
-        vs.map((v, i) => (v == null ? null : { time: times[i], value: v })).filter((x): x is LineData<UTCTimestamp> => x !== null);
-      bollRef.current.upper.setData(toLine(upper));
-      bollRef.current.mid.setData(toLine(mid));
-      bollRef.current.lower.setData(toLine(lower));
-    }
-  }, [showBoll, data]);
+  // BOLL 上下轨叠加（主图）— 逻辑抽至 useBollOverlay hook
+  useBollOverlay(chartRef, bollRef, showBoll, data);
 
   // 比较基准数据：以起点为 100 归一化展示相对走势
   useEffect(() => {
