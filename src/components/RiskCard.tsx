@@ -2,6 +2,7 @@ import React from 'react';
 import type { RiskSnapshot } from '../../shared/types';
 import { useLanguage } from '../hooks/useLanguage';
 import { computePositionGuidance, computeVolatilityRange } from '../lib/positionSizing';
+import CardSkeleton from './CardSkeleton';
 
 interface RiskCardProps {
   risk?: RiskSnapshot;
@@ -21,12 +22,7 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
   }
 
   if (loading) {
-    return (
-      <div className="mb-6 p-4 bg-white/5 rounded-2xl border border-white/5 animate-pulse">
-        <div className="h-4 bg-white/10 rounded w-20 mb-3" />
-        <div className="h-3 bg-white/10 rounded w-full" />
-      </div>
-    );
+    return <CardSkeleton titleWidth="w-20" />;
   }
   if (!risk) return null;
 

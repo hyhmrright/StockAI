@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ValuationSnapshot } from '../../shared/types';
 import { useLanguage } from '../hooks/useLanguage';
+import CardSkeleton from './CardSkeleton';
 
 interface ValuationCardProps {
   valuation?: ValuationSnapshot;
@@ -25,12 +26,7 @@ const ValuationCard: React.FC<ValuationCardProps> = ({ valuation, loading }) => 
   }
 
   if (loading) {
-    return (
-      <div className="mb-6 p-4 bg-white/5 rounded-2xl border border-white/5 animate-pulse">
-        <div className="h-4 bg-white/10 rounded w-24 mb-3" />
-        <div className="h-3 bg-white/10 rounded w-full" />
-      </div>
-    );
+    return <CardSkeleton />;
   }
   if (!valuation) return null;
 
