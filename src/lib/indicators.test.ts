@@ -108,3 +108,43 @@ describe("vwap", () => {
     expect(out[1]).toBeCloseTo(10.333, 3);
   });
 });
+
+describe("边界与异常输入", () => {
+  it("sma：空数组→空、period<=0→全 null、单值 period1→该值", () => {
+    expect(sma([], 5)).toEqual([]);
+    expect(sma([1, 2, 3], 0)).toEqual([null, null, null]);
+    expect(sma([5], 1)).toEqual([5]);
+  });
+
+  it("ema：空数组→空、不足周期→全 null", () => {
+    expect(ema([], 5)).toEqual([]);
+    expect(ema([1, 2], 5)).toEqual([null, null]);
+  });
+
+  it("rsi：长度≤period→全 null、无跌幅→100", () => {
+    expect(rsi([1, 2, 3], 14)).toEqual([null, null, null]);
+    // 严格递增 → 平均跌幅为 0 → RSI 饱和 100
+    expect(rsi([1, 2, 3, 4, 5], 2).at(-1)).toBe(100);
+  });
+
+  it("macd / kdj：空输入→各序列为空", () => {
+    expect(macd([])).toEqual({ dif: [], dea: [], hist: [] });
+    expect(kdj([], [], [])).toEqual({ k: [], d: [], j: [] });
+  });
+
+  it("boll：空→空、不足周期→全 null", () => {
+    expect(boll([], 20)).toEqual({ mid: [], upper: [], lower: [] });
+    expect(boll([1, 2, 3], 20)).toEqual({ mid: [null, null, null], upper: [null, null, null], lower: [null, null, null] });
+  });
+
+  it("obv：空→空、单值→首日成交量、平盘不增减", () => {
+    expect(obv([], [])).toEqual([]);
+    expect(obv([5], [100])).toEqual([100]);
+    expect(obv([5, 5], [100, 200])).toEqual([100, 100]); // 平盘 sign=0
+  });
+
+  it("vwap：空→空、零成交量→退化为典型价", () => {
+    expect(vwap([], [], [], [])).toEqual([]);
+    expect(vwap([10], [10], [10], [0])).toEqual([10]); // vSum=0 → typ 兜底
+  });
+});
