@@ -2,6 +2,12 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/hyhmrright/StockAI)](https://github.com/hyhmrright/StockAI/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/hyhmrright/StockAI/total)](https://github.com/hyhmrright/StockAI/releases)
+[![Stars](https://img.shields.io/github/stars/hyhmrright/StockAI?style=social)](https://github.com/hyhmrright/StockAI/stargazers)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/hyhmrright/StockAI/releases/latest)
+
 ![StockAI Dashboard](./docs/screenshot-dashboard.png)
 
 StockAI is a modern cross-platform desktop application built with **Tauri 2.0**. It leverages AI technology to perform deep sentiment analysis and scoring on real-time stock news, and provides interactive K-line charts with technical indicators, giving investors data-driven insights in one place.
@@ -113,7 +119,11 @@ Individual layers:
 - **Architecture Principles**: Strictly follow Clean Architecture with unidirectional dependency flow (UI -> Core -> Sidecar).
 - **Test Driven**: All parsing logic must be verified by offline unit tests.
 
+## 🤝 Contributing
+
+Contributions are welcome! Please read the [Contributing Guide](./CONTRIBUTING.md) to get started, and our [Code of Conduct](./CODE_OF_CONDUCT.md). Found a bug or have an idea? Open an [issue](https://github.com/hyhmrright/StockAI/issues) or start a [discussion](https://github.com/hyhmrright/StockAI/discussions).
+
 ## 📄 License
 
-MIT License
+[MIT](./LICENSE) © hyhmrright
 

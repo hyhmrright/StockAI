@@ -2,6 +2,12 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/hyhmrright/StockAI)](https://github.com/hyhmrright/StockAI/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/hyhmrright/StockAI/total)](https://github.com/hyhmrright/StockAI/releases)
+[![Stars](https://img.shields.io/github/stars/hyhmrright/StockAI?style=social)](https://github.com/hyhmrright/StockAI/stargazers)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://github.com/hyhmrright/StockAI/releases/latest)
+
 ![StockAI Dashboard](./docs/screenshot-dashboard.png)
 
 StockAI 是一款基于 **Tauri 2.0** 构建的现代化跨平台桌面应用程序，利用 AI 技术对实时股票新闻进行深度情感分析与评分，同时提供交互式 K 线图与技术指标，为投资者在一处聚合数据驱动的洞察。
@@ -114,6 +120,10 @@ bun run test
 - **架构原则**: 严格遵循 Clean Architecture，保持依赖单向流动（UI -> Core -> Sidecar）。
 - **测试驱动**: 所有的解析逻辑必须经过离线单元测试验证。
 
+## 🤝 参与贡献
+
+欢迎贡献！请先阅读[贡献指南](./CONTRIBUTING.md)与[行为准则](./CODE_OF_CONDUCT.md)。发现 bug 或有想法？欢迎提 [issue](https://github.com/hyhmrright/StockAI/issues) 或开 [discussion](https://github.com/hyhmrright/StockAI/discussions)。
+
 ## 📄 开源协议
 
-MIT License
+[MIT](./LICENSE) © hyhmrright

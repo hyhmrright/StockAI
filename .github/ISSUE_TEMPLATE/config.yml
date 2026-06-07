@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 提问与讨论 / Questions & Discussions
+    url: https://github.com/hyhmrright/StockAI/discussions
+    about: 使用问题、功能点子、想法交流请到 Discussions / For usage questions, ideas, and general discussion
+  - name: 🔒 安全漏洞 / Security Vulnerability
+    url: https://github.com/hyhmrright/StockAI/security/advisories/new
+    about: 请勿公开提 issue，走私密漏洞报告 / Report security issues privately, not as a public issue

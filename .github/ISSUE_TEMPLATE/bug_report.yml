@@ -1,0 +1,82 @@
+name: 🐛 Bug 报告 / Bug Report
+description: 报告一个问题帮助我们改进 / Report a problem to help us improve
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢花时间报告 bug！请尽量填写以下信息，越详细越容易定位。
+        Thanks for reporting! The more detail you provide, the faster we can fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述 / Describe the bug
+      description: 清晰简洁地描述出了什么问题 / A clear description of what went wrong
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      description: 我们如何重现这个问题？/ How can we reproduce it?
+      placeholder: |
+        1. 打开 '...' / Open '...'
+        2. 点击 '...' / Click '...'
+        3. 看到错误 '...' / See error '...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为 / Expected behavior
+      description: 你期望发生什么？/ What did you expect to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统 / Operating System
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: AI 提供商 / AI Provider
+      description: 如果问题与 AI 分析相关 / If the issue relates to AI analysis
+      options:
+        - 不涉及 / Not applicable
+        - OpenAI
+        - Anthropic
+        - DeepSeek
+        - GLM
+        - Ollama
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: StockAI 版本 / Version
+      description: 见「设置」或 Releases 页 / See Settings or the Releases page
+      placeholder: "e.g. v0.13.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图 / Logs / Screenshots
+      description: 如有相关日志或截图请贴在这里 / Paste any relevant logs or screenshots
+    validations:
+      required: false
