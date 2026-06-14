@@ -40,9 +40,9 @@ interface ParsedArgs {
 /** 命令定义表：flag → 参数提取逻辑 */
 const COMMAND_TABLE: CommandDef[] = [
   {
-    // --list-models：config 从 argv 中找 JSON 串
+    // --list-models：config 为内联 JSON 串或 @临时文件路径（含 apiKey，故优先走临时文件）
     flag: '--list-models',
-    extract: (args) => ({ configStr: args.find(a => a.startsWith('{')) || '{}' }),
+    extract: (args) => ({ configStr: args.find(a => a.startsWith('{') || a.startsWith('@')) || '{}' }),
   },
   {
     // --info config_json symbol

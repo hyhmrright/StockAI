@@ -20,6 +20,9 @@ export const TIMEOUTS = {
 /** 深度模式最大正文提取数 */
 export const DEEP_MODE_MAX_ARTICLES = 3;
 
+// 注：各 provider 的精选模型目录已迁至 shared/constants.ts 的 STATIC_MODELS（带 i18n 标签），
+// 列模型逻辑见 cli-handlers.ts 的 handleListModels。
+
 /** Playwright 浏览器启动参数 */
 export const BROWSER_LAUNCH_ARGS = [
   '--no-sandbox',
@@ -33,6 +36,3 @@ export const BROWSER_CONTEXT_DEFAULTS = {
   userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   locale: 'zh-CN',
 };
-
-/** Ollama 之外的 Provider 默认模型列表（用于 --list-models 回退） */
-export const DEFAULT_OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];

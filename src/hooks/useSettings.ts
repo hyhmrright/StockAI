@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { getStore } from "../lib/store";
-import { ProviderType, Language } from "../../shared/types";
+import { ProviderType, Language, Role, ModelChoice, RoleModels } from "../../shared/types";
 import { PROVIDER_PROFILES, DEFAULT_SETTINGS as SHARED_DEFAULT_SETTINGS, CONFIG_VERSION, DEFAULT_SELECTED_MASTERS } from "../../shared/constants";
 
-export type { ProviderType, Language };
+export type { ProviderType, Language, Role, ModelChoice, RoleModels };
 
 export interface ProviderConfig {
   apiKey: string;
@@ -15,6 +15,8 @@ export interface Settings {
   _version: string;
   activeProvider: ProviderType;
   providerConfigs: Partial<Record<ProviderType, ProviderConfig>>;
+  /** 按角色分级模型；空对象 = 所有角色跟随 activeProvider（默认） */
+  roleModels: RoleModels;
   autoAnalyze: boolean;
   deepMode: boolean;
   masterAnalysis: boolean;
@@ -30,6 +32,8 @@ export const DEFAULT_SETTINGS: Settings = {
   ...SHARED_DEFAULT_SETTINGS,
   masterAnalysis: false,
   selectedMasters: DEFAULT_SELECTED_MASTERS,
+  // 默认空 = 所有角色跟随 activeProvider；用户在角色矩阵里按需 opt-in 分级
+  roleModels: {},
   providerConfigs: {
     ollama: {
       apiKey: "",
@@ -62,11 +66,13 @@ export function useSettings() {
             }
           }
 
-          const migrated = { 
-            ...DEFAULT_SETTINGS, 
-            ...saved, 
+          const migrated = {
+            ...DEFAULT_SETTINGS,
+            ...saved,
             providerConfigs: mergedConfigs,
-            _version: CONFIG_VERSION 
+            // roleModels 增量补默认：旧配置无此字段时为空对象（全部跟随 active），有则原样保留
+            roleModels: { ...DEFAULT_SETTINGS.roleModels, ...(saved.roleModels ?? {}) },
+            _version: CONFIG_VERSION
           };
           
           if (saved._version !== CONFIG_VERSION) {

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Key, Globe, Cpu, RefreshCw, AlertCircle } from "lucide-react";
+import React from "react";
+import { Key, Globe } from "lucide-react";
 import { ProviderConfig, ProviderType } from "../../hooks/useSettings";
-import { listModels, ServiceError } from "../../lib/ipc";
+import { useLanguage } from "../../hooks/useLanguage";
 import { FormInput } from "./FormInput";
+import { ModelSelect } from "./ModelSelect";
 
 interface ProviderFormProps {
   providerType: ProviderType;
@@ -11,161 +12,49 @@ interface ProviderFormProps {
 }
 
 /**
- * 把 sidecar 抛出的 list-models 错误码映射成对用户可操作的提示
- */
-function formatListModelsError(err: unknown): string {
-  if (err instanceof ServiceError) {
-    switch (err.code) {
-      case "ERR_LIST_MODELS_TIMEOUT":
-        return "请求超时：检查 Ollama 服务是否在响应（或网络是否通畅）";
-      case "ERR_LIST_MODELS_AUTH":
-        return "鉴权失败：请检查 API Key 是否正确";
-      case "ERR_LIST_MODELS_NETWORK":
-        return "网络连接失败：检查 Endpoint 地址，或确认服务已启动";
-      case "ERR_LIST_MODELS_SERVER":
-        return `服务器内部错误：${err.message}`;
-      case "ERR_LIST_MODELS_BAD_REQUEST":
-        return `配置异常：${err.message}`;
-      default:
-        return `获取模型列表失败: ${err.message}`;
-    }
-  }
-  return `获取模型列表失败: ${err instanceof Error ? err.message : String(err)}`;
-}
-
-/**
- * 统一的 Provider 配置表单
- * 根据 providerType 动态显示/隐藏各字段
+ * 统一的 Provider 配置表单：API Key + Endpoint + 模型选择。
+ * 模型拉取/标签/手动输入逻辑统一在 ModelSelect（所有 provider 通用）。
  */
 export function ProviderForm({ providerType, config, onChange }: ProviderFormProps): React.ReactElement {
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [isFetching, setIsFetching] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { t } = useLanguage();
 
   const isOllama = providerType === "ollama";
   // Anthropic 不暴露 baseUrl 字段（用固定端点，代理场景由高级用户自行处理）
   const showBaseUrl = providerType !== "anthropic";
   const showApiKey = providerType !== "ollama";
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  /**
-   * 统一的模型拉取实现。cancelled 为可选的取消信号（useEffect debounce 场景使用）。
-   */
-  async function loadModels(baseUrl: string, cancelled?: { current: boolean }) {
-    setIsFetching(true);
-    setFetchError(null);
-    try {
-      const models = await listModels("ollama", baseUrl);
-      if (cancelled?.current) return;
-      if (models.length > 0) setAvailableModels(models);
-      else setFetchError("未发现可用模型，请确保 Ollama 服务已启动。");
-    } catch (err) {
-      if (cancelled?.current) return;
-      setFetchError(formatListModelsError(err));
-    } finally {
-      if (!cancelled?.current) setIsFetching(false);
-    }
-  }
-
-  // Ollama：切换到非 Ollama 时清理模型列表；切换回来时触发重新拉取（debounce 500ms）
-  useEffect(() => {
-    if (!isOllama) {
-      setAvailableModels([]);
-      setFetchError(null);
-      return;
-    }
-
-    const cancelled = { current: false };
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      if (!cancelled.current) loadModels(config.baseUrl, cancelled);
-    }, 500);
-
-    return () => {
-      cancelled.current = true;
-      clearTimeout(debounceRef.current);
-    };
-  }, [config.baseUrl, isOllama]);
-
-  function handleManualFetch() {
-    // 手动刷新时取消可能挂起的 debounce 定时器，避免刷新后还触发旧的拉取
-    clearTimeout(debounceRef.current);
-    loadModels(config.baseUrl);
-  }
-
-  const refreshButton = (
-    <button
-      onClick={handleManualFetch}
-      disabled={isFetching}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-emerald-400 disabled:opacity-50 transition-colors"
-      title="刷新模型列表"
-    >
-      <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
-    </button>
-  );
-
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
       {showApiKey && (
         <FormInput
-          label="API Key"
+          label={t("label_api_key")}
           icon={<Key className="w-3 h-3" />}
           type="password"
           value={config.apiKey}
           onChange={(v) => onChange({ apiKey: v })}
           placeholder="sk-..."
-          hint="仅存储在本地应用数据目录"
+          hint={t("api_key_hint")}
         />
       )}
 
       {showBaseUrl && (
         <FormInput
-          label="接口地址 (Endpoint)"
+          label={t("label_endpoint")}
           icon={<Globe className="w-3 h-3" />}
           value={config.baseUrl}
           onChange={(v) => onChange({ baseUrl: v })}
           placeholder={isOllama ? "http://localhost:11434" : "https://api.openai.com/v1"}
           mono
-          suffix={isOllama ? refreshButton : undefined}
         />
       )}
 
-      {/* 模型名称：Ollama 额外提供已安装模型下拉框 */}
-      <div className="space-y-3">
-        {isOllama && availableModels.length > 0 && (
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1.5">
-              <Cpu className="w-3 h-3" /> 已安装模型
-            </label>
-            <select
-              value={availableModels.includes(config.model) ? config.model : ""}
-              onChange={(e) => { if (e.target.value) onChange({ model: e.target.value }); }}
-              className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer"
-            >
-              <option value="" disabled>从已安装模型中选择...</option>
-              {availableModels.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <FormInput
-          label="模型名称"
-          icon={<Cpu className="w-3 h-3" />}
-          value={config.model}
-          onChange={(v) => onChange({ model: v })}
-          placeholder={isOllama ? "或手动输入: llama3, qwen2..." : "模型名称"}
-          mono
-        />
-
-        {isOllama && fetchError && (
-          <div className="flex items-center gap-1.5 text-amber-500/80 text-[10px] px-1">
-            <AlertCircle className="w-3 h-3" /> {fetchError}
-          </div>
-        )}
-      </div>
+      <ModelSelect
+        provider={providerType}
+        baseUrl={config.baseUrl}
+        apiKey={config.apiKey}
+        value={config.model}
+        onChange={(v) => onChange({ model: v })}
+      />
     </div>
   );
 }

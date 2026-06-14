@@ -30,7 +30,10 @@ export interface DeepAnalysisOptions {
   symbol: string;
   quant: QuantBundle;
   news: StockNews[];
+  /** 大师 + 综合（brain 角色）的 chat */
   chat: ChatProvider;
+  /** 情绪分析（quick 角色）专用 chat；不传则复用 chat */
+  sentimentChat?: ChatProvider;
   selectedMasters?: string[];
   language?: Language;
   /** 大师 LLM 并发上限；不传时用默认值。由 provider 决定，见 concurrencyForProvider */
@@ -64,7 +67,7 @@ function buildCacheKey(
 }
 
 export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAnalysisResult> {
-  const { symbol, quant, news, chat, selectedMasters = DEFAULT_MASTER_IDS, language, concurrency = DEFAULT_CONCURRENCY, cacheFingerprint, cache } = opts;
+  const { symbol, quant, news, chat, sentimentChat, selectedMasters = DEFAULT_MASTER_IDS, language, concurrency = DEFAULT_CONCURRENCY, cacheFingerprint, cache } = opts;
 
   let masters = getSelectedMasters(selectedMasters);
   if (masters.length === 0) {
@@ -89,7 +92,7 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
   const masterTasks = masters.map((m: MasterAgent) => () => m.analyze(ctx));
   const [masterResults, sentimentResult] = await Promise.all([
     runWithConcurrency<MasterSignal>(masterTasks, concurrency),
-    analyzeSentiment(news, chat, language),
+    analyzeSentiment(news, sentimentChat ?? chat, language),
   ]);
 
   const result = await synthesize(masterResults, sentimentResult, quant, chat, language);

@@ -74,12 +74,53 @@ describe('CLI Handlers', () => {
   });
 
   describe('handleListModels', () => {
-    it('非 ollama 直接返回默认模型表', async () => {
+    it('有端点的云端 provider 真打 API，输出拉到的模型列表', async () => {
       const mockOut = mock(() => {});
-      const handlers = createHandlers({ _out: mockOut });
+      const mockFetch = mock(async () => ['gpt-4o', 'o3', 'gpt-4.1']);
+      const handlers = createHandlers({ _out: mockOut, _listModelsFetch: mockFetch });
 
-      await handlers.handleListModels({ provider: 'openai' });
+      await handlers.handleListModels({ provider: 'openai', baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-x' });
 
+      expect(mockFetch).toHaveBeenCalledWith('openai', 'https://api.openai.com/v1', 'sk-x');
+      const call = mockOut.mock.calls[0][0] as { data: { models: string[] } };
+      expect(call.data.models).toEqual(['gpt-4o', 'o3', 'gpt-4.1']);
+    });
+
+    it('真实列表为空时回退到静态目录', async () => {
+      const mockOut = mock(() => {});
+      const mockFetch = mock(async () => [] as string[]);
+      const handlers = createHandlers({ _out: mockOut, _listModelsFetch: mockFetch });
+
+      await handlers.handleListModels({ provider: 'openai', apiKey: 'sk-x' });
+
+      const call = mockOut.mock.calls[0][0] as { data: { models: string[] } };
+      expect(call.data.models.length).toBeGreaterThan(0);
+    });
+
+    it('拉取失败（鉴权错误）映射到稳定错误码', async () => {
+      const mockOut = mock(() => {});
+      const mockFetch = mock(async () => {
+        const err = new Error('Unauthorized') as Error & { status?: number };
+        err.status = 401;
+        throw err;
+      });
+      const handlers = createHandlers({ _out: mockOut, _listModelsFetch: mockFetch });
+
+      await handlers.handleListModels({ provider: 'deepseek', apiKey: 'bad' });
+
+      expect(mockOut).toHaveBeenCalledWith({
+        error: expect.objectContaining({ code: 'ERR_LIST_MODELS_AUTH' }),
+      });
+    });
+
+    it('无列模型端点的 provider（glm）直接返回静态目录，不发请求', async () => {
+      const mockOut = mock(() => {});
+      const mockFetch = mock(async () => ['should-not-be-called']);
+      const handlers = createHandlers({ _out: mockOut, _listModelsFetch: mockFetch });
+
+      await handlers.handleListModels({ provider: 'glm', apiKey: 'sk-x' });
+
+      expect(mockFetch).not.toHaveBeenCalled();
       const call = mockOut.mock.calls[0][0] as { data: { models: string[] } };
       expect(call.data.models.length).toBeGreaterThan(0);
     });

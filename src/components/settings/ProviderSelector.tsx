@@ -1,6 +1,9 @@
 import React from "react";
 import { Settings, ProviderType, PROVIDER_PROFILES } from "../../hooks/useSettings";
+import { useLanguage } from "../../hooks/useLanguage";
+import type { TranslationKey } from "../../i18n";
 import { ProviderForm } from "./ProviderForm";
+import { RoleModelMatrix } from "./RoleModelMatrix";
 
 /** 从 ProviderProfile 中仅取出表单字段（舍弃 contentLimit/timeout，它们是后端关心的内容） */
 function defaultConfig(provider: ProviderType) {
@@ -13,23 +16,25 @@ interface ProviderSelectorProps {
   onChange: (settings: Partial<Settings>) => void;
 }
 
-const PROVIDER_META: Record<ProviderType, { label: string; icon: string; description: string }> = {
-  openai:    { label: "OpenAI",    icon: "🤖", description: "GPT-4o, GPT-4-turbo 等" },
-  ollama:    { label: "Ollama",    icon: "🦙", description: "本地模型，qwen / llama 等" },
-  anthropic: { label: "Anthropic", icon: "🔷", description: "Claude 3.5 Sonnet 等" },
-  deepseek:  { label: "DeepSeek",  icon: "🐋", description: "DeepSeek V4 Pro / Flash" },
-  glm:       { label: "GLM",       icon: "🧠", description: "Zhipu AI GLM-5.1 等" },
+/** Provider 图标（emoji，专有展示，不走 i18n）；名称/描述走 i18n provider_name_* / provider_desc_* */
+const PROVIDER_ICONS: Record<ProviderType, string> = {
+  openai: "🤖",
+  ollama: "🦙",
+  anthropic: "🔷",
+  deepseek: "🐋",
+  glm: "🧠",
 };
 
-const PROVIDERS = Object.keys(PROVIDER_META) as ProviderType[];
+const PROVIDERS = Object.keys(PROVIDER_ICONS) as ProviderType[];
 
 /**
  * 多 Provider 选择器
- * 顶部下拉框切换提供商，每个 Provider 的配置独立保存
+ * 顶部下拉框切换提供商，每个 Provider 的配置独立保存；下方为按角色分级模型矩阵。
  */
 export function ProviderSelector({ settings, onChange }: ProviderSelectorProps): React.ReactElement {
+  const { t } = useLanguage();
   const active = settings.activeProvider ?? "ollama";
-  
+
   const activeConfig = settings.providerConfigs?.[active] ?? defaultConfig(active);
 
   function handleProviderChange(provider: ProviderType) {
@@ -58,7 +63,7 @@ export function ProviderSelector({ settings, onChange }: ProviderSelectorProps):
       {/* Provider 下拉选择 */}
       <div className="space-y-3">
         <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-          选择服务提供商
+          {t("select_provider")}
         </label>
 
         <div className="relative">
@@ -67,14 +72,11 @@ export function ProviderSelector({ settings, onChange }: ProviderSelectorProps):
             onChange={(e) => handleProviderChange(e.target.value as ProviderType)}
             className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 pr-10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer"
           >
-            {PROVIDERS.map((p) => {
-              const m = PROVIDER_META[p];
-              return (
-                <option key={p} value={p}>
-                  {m.icon}  {m.label} — {m.description}
-                </option>
-              );
-            })}
+            {PROVIDERS.map((p) => (
+              <option key={p} value={p}>
+                {PROVIDER_ICONS[p]}  {t(`provider_name_${p}` as TranslationKey)} — {t(`provider_desc_${p}` as TranslationKey)}
+              </option>
+            ))}
           </select>
           {/* 自定义下拉箭头 */}
           <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
@@ -85,13 +87,18 @@ export function ProviderSelector({ settings, onChange }: ProviderSelectorProps):
         </div>
       </div>
 
-      {/* 配置表单 */}
+      {/* 当前 Provider 配置表单 */}
       <div className="pt-4 border-t border-white/5">
         <ProviderForm
           providerType={active}
           config={activeConfig}
           onChange={handleConfigChange}
         />
+      </div>
+
+      {/* 按角色分级模型矩阵 */}
+      <div className="pt-4 border-t border-white/5">
+        <RoleModelMatrix settings={settings} onChange={onChange} />
       </div>
     </div>
   );

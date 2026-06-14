@@ -90,12 +90,13 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
 
 /**
  * 获取可用模型列表
+ * apiKey 用于对非 ollama provider 真打 /models 端点；取自表单当前编辑值（可能尚未保存）
  */
-export async function listModels(provider: string, baseUrl: string): Promise<string[]> {
+export async function listModels(provider: string, baseUrl: string, apiKey?: string): Promise<string[]> {
   if (!isTauri()) return MOCK_MODELS;
 
   try {
-    const raw = await invoke<string>("list_models", { provider, baseUrl });
+    const raw = await invoke<string>("list_models", { provider, baseUrl, apiKey: apiKey ?? "" });
     const data = parseServiceResponse<{ models: string[] }>(raw);
     return data.models || [];
   } catch (error) {

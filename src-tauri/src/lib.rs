@@ -29,6 +29,8 @@ impl Drop for TempFileGuard {
 struct ModelListConfig {
     provider: String,
     base_url: String,
+    // 列模型对非 ollama provider 需真打 /models，故需 apiKey；取自前端表单当前编辑值（可能尚未保存到 store）
+    api_key: String,
 }
 
 /**
@@ -122,10 +124,13 @@ impl SidecarManager {
         app_handle: &tauri::AppHandle,
         config: ModelListConfig,
     ) -> Result<String, String> {
-        let config_json =
-            serde_json::to_string(&config).map_err(|e| format!("列表配置序列化失败: {}", e))?;
-
-        Self::run(app_handle, vec!["--list-models".to_string(), config_json]).await
+        // 含 apiKey 的 config 走 0o600 临时文件 + @path（与 analyze/deep/chat 等一致），
+        // 避免 key 出现在进程 argv（ps/Activity Monitor 可见）。
+        let config_val =
+            serde_json::to_value(&config).map_err(|e| format!("列表配置序列化失败: {}", e))?;
+        let guard = Self::write_temp_config(&config_val)?;
+        let config_arg = format!("@{}", guard.path().to_string_lossy());
+        Self::run(app_handle, vec!["--list-models".to_string(), config_arg]).await
     }
 
     async fn get_stock_info(
@@ -316,8 +321,13 @@ async fn list_models(
     app_handle: tauri::AppHandle,
     provider: String,
     base_url: String,
+    api_key: String,
 ) -> Result<String, String> {
-    let config = ModelListConfig { provider, base_url };
+    let config = ModelListConfig {
+        provider,
+        base_url,
+        api_key,
+    };
     SidecarManager::list_models(&app_handle, config).await
 }
 

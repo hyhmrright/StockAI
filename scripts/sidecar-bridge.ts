@@ -3,6 +3,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { writeFileSync, unlinkSync } from "fs";
 import { errorEnvelope } from "../sidecar/utils";
+import { CONFIG_VERSION } from "../shared/constants";
 
 /**
  * Sidecar 桥接服务器 (增强版)
@@ -49,7 +50,7 @@ const server = Bun.serve({
       const buildSettingsJson = () => {
         const provider = process.env.AI_PROVIDER || "openai";
         return JSON.stringify({
-          _version: 1,
+          _version: CONFIG_VERSION,
           activeProvider: provider,
           providerConfigs: {
             [provider]: {
