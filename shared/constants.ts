@@ -43,7 +43,7 @@ export interface StaticModel {
 
 /**
  * 各 Provider 的精选静态模型目录（带 i18n 标签）。
- * 用途：① 前端模型下拉的基础选项与标签展示；② 动态拉取无端点（如 GLM）或返回空时的兜底。
+ * 用途：① 前端模型下拉的基础选项与标签展示；② 动态拉取返回空或失败时的兜底。
  * 非穷举——用户始终可在输入框手动填写任意模型名。
  */
 export const STATIC_MODELS: Record<ProviderType, StaticModel[]> = {
@@ -72,7 +72,7 @@ export const STATIC_MODELS: Record<ProviderType, StaticModel[]> = {
 
 /**
  * Provider 能力位：是否本地、动态列模型的端点路径与鉴权风格。
- * 无 modelsPath 表示该 provider 无公开列模型端点（如 GLM），仅用静态目录。
+ * 无 modelsPath 表示该 provider 无公开列模型端点，仅用静态目录（防御兜底，当前所有云端 provider 均有端点）。
  * modelsPath 拼到用户配置的 baseUrl 之后——注意各 baseUrl 是否已含 /v1。
  */
 export interface ProviderCaps {
@@ -86,7 +86,7 @@ export const PROVIDER_CAPS: Record<ProviderType, ProviderCaps> = {
   ollama:    { isLocal: true },                                                     // 走 ollama SDK，非 HTTP /models
   anthropic: { isLocal: false, modelsPath: '/v1/models', authStyle: 'anthropic' }, // baseUrl 为根，需补 /v1
   deepseek:  { isLocal: false, modelsPath: '/models',    authStyle: 'bearer' },    // baseUrl 为根，列模型在 /models
-  glm:       { isLocal: false },                                                    // 无公开列模型端点，仅静态目录
+  glm:       { isLocal: false, modelsPath: '/models',    authStyle: 'bearer' },    // baseUrl 已含 /api/paas/v4
 };
 
 /** 深度分析默认启用的大师 ID 列表 */

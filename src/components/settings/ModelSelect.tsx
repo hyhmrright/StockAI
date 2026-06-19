@@ -63,7 +63,7 @@ export function ModelSelect({ provider, baseUrl, apiKey, value, onChange }: Mode
 
   async function load() {
     const myId = ++reqIdRef.current;
-    // 云端 provider 未配 key 时跳过拉取（否则一进设置页就以空 key 命中 401）；GLM 无端点会由 sidecar 返静态目录
+    // 云端 provider 未配 key 时跳过拉取（否则一进设置页就以空 key 命中 401），静态目录由 buildOptions 兜底
     if (PROVIDER_CAPS[provider].modelsPath && !apiKey) {
       setDynamicModels([]);
       setFetchError(null);

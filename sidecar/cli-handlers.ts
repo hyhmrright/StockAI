@@ -25,15 +25,16 @@ function staticModelValues(provider: ProviderType): string[] {
 
 /**
  * 向 OpenAI 兼容 / Anthropic 的列模型端点拉真实模型（10s 超时，鉴权头按 provider 区分）。
- * 抛出的错误交由 classifyListModelsError 归类为稳定错误码。
+ * 返回项为各 provider /models 的原始 model id——不过滤 embedding/vision 等非对话模型，与其它 provider 一致。
+ * 抛出的错误交由 classifyListModelsError 归类为稳定错误码。fetchImpl 供测试注入，默认全局 fetch。
  */
-async function fetchProviderModels(provider: ProviderType, baseUrl: string, apiKey: string): Promise<string[]> {
+export async function fetchProviderModels(provider: ProviderType, baseUrl: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<string[]> {
   const caps = PROVIDER_CAPS[provider];
   const url = `${baseUrl.replace(/\/$/, '')}${caps.modelsPath}`;
   const headers: Record<string, string> = caps.authStyle === 'anthropic'
     ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
     : { Authorization: `Bearer ${apiKey}` };
-  const resp = await withTimeout(fetch(url, { headers }), 10_000, '获取模型列表超时');
+  const resp = await withTimeout(fetchImpl(url, { headers }), 10_000, '获取模型列表超时');
   if (!resp.ok) {
     // 把 HTTP 状态挂到 error.status，供 classifyListModelsError 区分鉴权/服务器/请求错误。
     // 消息用语言中性英文：它会经 {message} 注入前端 i18n 模板，避免对 en/ja 用户夹带中文。
@@ -76,8 +77,8 @@ export function createHandlers(deps: HandlerDeps = {}) {
     /**
      * 获取模型列表 - 不触发 playwright 加载
      * - ollama：走本地 SDK 真实拉取
-     * - 有列模型端点的云端 provider（openai/anthropic/deepseek）：真打 /models，空结果回退静态目录
-     * - 无端点 provider（glm）：直接返回静态精选目录（非错误）
+     * - 有列模型端点的云端 provider（openai/anthropic/deepseek/glm）：真打 /models，空结果回退静态目录
+     * - 无端点 provider：直接返回静态精选目录（防御兜底，当前所有云端 provider 均有端点）
      */
     async handleListModels(rawConfig: RawConfig) {
       try {
@@ -101,7 +102,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
         }
 
         const caps = PROVIDER_CAPS[provider];
-        // 无公开列模型端点（如 GLM）→ 返回静态精选目录
+        // 无公开列模型端点 → 返回静态精选目录（防御兜底，当前所有云端 provider 均有端点）
         if (!caps?.modelsPath) {
           out(successEnvelope({ models: staticModelValues(provider) }));
           return;
