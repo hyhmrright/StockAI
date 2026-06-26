@@ -13,7 +13,9 @@
     "test:ui": "vitest",
     "test": "bun scripts/test-all.ts",
     "test:integration": "bun scripts/test-all.ts --integration",
-    "bump-version": "bun scripts/bump-version.ts"
+    "bump-version": "bun scripts/bump-version.ts",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",
@@ -37,6 +39,7 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6.9.1",

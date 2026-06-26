@@ -25,6 +25,10 @@
           },
           {
             "type": "command",
+            "command": "file=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null); case \"$file\" in */src/*|*/sidecar/*|*/shared/*|*/scripts/*) case \"$file\" in *.ts|*.tsx) /Users/hyh/code/StockAI/node_modules/.bin/biome format --write \"$file\" >/dev/null 2>&1 ;; esac ;; esac; exit 0"
+          },
+          {
+            "type": "command",
             "command": "file=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null); root=/Users/hyh/code/StockAI; case \"$file\" in *.test.ts|*.test.tsx) tf=\"$file\" ;; *.ts) tf=\"${file%.ts}.test.ts\" ;; *.tsx) base=\"${file%.tsx}\"; if [ -f \"$base.test.tsx\" ]; then tf=\"$base.test.tsx\"; else tf=\"$base.test.ts\"; fi ;; *) exit 0 ;; esac; [ -f \"$tf\" ] || exit 0; case \"$tf\" in */sidecar/*) out=$(cd \"$root/sidecar\" && bun test \"$tf\" 2>&1); rc=$? ;; *) out=$(cd \"$root\" && bunx vitest run \"$tf\" 2>&1); rc=$? ;; esac; if [ $rc -ne 0 ]; then echo \"❌ 相关测试未通过（$tf），编辑已写入但回归失败，请修复：\" >&2; echo \"$out\" | tail -20 >&2; exit 2; fi"
           }
         ]
