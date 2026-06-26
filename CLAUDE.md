@@ -72,7 +72,7 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 ## Workflow
 
 - **Claude Skills**：`/new-master-agent`（引导新增投资大师 Agent）、`/add-provider`（引导新增 AI Provider）、`/new-strategy`（引导新增抓取策略）。`.mcp.json` 已提交，重启 Claude Code 后 context7 MCP 生效（对话中说 `use context7` 查实时库文档）；`sqlite-history` MCP 的 db 路径写死为 macOS 的 `~/Library/Application Support/com.hyh.stockai/`，**仅 macOS 可用**，Linux/Windows 贡献者可忽略该 server。
-- **提交前流程（机制强制，非自觉）**：非纯文档改动 commit 前必须先跑 `agent-skills:code-simplification` → `agent-skills:code-review-and-quality`（有问题修完再回简化）。`.claude/hooks/commit-gate.sh`（PreToolUse/Bash）会拦截未声明审查的代码/配置提交并 `exit 2`；审查完成后用 `REVIEWED=1 git commit ...` 显式放行，纯文档（`*.md` / `docs/` / `LICENSE` / `CHANGELOG`）自动豁免。
+- **提交前流程**：非纯文档改动 commit 前先跑 `agent-skills:code-simplification` → `agent-skills:code-review-and-quality`（有问题修完再回简化）。维护者本地由全局 hook（`~/.claude/hooks/commit-gate.sh`）强制——拦未声明审查的代码提交，审查后用 `REVIEWED=1 git commit ...` 放行，纯文档自动豁免。
 - Pre-push 钩子 (`lefthook.yml`) 并行跑 `tsc --noEmit`、`cargo check`、`bun run format:check`（biome 格式门禁）。
 - 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun scripts/sidecar-bridge.ts`（:3001 HTTP 端点）。浏览器 dev 模式下 `src/lib/ipc.ts` 自动走该桥接器，bridge 未启动时退回 mock 数据并 `console.warn` 一次。
 
