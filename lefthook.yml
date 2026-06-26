@@ -1,5 +1,11 @@
 pre-push:
+  # 三个 pre-push 检查均为只读、互不依赖（不改文件、不共享状态），
+  # 故显式声明 parallel：彻底消除「调用顺序」这一变量，同时一次性报全部失败。
+  parallel: true
   commands:
+    format-check:
+      run: bun run format:check
+      fail_text: "代码格式不符 biome 规范。运行 `bun run format` 自动修复后重新 add 再推送。"
     typecheck:
       run: bun tsc --noEmit
       fail_text: "TypeScript type errors found. Fix them before pushing."
