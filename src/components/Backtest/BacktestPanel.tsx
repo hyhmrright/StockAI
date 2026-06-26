@@ -73,14 +73,34 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol }) => {
         <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-white">回测结果</span>
-            <button onClick={() => setResult(null)} className="text-[10px] text-gray-500 hover:text-gray-300">重新回测</button>
+            <button
+              onClick={() => setResult(null)}
+              className="text-[10px] text-gray-500 hover:text-gray-300"
+            >
+              重新回测
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <MetricCard label="策略收益" value={formatPct(result.totalReturn)} valueClass={pctColor(result.totalReturn)} />
-            <MetricCard label="买入持有" value={formatPct(result.buyAndHoldReturn)} valueClass={pctColor(result.buyAndHoldReturn)} />
-            <MetricCard label="最大回撤" value={formatPct(result.maxDrawdown)} valueClass="text-rose-400" />
-            <MetricCard label="夏普比率" value={Number.isFinite(result.sharpeRatio) ? result.sharpeRatio.toFixed(2) : 'N/A'} />
+            <MetricCard
+              label="策略收益"
+              value={formatPct(result.totalReturn)}
+              valueClass={pctColor(result.totalReturn)}
+            />
+            <MetricCard
+              label="买入持有"
+              value={formatPct(result.buyAndHoldReturn)}
+              valueClass={pctColor(result.buyAndHoldReturn)}
+            />
+            <MetricCard
+              label="最大回撤"
+              value={formatPct(result.maxDrawdown)}
+              valueClass="text-rose-400"
+            />
+            <MetricCard
+              label="夏普比率"
+              value={Number.isFinite(result.sharpeRatio) ? result.sharpeRatio.toFixed(2) : 'N/A'}
+            />
           </div>
 
           <div className="flex justify-between text-[10px] text-gray-500">

@@ -42,17 +42,19 @@ export abstract class PlaywrightStrategy implements ScrapeStrategy {
 
     try {
       let navFailed = false;
-      await page.goto(url, {
-        waitUntil: this.getWaitUntil(),
-        timeout: TIMEOUTS.pageNavigation,
-      }).catch(err => {
-        if (err instanceof Error && err.name === 'TimeoutError') {
-          logger.warn(`[${this.name}] 页面加载超时，尝试解析已加载内容: ${toErrorMessage(err)}`);
-        } else {
-          logger.warn(`[${this.name}] 页面导航失败，跳过解析: ${toErrorMessage(err)}`);
-          navFailed = true;
-        }
-      });
+      await page
+        .goto(url, {
+          waitUntil: this.getWaitUntil(),
+          timeout: TIMEOUTS.pageNavigation,
+        })
+        .catch((err) => {
+          if (err instanceof Error && err.name === 'TimeoutError') {
+            logger.warn(`[${this.name}] 页面加载超时，尝试解析已加载内容: ${toErrorMessage(err)}`);
+          } else {
+            logger.warn(`[${this.name}] 页面导航失败，跳过解析: ${toErrorMessage(err)}`);
+            navFailed = true;
+          }
+        });
 
       if (navFailed) return [];
 

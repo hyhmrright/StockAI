@@ -58,10 +58,18 @@ const ScreenerTable: React.FC<ScreenerTableProps> = ({ results, onSelect }) => {
                   {r.quant.composite.score?.toFixed(1) ?? '—'}
                 </span>
               </td>
-              <td className="text-center py-2.5 px-2"><Badge value={r.quant.technical.signal} /></td>
-              <td className="text-center py-2.5 px-2"><Badge value={r.quant.fundamental.signal} /></td>
-              <td className="text-center py-2.5 px-2"><Badge value={r.quant.valuation?.signal} /></td>
-              <td className="text-center py-2.5 px-2"><Badge value={r.quant.risk?.riskLevel} /></td>
+              <td className="text-center py-2.5 px-2">
+                <Badge value={r.quant.technical.signal} />
+              </td>
+              <td className="text-center py-2.5 px-2">
+                <Badge value={r.quant.fundamental.signal} />
+              </td>
+              <td className="text-center py-2.5 px-2">
+                <Badge value={r.quant.valuation?.signal} />
+              </td>
+              <td className="text-center py-2.5 px-2">
+                <Badge value={r.quant.risk?.riskLevel} />
+              </td>
             </tr>
           ))}
         </tbody>

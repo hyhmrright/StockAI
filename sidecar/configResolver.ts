@@ -62,17 +62,18 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
   const obj = raw as Record<string, any>;
 
   if (!obj || typeof obj !== 'object' || Object.keys(obj).length === 0) {
-    throw new Error("配置文件为空，请进入设置界面并保存配置后再试。");
+    throw new Error('配置文件为空，请进入设置界面并保存配置后再试。');
   }
 
   if (String(obj._version) !== String(CONFIG_VERSION)) {
     throw new Error(
-      `配置格式版本不兼容（期望 "${CONFIG_VERSION}"，当前为 "${obj._version ?? '无'}"）。请点击右上角设置图标，重新保存模型配置以完成迁移。`
+      `配置格式版本不兼容（期望 "${CONFIG_VERSION}"，当前为 "${obj._version ?? '无'}"）。请点击右上角设置图标，重新保存模型配置以完成迁移。`,
     );
   }
 
   const rawProvider = obj.activeProvider ?? 'ollama';
-  const activeProvider: ProviderType = rawProvider in PROVIDER_PROFILES ? rawProvider as ProviderType : 'ollama';
+  const activeProvider: ProviderType =
+    rawProvider in PROVIDER_PROFILES ? (rawProvider as ProviderType) : 'ollama';
   const active = resolveProviderCreds(obj, activeProvider);
 
   const brain = resolveRole(obj, 'brain', active);
@@ -80,7 +81,7 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
   const summarize = resolveRole(obj, 'summarize', active);
 
   const rawLang = obj.language;
-  const language: Language = VALID_LANGUAGES.includes(rawLang) ? rawLang as Language : 'zh';
+  const language: Language = VALID_LANGUAGES.includes(rawLang) ? (rawLang as Language) : 'zh';
 
   return {
     // 顶层字段 = brain 角色派生：基础分析/handleAnalysis 等旧路径零改动即用核心研判模型
@@ -88,9 +89,11 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
     apiKey: brain.apiKey,
     baseUrl: brain.baseUrl,
     modelName: brain.model,
-    deepMode:  obj.deepMode !== false,
+    deepMode: obj.deepMode !== false,
     masterAnalysis: obj.masterAnalysis === true,
-    selectedMasters: Array.isArray(obj.selectedMasters) ? obj.selectedMasters : DEFAULT_SELECTED_MASTERS,
+    selectedMasters: Array.isArray(obj.selectedMasters)
+      ? obj.selectedMasters
+      : DEFAULT_SELECTED_MASTERS,
     language,
     roles: { brain, quick, summarize },
   };

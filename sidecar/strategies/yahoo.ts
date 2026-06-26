@@ -7,7 +7,7 @@ import { detectChinaStock } from '../parsers/exchange';
  * Yahoo Finance 抓取策略
  */
 export class YahooStrategy extends PlaywrightStrategy {
-  readonly name = "Yahoo Finance";
+  readonly name = 'Yahoo Finance';
 
   protected getUrl(symbol: string): string {
     const china = detectChinaStock(symbol);

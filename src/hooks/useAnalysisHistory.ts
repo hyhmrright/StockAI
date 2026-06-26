@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { AnalysisRecordSummary, AnalysisType } from "../../shared/types";
-import { getAnalysisHistory, deleteAnalysisRecords } from "../lib/db";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { AnalysisRecordSummary, AnalysisType } from '../../shared/types';
+import { getAnalysisHistory, deleteAnalysisRecords } from '../lib/db';
 
 const PAGE_SIZE = 20;
 
@@ -38,7 +38,7 @@ export function useAnalysisHistory(
         setHasMore(rows.length === PAGE_SIZE);
         offsetRef.current = offset + rows.length;
       } catch (e) {
-        console.error("加载分析历史失败:", e);
+        console.error('加载分析历史失败:', e);
       } finally {
         if (activeRef.current) setLoading(false);
       }
@@ -62,13 +62,10 @@ export function useAnalysisHistory(
     load(offsetRef.current, true);
   }, [loading, hasMore, load]);
 
-  const remove = useCallback(
-    async (ids: number[]) => {
-      await deleteAnalysisRecords(ids);
-      setRecords((prev) => prev.filter((r) => !ids.includes(r.id)));
-    },
-    [],
-  );
+  const remove = useCallback(async (ids: number[]) => {
+    await deleteAnalysisRecords(ids);
+    setRecords((prev) => prev.filter((r) => !ids.includes(r.id)));
+  }, []);
 
   const refresh = useCallback(() => {
     offsetRef.current = 0;

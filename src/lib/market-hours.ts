@@ -1,20 +1,20 @@
-import type { Market } from "../../shared/types";
+import type { Market } from '../../shared/types';
 
 export type { Market };
-export { detectMarket } from "../../shared/market";
+export { detectMarket } from '../../shared/market';
 
 /**
  * 涨色：A 股红、美股绿
  */
 export function upColor(market: Market): string {
-  return market === "A股" ? "#FF4D4F" : "#10B981";
+  return market === 'A股' ? '#FF4D4F' : '#10B981';
 }
 
 /**
  * 跌色：A 股绿、美股红
  */
 export function downColor(market: Market): string {
-  return market === "A股" ? "#10B981" : "#FF4D4F";
+  return market === 'A股' ? '#10B981' : '#FF4D4F';
 }
 
 /**
@@ -22,7 +22,7 @@ export function downColor(market: Market): string {
  * 不考虑节假日（免费数据源也不提供节假日日历，用户切换股票时会自动重拉）
  */
 export function isTradingHours(market: Market, ts: number = Date.now()): boolean {
-  if (market === "A股") {
+  if (market === 'A股') {
     // 北京时间 = UTC+8
     const beijing = new Date(ts + 8 * 60 * 60 * 1000);
     const day = beijing.getUTCDay();
@@ -31,8 +31,7 @@ export function isTradingHours(market: Market, ts: number = Date.now()): boolean
     const m = beijing.getUTCMinutes();
     const mins = h * 60 + m;
     // 9:30-11:30, 13:00-15:00
-    return (mins >= 9 * 60 + 30 && mins <= 11 * 60 + 30) ||
-           (mins >= 13 * 60 && mins <= 15 * 60);
+    return (mins >= 9 * 60 + 30 && mins <= 11 * 60 + 30) || (mins >= 13 * 60 && mins <= 15 * 60);
   } else {
     // 美股按 ET（EDT/EST），夏令时简化：3月第2周日 ~ 11月第1周日 = EDT(UTC-4)，否则 EST(UTC-5)
     const d = new Date(ts);

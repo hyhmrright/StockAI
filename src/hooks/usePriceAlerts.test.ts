@@ -26,7 +26,10 @@ describe('usePriceAlerts', () => {
     const { result } = renderHook(() => usePriceAlerts());
     act(() => result.current.setAlert('AAPL', 200, 150));
     expect(result.current.alerts.AAPL).toEqual({
-      symbol: 'AAPL', upperLimit: 200, lowerLimit: 150, enabled: true,
+      symbol: 'AAPL',
+      upperLimit: 200,
+      lowerLimit: 150,
+      enabled: true,
     });
   });
 

@@ -1,4 +1,10 @@
-import type { QuantBundle, StockNews, DeepAnalysisResult, MasterSignal, Language } from '../shared/types';
+import type {
+  QuantBundle,
+  StockNews,
+  DeepAnalysisResult,
+  MasterSignal,
+  Language,
+} from '../shared/types';
 import type { ChatProvider, MasterAgent, MasterAnalysisContext } from './agents/types';
 import { getSelectedMasters, DEFAULT_MASTER_IDS } from './agents/registry';
 import { analyzeSentiment } from './agents/sentiment';
@@ -51,7 +57,12 @@ export interface DeepAnalysisOptions {
  * 新闻的标题与正文各为独立 key 部件（JSON.stringify 规范化，杜绝边界撞 key）。
  */
 function buildCacheKey(
-  symbol: string, lang: Language, masterIds: string[], fingerprint: string, quant: QuantBundle, news: StockNews[],
+  symbol: string,
+  lang: Language,
+  masterIds: string[],
+  fingerprint: string,
+  quant: QuantBundle,
+  news: StockNews[],
 ): string {
   const quantFingerprint = [
     quant.composite.signal,
@@ -62,12 +73,30 @@ function buildCacheKey(
     quant.valuation?.signal ?? '',
     quant.valuation?.confidence ?? '',
   ].join(',');
-  const newsParts = news.flatMap(n => [n.title, n.content ?? '']);
-  return cacheKey([symbol, lang, [...masterIds].sort().join(','), fingerprint, quantFingerprint, ...newsParts]);
+  const newsParts = news.flatMap((n) => [n.title, n.content ?? '']);
+  return cacheKey([
+    symbol,
+    lang,
+    [...masterIds].sort().join(','),
+    fingerprint,
+    quantFingerprint,
+    ...newsParts,
+  ]);
 }
 
 export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAnalysisResult> {
-  const { symbol, quant, news, chat, sentimentChat, selectedMasters = DEFAULT_MASTER_IDS, language, concurrency = DEFAULT_CONCURRENCY, cacheFingerprint, cache } = opts;
+  const {
+    symbol,
+    quant,
+    news,
+    chat,
+    sentimentChat,
+    selectedMasters = DEFAULT_MASTER_IDS,
+    language,
+    concurrency = DEFAULT_CONCURRENCY,
+    cacheFingerprint,
+    cache,
+  } = opts;
 
   let masters = getSelectedMasters(selectedMasters);
   if (masters.length === 0) {
@@ -77,7 +106,14 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
 
   // 缓存命中检查：仅当调用方提供指纹时启用；磁盘缓存跨 Sidecar 进程存活（spawn-per-call 模型下内存缓存无效）
   const key = cacheFingerprint
-    ? buildCacheKey(symbol, language ?? 'zh', masters.map(m => m.meta.id), cacheFingerprint, quant, news)
+    ? buildCacheKey(
+        symbol,
+        language ?? 'zh',
+        masters.map((m) => m.meta.id),
+        cacheFingerprint,
+        quant,
+        news,
+      )
     : null;
   if (key) {
     const hit = readCache<DeepAnalysisResult>(key, cache);

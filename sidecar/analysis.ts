@@ -1,4 +1,12 @@
-import type { AIAnalysisResult, FullAnalysisResponse, MarketBundle, StockInfo, StockNews, QuantBundle, Language } from '../shared/types';
+import type {
+  AIAnalysisResult,
+  FullAnalysisResponse,
+  MarketBundle,
+  StockInfo,
+  StockNews,
+  QuantBundle,
+  Language,
+} from '../shared/types';
 import type { ParsedSymbol } from './parsers/exchange';
 import type { AIProvider } from './ai';
 import { scrapeStockNews as realScrape } from './scraper';
@@ -24,14 +32,17 @@ export interface AnalysisDeps {
   scrape?: typeof realScrape;
   fetchInfo?: (parsed: ParsedSymbol) => Promise<StockInfo | null>;
   enhance?: typeof realEnhance;
-  createProvider?: (type: string, cfg: { apiKey?: string; baseUrl?: string; model?: string }) => AIProvider;
+  createProvider?: (
+    type: string,
+    cfg: { apiKey?: string; baseUrl?: string; model?: string },
+  ) => AIProvider;
 }
 
 function resolveDeps(deps: AnalysisDeps): Required<AnalysisDeps> {
   return {
-    scrape:         deps.scrape         ?? realScrape,
-    fetchInfo:      deps.fetchInfo      ?? realFetchInfo,
-    enhance:        deps.enhance        ?? realEnhance,
+    scrape: deps.scrape ?? realScrape,
+    fetchInfo: deps.fetchInfo ?? realFetchInfo,
+    enhance: deps.enhance ?? realEnhance,
     createProvider: deps.createProvider ?? realCreateProvider,
   };
 }
@@ -56,11 +67,14 @@ export async function fetchMarketBundle(
     resolved.scrape(searchSymbol, deepMode),
   ]);
 
-  const stockInfo = stockInfoResult.status === 'fulfilled' ? (stockInfoResult.value ?? undefined) : undefined;
+  const stockInfo =
+    stockInfoResult.status === 'fulfilled' ? (stockInfoResult.value ?? undefined) : undefined;
   const news = newsResult.status === 'fulfilled' ? newsResult.value : [];
 
   if (news.length === 0) {
-    throw new ScrapeEmptyError(`未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`);
+    throw new ScrapeEmptyError(
+      `未搜寻到股票 "${symbol}" 的相关近期新闻。对于 A 股，请确保输入了 6 位代码（如 601012）；对于美股，请使用大写代码（如 AAPL）。`,
+    );
   }
 
   return { symbol, stockInfo, news };
@@ -86,9 +100,21 @@ export async function analyzeNewsWithLLM(
     logger.error(`AI 分析异常 (${symbol}): ${msg}`);
     const lang = config.language ?? 'zh';
     const FALLBACK: Record<string, { summary: string; pro: string; con: string }> = {
-      zh: { summary: `AI 分析服务暂不可用（可能未配置 API Key 或网络异常）。真实新闻数据已抓取，请参考上方列表。\n详细错误: ${msg}`, pro: '新闻抓取成功', con: 'AI 分析失败' },
-      en: { summary: `AI analysis unavailable (API key may be missing or network error). News data was fetched — see the list above.\nError: ${msg}`, pro: 'News fetched successfully', con: 'AI analysis failed' },
-      ja: { summary: `AI分析サービスが利用できません（APIキーが未設定またはネットワークエラーの可能性）。ニュースデータは取得済みです。\nエラー: ${msg}`, pro: 'ニュース取得成功', con: 'AI分析失敗' },
+      zh: {
+        summary: `AI 分析服务暂不可用（可能未配置 API Key 或网络异常）。真实新闻数据已抓取，请参考上方列表。\n详细错误: ${msg}`,
+        pro: '新闻抓取成功',
+        con: 'AI 分析失败',
+      },
+      en: {
+        summary: `AI analysis unavailable (API key may be missing or network error). News data was fetched — see the list above.\nError: ${msg}`,
+        pro: 'News fetched successfully',
+        con: 'AI analysis failed',
+      },
+      ja: {
+        summary: `AI分析サービスが利用できません（APIキーが未設定またはネットワークエラーの可能性）。ニュースデータは取得済みです。\nエラー: ${msg}`,
+        pro: 'ニュース取得成功',
+        con: 'AI分析失敗',
+      },
     };
     const fb = FALLBACK[lang] ?? FALLBACK.zh;
     return {
@@ -107,10 +133,23 @@ export async function analyzeNewsWithLLM(
 export async function performFullAnalysis(
   symbol: string,
   providerType: string = 'openai',
-  config: { apiKey?: string; baseUrl?: string; model?: string; deepMode?: boolean; language?: Language } = {},
+  config: {
+    apiKey?: string;
+    baseUrl?: string;
+    model?: string;
+    deepMode?: boolean;
+    language?: Language;
+  } = {},
   deps: AnalysisDeps = {},
 ): Promise<FullAnalysisResponse> {
   const bundle = await fetchMarketBundle(symbol, config.deepMode ?? true, deps);
-  const analysis = await analyzeNewsWithLLM(symbol, bundle.news, providerType, config, undefined, deps);
+  const analysis = await analyzeNewsWithLLM(
+    symbol,
+    bundle.news,
+    providerType,
+    config,
+    undefined,
+    deps,
+  );
   return { symbol, stockInfo: bundle.stockInfo, news: bundle.news, analysis };
 }

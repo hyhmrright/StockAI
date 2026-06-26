@@ -1,6 +1,6 @@
-import { load } from "@tauri-apps/plugin-store";
+import { load } from '@tauri-apps/plugin-store';
 
-const STORE_PATH = "settings.json";
+const STORE_PATH = 'settings.json';
 
 // 缓存 store 实例的 Promise，确保全局只加载一次
 let storePromise: ReturnType<typeof load> | null = null;

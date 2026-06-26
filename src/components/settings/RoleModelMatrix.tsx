@@ -1,14 +1,14 @@
-import React from "react";
-import { Settings, Role, ModelChoice } from "../../hooks/useSettings";
-import { useLanguage } from "../../hooks/useLanguage";
-import { RoleRow } from "./RoleRow";
+import React from 'react';
+import { Settings, Role, ModelChoice } from '../../hooks/useSettings';
+import { useLanguage } from '../../hooks/useLanguage';
+import { RoleRow } from './RoleRow';
 
 interface RoleModelMatrixProps {
   settings: Settings;
   onChange: (patch: Partial<Settings>) => void;
 }
 
-const ROLES: Role[] = ["brain", "quick", "summarize"];
+const ROLES: Role[] = ['brain', 'quick', 'summarize'];
 
 /**
  * 角色分级模型矩阵：为 brain/quick/summarize 各指定 provider+model。
@@ -28,9 +28,9 @@ export function RoleModelMatrix({ settings, onChange }: RoleModelMatrixProps): R
     <div className="space-y-4">
       <div>
         <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-          {t("role_models_title")}
+          {t('role_models_title')}
         </label>
-        <p className="text-[10px] text-gray-500 mt-1">{t("role_models_desc")}</p>
+        <p className="text-[10px] text-gray-500 mt-1">{t('role_models_desc')}</p>
       </div>
 
       <div className="space-y-3">

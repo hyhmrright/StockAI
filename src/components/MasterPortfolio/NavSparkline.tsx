@@ -15,7 +15,7 @@ const NavSparkline: React.FC<NavSparklineProps> = ({ points, width = 64, height 
   if (points.length === 0) return <div style={{ width, height }} />;
 
   // 把隐含起点 1.0 也纳入取值范围，避免单点曲线无高度
-  const values = [1, ...points.map(p => p.value)];
+  const values = [1, ...points.map((p) => p.value)];
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min || 1; // 全平时避免除零

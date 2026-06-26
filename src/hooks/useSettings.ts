@@ -1,7 +1,12 @@
-import { useState, useEffect } from "react";
-import { getStore } from "../lib/store";
-import { ProviderType, Language, Role, ModelChoice, RoleModels } from "../../shared/types";
-import { PROVIDER_PROFILES, DEFAULT_SETTINGS as SHARED_DEFAULT_SETTINGS, CONFIG_VERSION, DEFAULT_SELECTED_MASTERS } from "../../shared/constants";
+import { useState, useEffect } from 'react';
+import { getStore } from '../lib/store';
+import { ProviderType, Language, Role, ModelChoice, RoleModels } from '../../shared/types';
+import {
+  PROVIDER_PROFILES,
+  DEFAULT_SETTINGS as SHARED_DEFAULT_SETTINGS,
+  CONFIG_VERSION,
+  DEFAULT_SELECTED_MASTERS,
+} from '../../shared/constants';
 
 export type { ProviderType, Language, Role, ModelChoice, RoleModels };
 
@@ -36,7 +41,7 @@ export const DEFAULT_SETTINGS: Settings = {
   roleModels: {},
   providerConfigs: {
     ollama: {
-      apiKey: "",
+      apiKey: '',
       baseUrl: PROVIDER_PROFILES.ollama.baseUrl,
       model: PROVIDER_PROFILES.ollama.model,
     },
@@ -51,7 +56,7 @@ export function useSettings() {
     async function loadSettings() {
       try {
         const store = await getStore();
-        const saved = await store.get<Partial<Settings>>("app_settings");
+        const saved = await store.get<Partial<Settings>>('app_settings');
 
         if (saved) {
           // 执行深合并确保 providerConfigs 完整
@@ -72,17 +77,17 @@ export function useSettings() {
             providerConfigs: mergedConfigs,
             // roleModels 增量补默认：旧配置无此字段时为空对象（全部跟随 active），有则原样保留
             roleModels: { ...DEFAULT_SETTINGS.roleModels, ...(saved.roleModels ?? {}) },
-            _version: CONFIG_VERSION
+            _version: CONFIG_VERSION,
           };
-          
+
           if (saved._version !== CONFIG_VERSION) {
-            await store.set("app_settings", migrated);
+            await store.set('app_settings', migrated);
             await store.save();
           }
           setSettings(migrated);
         }
       } catch (error) {
-        console.error("加载设置失败:", error);
+        console.error('加载设置失败:', error);
       } finally {
         setIsLoading(false);
       }
@@ -97,10 +102,10 @@ export function useSettings() {
       setSettings(updated);
 
       const store = await getStore();
-      await store.set("app_settings", updated);
+      await store.set('app_settings', updated);
       await store.save();
     } catch (error) {
-      console.error("保存设置失败:", error);
+      console.error('保存设置失败:', error);
     }
   }
 

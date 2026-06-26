@@ -59,7 +59,9 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     '',
     `[近期新闻 (${news.length} 条)]`,
     ...formatNewsForPrompt(news),
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return facts;
 }

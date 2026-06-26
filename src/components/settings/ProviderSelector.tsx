@@ -1,14 +1,14 @@
-import React from "react";
-import { Settings, ProviderType, PROVIDER_PROFILES } from "../../hooks/useSettings";
-import { useLanguage } from "../../hooks/useLanguage";
-import type { TranslationKey } from "../../i18n";
-import { ProviderForm } from "./ProviderForm";
-import { RoleModelMatrix } from "./RoleModelMatrix";
+import React from 'react';
+import { Settings, ProviderType, PROVIDER_PROFILES } from '../../hooks/useSettings';
+import { useLanguage } from '../../hooks/useLanguage';
+import type { TranslationKey } from '../../i18n';
+import { ProviderForm } from './ProviderForm';
+import { RoleModelMatrix } from './RoleModelMatrix';
 
 /** 从 ProviderProfile 中仅取出表单字段（舍弃 contentLimit/timeout，它们是后端关心的内容） */
 function defaultConfig(provider: ProviderType) {
   const { baseUrl, model } = PROVIDER_PROFILES[provider];
-  return { baseUrl, model, apiKey: "" };
+  return { baseUrl, model, apiKey: '' };
 }
 
 interface ProviderSelectorProps {
@@ -18,11 +18,11 @@ interface ProviderSelectorProps {
 
 /** Provider 图标（emoji，专有展示，不走 i18n）；名称/描述走 i18n provider_name_* / provider_desc_* */
 const PROVIDER_ICONS: Record<ProviderType, string> = {
-  openai: "🤖",
-  ollama: "🦙",
-  anthropic: "🔷",
-  deepseek: "🐋",
-  glm: "🧠",
+  openai: '🤖',
+  ollama: '🦙',
+  anthropic: '🔷',
+  deepseek: '🐋',
+  glm: '🧠',
 };
 
 const PROVIDERS = Object.keys(PROVIDER_ICONS) as ProviderType[];
@@ -31,9 +31,12 @@ const PROVIDERS = Object.keys(PROVIDER_ICONS) as ProviderType[];
  * 多 Provider 选择器
  * 顶部下拉框切换提供商，每个 Provider 的配置独立保存；下方为按角色分级模型矩阵。
  */
-export function ProviderSelector({ settings, onChange }: ProviderSelectorProps): React.ReactElement {
+export function ProviderSelector({
+  settings,
+  onChange,
+}: ProviderSelectorProps): React.ReactElement {
   const { t } = useLanguage();
-  const active = settings.activeProvider ?? "ollama";
+  const active = settings.activeProvider ?? 'ollama';
 
   const activeConfig = settings.providerConfigs?.[active] ?? defaultConfig(active);
 
@@ -63,7 +66,7 @@ export function ProviderSelector({ settings, onChange }: ProviderSelectorProps):
       {/* Provider 下拉选择 */}
       <div className="space-y-3">
         <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-          {t("select_provider")}
+          {t('select_provider')}
         </label>
 
         <div className="relative">
@@ -74,14 +77,20 @@ export function ProviderSelector({ settings, onChange }: ProviderSelectorProps):
           >
             {PROVIDERS.map((p) => (
               <option key={p} value={p}>
-                {PROVIDER_ICONS[p]}  {t(`provider_name_${p}` as TranslationKey)} — {t(`provider_desc_${p}` as TranslationKey)}
+                {PROVIDER_ICONS[p]} {t(`provider_name_${p}` as TranslationKey)} —{' '}
+                {t(`provider_desc_${p}` as TranslationKey)}
               </option>
             ))}
           </select>
           {/* 自定义下拉箭头 */}
           <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </div>
         </div>
@@ -89,11 +98,7 @@ export function ProviderSelector({ settings, onChange }: ProviderSelectorProps):
 
       {/* 当前 Provider 配置表单 */}
       <div className="pt-4 border-t border-white/5">
-        <ProviderForm
-          providerType={active}
-          config={activeConfig}
-          onChange={handleConfigChange}
-        />
+        <ProviderForm providerType={active} config={activeConfig} onChange={handleConfigChange} />
       </div>
 
       {/* 按角色分级模型矩阵 */}

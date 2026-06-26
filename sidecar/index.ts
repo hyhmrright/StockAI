@@ -1,6 +1,13 @@
 import type { StockNews, ChatPayload } from '../shared/types';
 import type { RawConfig } from './cli-handlers';
-import { logger, toErrorMessage, outputJson, logToFile, errorEnvelope, errorEnvelopeFromUnknown } from './utils';
+import {
+  logger,
+  toErrorMessage,
+  outputJson,
+  logToFile,
+  errorEnvelope,
+  errorEnvelopeFromUnknown,
+} from './utils';
 import { tmpdir } from 'os';
 import { resolve, basename } from 'path';
 
@@ -42,7 +49,9 @@ const COMMAND_TABLE: CommandDef[] = [
   {
     // --list-models：config 为内联 JSON 串或 @临时文件路径（含 apiKey，故优先走临时文件）
     flag: '--list-models',
-    extract: (args) => ({ configStr: args.find(a => a.startsWith('{') || a.startsWith('@')) || '{}' }),
+    extract: (args) => ({
+      configStr: args.find((a) => a.startsWith('{') || a.startsWith('@')) || '{}',
+    }),
   },
   {
     // --info config_json symbol
@@ -119,7 +128,7 @@ function parseArgs(args: string[]): ParsedArgs {
     }
   }
   // 默认为分析模式: [binary] [symbol] [config_json | @config_path]
-  const possibleConfig = args.find(a => a.startsWith('{') || a.startsWith('@'));
+  const possibleConfig = args.find((a) => a.startsWith('{') || a.startsWith('@'));
   if (possibleConfig) {
     const idx = args.indexOf(possibleConfig);
     return { action: idx > 0 ? args[idx - 1] : '', configStr: possibleConfig };
@@ -141,11 +150,13 @@ async function resolveConfigStr(str: string): Promise<string> {
 
 async function run() {
   const args = process.argv;
-  logToFile(`Argv: [${args.length} items] action=${args.find(a => a.startsWith('--')) ?? 'default'}`);
+  logToFile(
+    `Argv: [${args.length} items] action=${args.find((a) => a.startsWith('--')) ?? 'default'}`,
+  );
 
   // 健康自检逻辑 - 优先运行，不需要加载业务模块
   if (args.includes('--check')) {
-    logger.info("运行 Sidecar 健康自检...");
+    logger.info('运行 Sidecar 健康自检...');
     try {
       const { BrowserManager } = await import('./browser-manager');
       const bm = new BrowserManager();
@@ -153,7 +164,7 @@ async function run() {
       const title = await page.title();
       await bm.close();
       logger.info(`✅ 浏览器连接成功 (标题: "${title || '无'}")`);
-      logger.info("✨ Sidecar 健康自检完成，环境正常。");
+      logger.info('✨ Sidecar 健康自检完成，环境正常。');
       process.exit(0);
     } catch (err) {
       logger.error(`❌ Sidecar 自检失败: ${toErrorMessage(err)}`);
@@ -167,10 +178,12 @@ async function run() {
   const { action, configStr: rawConfigStr, actionParam, newsJson, quantJson } = parseArgs(args);
   const configStr = await resolveConfigStr(rawConfigStr);
 
-  logger.info(`Sidecar 执行: action=${action}, param=${actionParam}, config_len=${configStr.length}`);
+  logger.info(
+    `Sidecar 执行: action=${action}, param=${actionParam}, config_len=${configStr.length}`,
+  );
 
   if (!action) {
-    logger.error("未提供有效 Action");
+    logger.error('未提供有效 Action');
     process.exit(1);
   }
 
@@ -217,7 +230,9 @@ async function run() {
           // news 始终通过临时文件传递（Rust/Bridge 写入），避免 argv 触发 ARG_MAX
           news = JSON.parse(await Bun.file(newsJson).text());
         } catch (err) {
-          outputJson(errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`));
+          outputJson(
+            errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`),
+          );
           return;
         }
         await Handlers.handleAnalyzeOnly(actionParam || '', news, config, quantJson);
@@ -242,7 +257,9 @@ async function run() {
         try {
           news = JSON.parse(await Bun.file(newsJson).text());
         } catch (err) {
-          outputJson(errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`));
+          outputJson(
+            errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`),
+          );
           return;
         }
         await Handlers.handleDeepAnalysis(actionParam || '', news, config, quantJson);
@@ -262,7 +279,9 @@ async function run() {
           // payload 始终通过临时文件传递（Rust 写入路径），避免 argv 撞 ARG_MAX
           payload = JSON.parse(await Bun.file(actionParam).text());
         } catch (err) {
-          outputJson(errorEnvelope('ERR_MISSING_PARAM', `读取 chat payload 失败: ${toErrorMessage(err)}`));
+          outputJson(
+            errorEnvelope('ERR_MISSING_PARAM', `读取 chat payload 失败: ${toErrorMessage(err)}`),
+          );
           return;
         }
         await Handlers.handleChat(payload, config);
@@ -281,7 +300,7 @@ async function run() {
   }
 }
 
-run().catch(err => {
+run().catch((err) => {
   logger.error(`执行流异常: ${toErrorMessage(err)}`);
   outputJson(errorEnvelopeFromUnknown('ERR_FATAL', err));
   process.exit(1);

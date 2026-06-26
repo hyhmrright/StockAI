@@ -1,11 +1,19 @@
 import { describe, it, expect, mock } from 'bun:test';
 import { createHandlers, fetchProviderModels } from './cli-handlers';
 import { ScrapeEmptyError } from './analysis';
-import { createMockAnalysisResponse, createMockNews, createMockAIResult } from '../shared/test-utils';
+import {
+  createMockAnalysisResponse,
+  createMockNews,
+  createMockAIResult,
+} from '../shared/test-utils';
 import type { ResolvedConfig } from './configResolver';
 
 const baseConfig: ResolvedConfig = {
-  provider: 'openai', apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true,
+  provider: 'openai',
+  apiKey: 'key',
+  baseUrl: 'url',
+  modelName: 'model',
+  deepMode: true,
 };
 
 describe('CLI Handlers', () => {
@@ -16,7 +24,13 @@ describe('CLI Handlers', () => {
       const mockAnalyze = mock(async () => mockResult);
 
       const handlers = createHandlers({ _out: mockOut, _analyze: mockAnalyze });
-      const config: ResolvedConfig = { provider: 'openai', apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
+      const config: ResolvedConfig = {
+        provider: 'openai',
+        apiKey: 'key',
+        baseUrl: 'url',
+        modelName: 'model',
+        deepMode: true,
+      };
 
       await handlers.handleAnalysis('AAPL', config);
 
@@ -30,27 +44,43 @@ describe('CLI Handlers', () => {
 
     it('分析失败时应该输出错误 JSON', async () => {
       const mockOut = mock(() => {});
-      const mockAnalyze = mock(async () => { throw new Error('Analysis Failed'); });
+      const mockAnalyze = mock(async () => {
+        throw new Error('Analysis Failed');
+      });
 
       const handlers = createHandlers({ _out: mockOut, _analyze: mockAnalyze });
-      const config: ResolvedConfig = { provider: 'openai', apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
+      const config: ResolvedConfig = {
+        provider: 'openai',
+        apiKey: 'key',
+        baseUrl: 'url',
+        modelName: 'model',
+        deepMode: true,
+      };
 
       await handlers.handleAnalysis('AAPL', config);
 
       expect(mockOut).toHaveBeenCalledWith({
-        error: expect.objectContaining({ 
-          code: 'ERR_ANALYSIS_FAILED', 
-          message: expect.stringContaining('Analysis Failed') 
+        error: expect.objectContaining({
+          code: 'ERR_ANALYSIS_FAILED',
+          message: expect.stringContaining('Analysis Failed'),
         }),
       });
     });
 
     it('抓取为空时应该返回 ERR_SCRAPE_EMPTY', async () => {
       const mockOut = mock(() => {});
-      const mockAnalyze = mock(async () => { throw new ScrapeEmptyError('未搜寻到股票相关新闻'); });
+      const mockAnalyze = mock(async () => {
+        throw new ScrapeEmptyError('未搜寻到股票相关新闻');
+      });
 
       const handlers = createHandlers({ _out: mockOut, _analyze: mockAnalyze });
-      const config: ResolvedConfig = { provider: 'openai', apiKey: 'key', baseUrl: 'url', modelName: 'model', deepMode: true };
+      const config: ResolvedConfig = {
+        provider: 'openai',
+        apiKey: 'key',
+        baseUrl: 'url',
+        modelName: 'model',
+        deepMode: true,
+      };
 
       await handlers.handleAnalysis('AAPL', config);
 
@@ -79,7 +109,11 @@ describe('CLI Handlers', () => {
       const mockFetch = mock(async () => ['gpt-4o', 'o3', 'gpt-4.1']);
       const handlers = createHandlers({ _out: mockOut, _listModelsFetch: mockFetch });
 
-      await handlers.handleListModels({ provider: 'openai', baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-x' });
+      await handlers.handleListModels({
+        provider: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-x',
+      });
 
       expect(mockFetch).toHaveBeenCalledWith('openai', 'https://api.openai.com/v1', 'sk-x');
       const call = mockOut.mock.calls[0][0] as { data: { models: string[] } };
@@ -118,7 +152,11 @@ describe('CLI Handlers', () => {
       const mockFetch = mock(async () => ['glm-4.6', 'glm-4-flash']);
       const handlers = createHandlers({ _out: mockOut, _listModelsFetch: mockFetch });
 
-      await handlers.handleListModels({ provider: 'glm', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', apiKey: 'sk-x' });
+      await handlers.handleListModels({
+        provider: 'glm',
+        baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+        apiKey: 'sk-x',
+      });
 
       expect(mockFetch).toHaveBeenCalledWith('glm', 'https://open.bigmodel.cn/api/paas/v4', 'sk-x');
       const call = mockOut.mock.calls[0][0] as { data: { models: string[] } };
@@ -134,12 +172,24 @@ describe('CLI Handlers', () => {
         captured.url = url;
         captured.auth = init.headers.Authorization;
         // data 里混入 embedding 等非对话模型——与其它 provider 一样如实返回、不过滤
-        return new Response(JSON.stringify({
-          data: [{ id: 'glm-4.6', created: 3 }, { id: 'glm-5.1', created: 2 }, { id: 'embedding-3', created: 1 }],
-        }), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            data: [
+              { id: 'glm-4.6', created: 3 },
+              { id: 'glm-5.1', created: 2 },
+              { id: 'embedding-3', created: 1 },
+            ],
+          }),
+          { status: 200 },
+        );
       }) as unknown as typeof fetch;
 
-      const models = await fetchProviderModels('glm', 'https://open.bigmodel.cn/api/paas/v4', 'sk-real', fakeFetch);
+      const models = await fetchProviderModels(
+        'glm',
+        'https://open.bigmodel.cn/api/paas/v4',
+        'sk-real',
+        fakeFetch,
+      );
 
       expect(captured.url).toBe('https://open.bigmodel.cn/api/paas/v4/models');
       expect(captured.auth).toBe('Bearer sk-real');
@@ -147,7 +197,8 @@ describe('CLI Handlers', () => {
     });
 
     it('非 2xx 响应抛出带 status 的错误，供 classifyListModelsError 归类', async () => {
-      const fakeFetch = (async () => new Response('unauthorized', { status: 401 })) as unknown as typeof fetch;
+      const fakeFetch = (async () =>
+        new Response('unauthorized', { status: 401 })) as unknown as typeof fetch;
       await expect(
         fetchProviderModels('glm', 'https://open.bigmodel.cn/api/paas/v4', 'bad', fakeFetch),
       ).rejects.toMatchObject({ status: 401 });
@@ -170,7 +221,9 @@ describe('CLI Handlers', () => {
 
     it('抓取为空映射到 ERR_SCRAPE_EMPTY', async () => {
       const mockOut = mock(() => {});
-      const mockFetch = mock(async () => { throw new ScrapeEmptyError('no news'); });
+      const mockFetch = mock(async () => {
+        throw new ScrapeEmptyError('no news');
+      });
 
       const handlers = createHandlers({ _out: mockOut, _fetchBundle: mockFetch });
       await handlers.handleFetchBundle('XYZ', baseConfig);
@@ -182,7 +235,9 @@ describe('CLI Handlers', () => {
 
     it('其他异常映射到 ERR_BUNDLE_FAILED', async () => {
       const mockOut = mock(() => {});
-      const mockFetch = mock(async () => { throw new Error('network down'); });
+      const mockFetch = mock(async () => {
+        throw new Error('network down');
+      });
 
       const handlers = createHandlers({ _out: mockOut, _fetchBundle: mockFetch });
       await handlers.handleFetchBundle('AAPL', baseConfig);
@@ -216,13 +271,21 @@ describe('CLI Handlers', () => {
       const handlers = createHandlers({ _out: mockOut, _analyzeOnly: mockAnalyze });
       await handlers.handleAnalyzeOnly('AAPL', news, baseConfig);
 
-      expect(mockAnalyze).toHaveBeenCalledWith('AAPL', news, 'openai', expect.objectContaining({ apiKey: 'key', model: 'model' }), undefined);
+      expect(mockAnalyze).toHaveBeenCalledWith(
+        'AAPL',
+        news,
+        'openai',
+        expect.objectContaining({ apiKey: 'key', model: 'model' }),
+        undefined,
+      );
       expect(mockOut).toHaveBeenCalledWith({ data: mockResult });
     });
 
     it('LLM 异常映射到 ERR_ANALYSIS_FAILED', async () => {
       const mockOut = mock(() => {});
-      const mockAnalyze = mock(async () => { throw new Error('rate limit'); });
+      const mockAnalyze = mock(async () => {
+        throw new Error('rate limit');
+      });
       const news = [createMockNews()];
 
       const handlers = createHandlers({ _out: mockOut, _analyzeOnly: mockAnalyze });

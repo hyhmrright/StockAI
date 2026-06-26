@@ -1,18 +1,26 @@
-import React, { useState, useEffect } from "react";
-import { getVersion } from "@tauri-apps/api/app";
-import { X, Settings as SettingsIcon, Save, Bot, User, CheckCircle2, BrainCircuit } from "lucide-react";
-import { useSettings, Settings } from "../hooks/useSettings";
-import { useLanguage } from "../hooks/useLanguage";
-import { GeneralForm } from "./settings/GeneralForm";
-import { ProviderSelector } from "./settings/ProviderSelector";
-import DeepAnalysisSettings from "./settings/DeepAnalysisSettings";
+import React, { useState, useEffect } from 'react';
+import { getVersion } from '@tauri-apps/api/app';
+import {
+  X,
+  Settings as SettingsIcon,
+  Save,
+  Bot,
+  User,
+  CheckCircle2,
+  BrainCircuit,
+} from 'lucide-react';
+import { useSettings, Settings } from '../hooks/useSettings';
+import { useLanguage } from '../hooks/useLanguage';
+import { GeneralForm } from './settings/GeneralForm';
+import { ProviderSelector } from './settings/ProviderSelector';
+import DeepAnalysisSettings from './settings/DeepAnalysisSettings';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type Tab = "general" | "providers" | "masters";
+type Tab = 'general' | 'providers' | 'masters';
 
 /**
  * 升级后的设置中心 - 参考 Cherry Studio 风格
@@ -21,9 +29,9 @@ type Tab = "general" | "providers" | "masters";
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { settings, updateSettings, isLoading } = useSettings();
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
-  const [appVersion, setAppVersion] = useState("");
-  const [activeTab, setActiveTab] = useState<Tab>("providers");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [appVersion, setAppVersion] = useState('');
+  const [activeTab, setActiveTab] = useState<Tab>('providers');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -31,22 +39,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   }, [settings]);
 
   useEffect(() => {
-    getVersion().then(setAppVersion).catch(() => {});
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => {});
   }, []);
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
-    setSaveStatus("saving");
+    setSaveStatus('saving');
     await updateSettings(localSettings);
-    setSaveStatus("saved");
-    setTimeout(() => setSaveStatus("idle"), 2000);
+    setSaveStatus('saved');
+    setTimeout(() => setSaveStatus('idle'), 2000);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
       <div className="bg-panel border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl h-[550px] overflow-hidden flex animate-in zoom-in-95 duration-200">
-        
         {/* 左侧侧边栏导航 */}
         <aside className="w-56 bg-black/20 border-r border-white/5 p-4 flex flex-col gap-1">
           <div className="flex items-center gap-3 px-3 py-4 mb-4">
@@ -57,24 +66,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </div>
 
           {[
-            { id: "general", label: t('tab_general'), icon: User },
-            { id: "providers", label: t('tab_providers'), icon: Bot },
-            { id: "masters", label: t('tab_masters'), icon: BrainCircuit },
-          ].map(tab => (
+            { id: 'general', label: t('tab_general'), icon: User },
+            { id: 'providers', label: t('tab_providers'), icon: Bot },
+            { id: 'masters', label: t('tab_masters'), icon: BrainCircuit },
+          ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as Tab)}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all ${
-                activeTab === tab.id 
-                  ? "bg-emerald-500/10 text-emerald-400 font-medium" 
-                  : "text-gray-400 hover:bg-white/5 hover:text-gray-100"
+                activeTab === tab.id
+                  ? 'bg-emerald-500/10 text-emerald-400 font-medium'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-gray-100'
               }`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
             </button>
           ))}
-          
+
           <div className="mt-auto p-4 text-[10px] text-gray-600 font-mono">
             StockAI {appVersion ? `v${appVersion}` : ''}
           </div>
@@ -85,9 +94,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* 内容头部 */}
           <header className="px-8 py-5 flex items-center justify-between border-b border-white/5 bg-panel/50 backdrop-blur-sm sticky top-0 z-10">
             <h3 className="text-base font-semibold text-gray-100">
-              {{ general: t('title_general'), providers: t('title_providers'), masters: t('title_masters') }[activeTab]}
+              {
+                {
+                  general: t('title_general'),
+                  providers: t('title_providers'),
+                  masters: t('title_masters'),
+                }[activeTab]
+              }
             </h3>
-            <button 
+            <button
               onClick={onClose}
               className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
             >
@@ -97,12 +112,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           {/* 表单内容 */}
           <div className="flex-1 p-8 overflow-y-auto scrollbar-hide space-y-8 animate-slide-in">
-            {activeTab === "general" ? (
+            {activeTab === 'general' ? (
               <GeneralForm
                 settings={localSettings}
                 onChange={(s) => setLocalSettings({ ...localSettings, ...s })}
               />
-            ) : activeTab === "providers" ? (
+            ) : activeTab === 'providers' ? (
               <ProviderSelector
                 settings={localSettings}
                 onChange={(s) => setLocalSettings({ ...localSettings, ...s })}
@@ -111,8 +126,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <DeepAnalysisSettings
                 masterAnalysis={localSettings.masterAnalysis}
                 selectedMasters={localSettings.selectedMasters}
-                onMasterAnalysisChange={(enabled) => setLocalSettings({ ...localSettings, masterAnalysis: enabled })}
-                onSelectedMastersChange={(ids) => setLocalSettings({ ...localSettings, selectedMasters: ids })}
+                onMasterAnalysisChange={(enabled) =>
+                  setLocalSettings({ ...localSettings, masterAnalysis: enabled })
+                }
+                onSelectedMastersChange={(ids) =>
+                  setLocalSettings({ ...localSettings, selectedMasters: ids })
+                }
               />
             )}
           </div>
@@ -120,13 +139,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* 底部保存栏 */}
           <footer className="px-8 py-5 border-t border-white/5 bg-black/10 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {saveStatus === "saving" && (
+              {saveStatus === 'saving' && (
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                   {t('saving')}
                 </div>
               )}
-              {saveStatus === "saved" && (
+              {saveStatus === 'saved' && (
                 <div className="flex items-center gap-2 text-xs text-emerald-500 animate-in fade-in">
                   <CheckCircle2 className="w-4 h-4" />
                   {t('saved')}
@@ -142,7 +161,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </button>
               <button
                 onClick={handleSave}
-                disabled={isLoading || saveStatus === "saving"}
+                disabled={isLoading || saveStatus === 'saving'}
                 className="flex items-center gap-2 px-6 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-900/20 transition-all active:scale-95 disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import { ProviderType, Language } from "./types";
+import { ProviderType, Language } from './types';
 
 /**
  * 每个 Provider 的完整档案——baseUrl、model、内容截断、超时都在同一处。
@@ -9,23 +9,48 @@ export interface ProviderProfile {
   baseUrl: string;
   model: string;
   contentLimit: number; // prompt 正文截断长度（字符数）
-  timeout: number;      // 请求超时（毫秒）
+  timeout: number; // 请求超时（毫秒）
 }
 
 export const PROVIDER_PROFILES: Record<ProviderType, ProviderProfile> = {
-  openai:    { baseUrl: 'https://api.openai.com/v1',   model: 'gpt-4o',                       contentLimit: 1000, timeout:  60_000 },
-  ollama:    { baseUrl: 'http://127.0.0.1:11434',      model: 'qwen3.5:4b',                   contentLimit:  800, timeout: 240_000 },
-  anthropic: { baseUrl: 'https://api.anthropic.com',   model: 'claude-3-5-sonnet-20241022',   contentLimit: 1500, timeout:  90_000 },
-  deepseek:  { baseUrl: 'https://api.deepseek.com',    model: 'deepseek-v4-pro',              contentLimit: 1000, timeout:  60_000 },
-  glm:       { baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.1',             contentLimit: 1000, timeout:  60_000 },
+  openai: {
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-4o',
+    contentLimit: 1000,
+    timeout: 60_000,
+  },
+  ollama: {
+    baseUrl: 'http://127.0.0.1:11434',
+    model: 'qwen3.5:4b',
+    contentLimit: 800,
+    timeout: 240_000,
+  },
+  anthropic: {
+    baseUrl: 'https://api.anthropic.com',
+    model: 'claude-3-5-sonnet-20241022',
+    contentLimit: 1500,
+    timeout: 90_000,
+  },
+  deepseek: {
+    baseUrl: 'https://api.deepseek.com',
+    model: 'deepseek-v4-pro',
+    contentLimit: 1000,
+    timeout: 60_000,
+  },
+  glm: {
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'glm-5.1',
+    contentLimit: 1000,
+    timeout: 60_000,
+  },
 };
 
 /** 默认设置对象。autoAnalyze 默认关——AI 分析改为按需触发，避免无脑消耗 token */
 export const DEFAULT_SETTINGS = {
-  activeProvider: "ollama" as ProviderType,
+  activeProvider: 'ollama' as ProviderType,
   autoAnalyze: false,
   deepMode: true,
-  language: "zh" as Language,
+  language: 'zh' as Language,
 };
 
 /**
@@ -33,7 +58,7 @@ export const DEFAULT_SETTINGS = {
  * Sidecar 会拒绝不匹配此版本的配置，防止静默降级。
  * v3：新增 roleModels（按角色分级模型）。
  */
-export const CONFIG_VERSION = "3";
+export const CONFIG_VERSION = '3';
 
 /** 静态模型目录的一项：value 为模型 id，tagKey 为 i18n 标签 key（前端下拉显示「id（标签）」） */
 export interface StaticModel {
@@ -48,24 +73,24 @@ export interface StaticModel {
  */
 export const STATIC_MODELS: Record<ProviderType, StaticModel[]> = {
   openai: [
-    { value: 'gpt-4o',                     tagKey: 'model_tag_flagship' },
-    { value: 'gpt-4o-mini',                tagKey: 'model_tag_fast' },
-    { value: 'gpt-4-turbo',                tagKey: 'model_tag_long' },
+    { value: 'gpt-4o', tagKey: 'model_tag_flagship' },
+    { value: 'gpt-4o-mini', tagKey: 'model_tag_fast' },
+    { value: 'gpt-4-turbo', tagKey: 'model_tag_long' },
   ],
   anthropic: [
     { value: 'claude-3-5-sonnet-20241022', tagKey: 'model_tag_flagship' },
-    { value: 'claude-3-5-haiku-20241022',  tagKey: 'model_tag_fast' },
-    { value: 'claude-3-opus-20240229',     tagKey: 'model_tag_reasoning' },
+    { value: 'claude-3-5-haiku-20241022', tagKey: 'model_tag_fast' },
+    { value: 'claude-3-opus-20240229', tagKey: 'model_tag_reasoning' },
   ],
   deepseek: [
-    { value: 'deepseek-v4-pro',            tagKey: 'model_tag_flagship' },
-    { value: 'deepseek-chat',              tagKey: 'model_tag_value' },
-    { value: 'deepseek-reasoner',          tagKey: 'model_tag_reasoning' },
+    { value: 'deepseek-v4-pro', tagKey: 'model_tag_flagship' },
+    { value: 'deepseek-chat', tagKey: 'model_tag_value' },
+    { value: 'deepseek-reasoner', tagKey: 'model_tag_reasoning' },
   ],
   glm: [
-    { value: 'glm-5.1',                    tagKey: 'model_tag_flagship' },
-    { value: 'glm-4-flash',                tagKey: 'model_tag_fast' },
-    { value: 'glm-4-long',                 tagKey: 'model_tag_long' },
+    { value: 'glm-5.1', tagKey: 'model_tag_flagship' },
+    { value: 'glm-4-flash', tagKey: 'model_tag_fast' },
+    { value: 'glm-4-long', tagKey: 'model_tag_long' },
   ],
   ollama: [],
 };
@@ -82,11 +107,11 @@ export interface ProviderCaps {
 }
 
 export const PROVIDER_CAPS: Record<ProviderType, ProviderCaps> = {
-  openai:    { isLocal: false, modelsPath: '/models',    authStyle: 'bearer' },    // baseUrl 已含 /v1
-  ollama:    { isLocal: true },                                                     // 走 ollama SDK，非 HTTP /models
+  openai: { isLocal: false, modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 已含 /v1
+  ollama: { isLocal: true }, // 走 ollama SDK，非 HTTP /models
   anthropic: { isLocal: false, modelsPath: '/v1/models', authStyle: 'anthropic' }, // baseUrl 为根，需补 /v1
-  deepseek:  { isLocal: false, modelsPath: '/models',    authStyle: 'bearer' },    // baseUrl 为根，列模型在 /models
-  glm:       { isLocal: false, modelsPath: '/models',    authStyle: 'bearer' },    // baseUrl 已含 /api/paas/v4
+  deepseek: { isLocal: false, modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 为根，列模型在 /models
+  glm: { isLocal: false, modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 已含 /api/paas/v4
 };
 
 /** 深度分析默认启用的大师 ID 列表 */

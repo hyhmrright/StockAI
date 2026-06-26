@@ -32,12 +32,12 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
     if (screener.scanning || screener.results.length === 0) return;
     if (screener.results.length === savedScreenerCount.current) return;
     savedScreenerCount.current = screener.results.length;
-    const symbols = screener.results.map(r => r.symbol).join(',');
+    const symbols = screener.results.map((r) => r.symbol).join(',');
     saveAnalysisRecord({
       symbol: symbols,
       analysisType: 'screener',
       resultJson: JSON.stringify(screener.results),
-    }).catch(e => console.error("保存筛选结果失败:", e));
+    }).catch((e) => console.error('保存筛选结果失败:', e));
   }, [screener.scanning, screener.results]);
 
   function handleAdd() {
@@ -48,14 +48,16 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
 
   return (
     <aside className="w-1/4 border-r border-white/10 bg-panel p-6 overflow-y-auto hidden md:flex flex-col gap-4">
-      <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t('watchlist_title')}</h2>
+      <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">
+        {t('watchlist_title')}
+      </h2>
 
       {/* 添加输入框 */}
       <div className="flex gap-2">
         <input
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder={t('watchlist_placeholder')}
           className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-emerald-500/40"
         />
@@ -72,7 +74,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
         {items.length === 0 && (
           <p className="text-gray-600 text-xs text-center pt-4">{t('no_watchlist')}</p>
         )}
-        {items.map(item => {
+        {items.map((item) => {
           const hasAlert = alerts[item.sym]?.enabled;
           return (
             <div key={item.sym}>
@@ -84,22 +86,34 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
                     : 'bg-white/5 border-white/5 hover:bg-white/10'
                 }`}
               >
-                <span className={`font-bold text-sm transition-colors ${
-                  currentSymbol === item.sym ? 'text-emerald-400' : 'text-gray-200 group-hover:text-emerald-400'
-                }`}>
+                <span
+                  className={`font-bold text-sm transition-colors ${
+                    currentSymbol === item.sym
+                      ? 'text-emerald-400'
+                      : 'text-gray-200 group-hover:text-emerald-400'
+                  }`}
+                >
                   {item.sym}
                 </span>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={e => { e.stopPropagation(); setAlertSymbol(s => s === item.sym ? null : item.sym); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAlertSymbol((s) => (s === item.sym ? null : item.sym));
+                    }}
                     className={`p-0.5 rounded transition-all ${
-                      hasAlert ? 'text-amber-400' : 'opacity-0 group-hover:opacity-100 text-gray-500 hover:text-amber-400'
+                      hasAlert
+                        ? 'text-amber-400'
+                        : 'opacity-0 group-hover:opacity-100 text-gray-500 hover:text-amber-400'
                     }`}
                   >
                     <Bell className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={e => { e.stopPropagation(); remove(item.sym); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      remove(item.sym);
+                    }}
                     className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-500 hover:text-rose-400 transition-all"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -122,7 +136,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
 
       {/* 筛选器 */}
       <button
-        onClick={() => setShowScreener(s => !s)}
+        onClick={() => setShowScreener((s) => !s)}
         className="text-xs text-gray-500 hover:text-gray-300 transition-colors text-left"
       >
         {showScreener ? t('collapse_screener') : t('expand_screener')}

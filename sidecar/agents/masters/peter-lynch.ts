@@ -44,9 +44,10 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
   // 计算 PEG 供提示使用
   const peNum = fd.pe != null ? Number(fd.pe) : null;
   const growthNum = fd.revenue_growth != null ? Number(fd.revenue_growth) : null;
-  const pegStr = (peNum != null && growthNum != null && growthNum > 0)
-    ? `PEG: ${(peNum / growthNum).toFixed(2)}（PE/增长率）`
-    : null;
+  const pegStr =
+    peNum != null && growthNum != null && growthNum > 0
+      ? `PEG: ${(peNum / growthNum).toFixed(2)}（PE/增长率）`
+      : null;
 
   const facts = [
     `股票: ${symbol}`,
@@ -66,7 +67,9 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     '',
     `[近期新闻 (${news.length} 条)]`,
     ...formatNewsForPrompt(news),
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return facts;
 }

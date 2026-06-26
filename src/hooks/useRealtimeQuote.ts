@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { fetchRealtimeQuote } from "../lib/ipc";
-import { detectMarket, isTradingHours } from "../lib/market-hours";
-import type { RealtimeQuote } from "../../shared/types";
+import { useEffect, useState } from 'react';
+import { fetchRealtimeQuote } from '../lib/ipc';
+import { detectMarket, isTradingHours } from '../lib/market-hours';
+import type { RealtimeQuote } from '../../shared/types';
 
 const POLL_MS = 10_000;
 

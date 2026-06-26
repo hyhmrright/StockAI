@@ -26,8 +26,8 @@ export interface ChartTheme {
   series: {
     yellow: string; // KDJ K 线、MACD DIF
     purple: string; // KDJ D 线、MACD DEA
-    pink: string;   // KDJ J 线、比较基准
-    cyan: string;   // RSI / OBV
+    pink: string; // KDJ J 线、比较基准
+    cyan: string; // RSI / OBV
   };
 }
 
@@ -36,20 +36,20 @@ export interface ChartTheme {
  * 保证视觉零回归。
  */
 export const DARK_CHART_THEME: ChartTheme = {
-  background: "transparent",
-  text: "rgba(255,255,255,0.55)",
-  textMuted: "rgba(255,255,255,0.45)",
-  grid: "rgba(255,255,255,0.06)",
-  gridSubtle: "rgba(255,255,255,0.04)",
-  bollBand: "rgba(255,255,255,0.4)",
-  bollMid: "rgba(255,255,255,0.6)",
-  prevCloseLine: "rgba(255,255,255,0.4)",
-  compareSeries: "#FF6B9D",
+  background: 'transparent',
+  text: 'rgba(255,255,255,0.55)',
+  textMuted: 'rgba(255,255,255,0.45)',
+  grid: 'rgba(255,255,255,0.06)',
+  gridSubtle: 'rgba(255,255,255,0.04)',
+  bollBand: 'rgba(255,255,255,0.4)',
+  bollMid: 'rgba(255,255,255,0.6)',
+  prevCloseLine: 'rgba(255,255,255,0.4)',
+  compareSeries: '#FF6B9D',
   series: {
-    yellow: "#F5C842",
-    purple: "#B388FF",
-    pink: "#FF6B9D",
-    cyan: "#4FC3F7",
+    yellow: '#F5C842',
+    purple: '#B388FF',
+    pink: '#FF6B9D',
+    cyan: '#4FC3F7',
   },
 };
 

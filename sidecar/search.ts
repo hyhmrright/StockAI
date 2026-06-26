@@ -27,7 +27,7 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
   try {
     const resp = await fetch(url, {
       headers: {
-        'Referer': 'https://finance.sina.com.cn',
+        Referer: 'https://finance.sina.com.cn',
       },
       signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
     });
@@ -43,18 +43,18 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
 
     const items = match[1].split(';');
     const results = items
-      .map(item => {
+      .map((item) => {
         const fields = item.split(',');
         if (fields.length < 5) return null;
 
         const fullCodeFromSina = fields[0];
         const typeId = fields[1];
         const code = fields[2];
-        const fullCodeFromSinaAlt = fields[3]; 
+        const fullCodeFromSinaAlt = fields[3];
         const name = fields[4];
 
         const typeInfo = TYPE_MAP[typeId] || { label: '其他', prefix: '' };
-        
+
         let fullCode = fullCodeFromSina;
         if ((typeId === '11' || typeId === '12') && !fullCode.match(/^(sh|sz|bj)/)) {
           fullCode = fullCodeFromSinaAlt;
@@ -91,16 +91,18 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
  */
 async function enrichWithQuotes(results: StockSearchResult[]): Promise<void> {
   // 构造新浪批量行情 URL (A股使用 s_ 前缀获取简易行情)
-  const sinaCodes = results.map(r => {
-    if (r.type === 'A股') return `s_${r.fullCode}`;
-    return r.fullCode; // 美股/港股通常直接用 fullCode
-  }).join(',');
+  const sinaCodes = results
+    .map((r) => {
+      if (r.type === 'A股') return `s_${r.fullCode}`;
+      return r.fullCode; // 美股/港股通常直接用 fullCode
+    })
+    .join(',');
 
   const url = `https://hq.sinajs.cn/list=${sinaCodes}`;
 
   try {
     const resp = await fetch(url, {
-      headers: { 'Referer': 'https://finance.sina.com.cn' },
+      headers: { Referer: 'https://finance.sina.com.cn' },
       signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
     });
 
@@ -115,14 +117,14 @@ async function enrichWithQuotes(results: StockSearchResult[]): Promise<void> {
     const lines = text.split('\n');
     const quoteMap = new Map<string, Partial<StockSearchResult>>();
 
-    lines.forEach(line => {
+    lines.forEach((line) => {
       // 匹配 var hq_str_s_sh601012="隆基绿能,18.52,-0.23,-1.23,..."
       const match = line.match(/var hq_str_(s_)?([^=]+)="([^"]+)"/);
       if (!match) return;
 
       const fullCode = match[2];
       const fields = match[3].split(',');
-      
+
       if (fullCode.startsWith('gb_')) {
         // 美股完整行情解析
         if (fields.length >= 5) {
@@ -145,7 +147,7 @@ async function enrichWithQuotes(results: StockSearchResult[]): Promise<void> {
     });
 
     // 合并行情到结果中
-    results.forEach(r => {
+    results.forEach((r) => {
       const quote = quoteMap.get(r.fullCode);
       if (quote) {
         r.price = quote.price;

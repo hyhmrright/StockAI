@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { getAnalysisDetail } from '../../lib/db';
-import type { AnalysisRecord, AIAnalysisResult, DeepAnalysisResult, QuantBundle, BacktestResult, ScreenerResult } from '../../../shared/types';
+import type {
+  AnalysisRecord,
+  AIAnalysisResult,
+  DeepAnalysisResult,
+  QuantBundle,
+  BacktestResult,
+  ScreenerResult,
+} from '../../../shared/types';
 import QuantScoreCard from '../QuantScoreCard';
 import ValuationCard from '../ValuationCard';
 import RiskCard from '../RiskCard';
@@ -24,8 +31,8 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ recordId, onClo
     }
     setLoading(true);
     getAnalysisDetail(recordId)
-      .then(r => setRecord(r))
-      .catch(e => console.error("加载分析详情失败:", e))
+      .then((r) => setRecord(r))
+      .catch((e) => console.error('加载分析详情失败:', e))
       .finally(() => setLoading(false));
   }, [recordId]);
 
@@ -67,9 +74,12 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ recordId, onClo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         className="bg-panel border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto mx-4"
       >
         <div className="sticky top-0 bg-panel border-b border-white/10 px-5 py-3 flex items-center justify-between z-10">
@@ -78,9 +88,7 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ recordId, onClo
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-5">
-          {renderContent()}
-        </div>
+        <div className="p-5">{renderContent()}</div>
       </div>
     </div>
   );
@@ -97,14 +105,24 @@ function AIDetail({ data, time }: { data: AIAnalysisResult; time: string }) {
       {data.pros?.length > 0 && (
         <div className="space-y-2">
           {data.pros.map((p, i) => (
-            <div key={i} className="text-xs text-emerald-400 p-2 bg-emerald-500/5 rounded-lg border-l-2 border-emerald-500">{p}</div>
+            <div
+              key={i}
+              className="text-xs text-emerald-400 p-2 bg-emerald-500/5 rounded-lg border-l-2 border-emerald-500"
+            >
+              {p}
+            </div>
           ))}
         </div>
       )}
       {data.cons?.length > 0 && (
         <div className="space-y-2">
           {data.cons.map((c, i) => (
-            <div key={i} className="text-xs text-rose-400 p-2 bg-rose-500/5 rounded-lg border-l-2 border-rose-500">{c}</div>
+            <div
+              key={i}
+              className="text-xs text-rose-400 p-2 bg-rose-500/5 rounded-lg border-l-2 border-rose-500"
+            >
+              {c}
+            </div>
           ))}
         </div>
       )}
@@ -152,8 +170,10 @@ function ScreenerDetail({ data, time }: { data: ScreenerResult[]; time: string }
   if (!Array.isArray(data)) return <p className="text-sm text-gray-500">无效筛选数据</p>;
   return (
     <div className="space-y-3">
-      <p className="text-[10px] text-gray-500">{time} · {data.length} 只股票</p>
-      {data.map(r => (
+      <p className="text-[10px] text-gray-500">
+        {time} · {data.length} 只股票
+      </p>
+      {data.map((r) => (
         <div key={r.symbol} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
           <div>
             <span className="text-xs font-bold text-gray-200">{r.symbol}</span>

@@ -39,5 +39,5 @@ export function getAllMasters(): MasterAgent[] {
   return [...REGISTRY.values()];
 }
 export function getSelectedMasters(ids: string[]): MasterAgent[] {
-  return ids.map(id => REGISTRY.get(id)).filter((a): a is MasterAgent => a != null);
+  return ids.map((id) => REGISTRY.get(id)).filter((a): a is MasterAgent => a != null);
 }

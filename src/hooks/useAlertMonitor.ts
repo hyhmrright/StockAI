@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
-import { isTauri } from "@tauri-apps/api/core";
-import { fetchRealtimeQuote } from "../lib/ipc";
-import type { PriceAlert } from "./usePriceAlerts";
-import type { RealtimeQuote } from "../../shared/types";
+import { useEffect, useRef } from 'react';
+import { isTauri } from '@tauri-apps/api/core';
+import { fetchRealtimeQuote } from '../lib/ipc';
+import type { PriceAlert } from './usePriceAlerts';
+import type { RealtimeQuote } from '../../shared/types';
 
 const POLL_MS = 10_000;
 
@@ -14,10 +14,10 @@ async function sendNotification(title: string, body: string) {
     return;
   }
   try {
-    const { sendNotification: send } = await import("@tauri-apps/plugin-notification");
+    const { sendNotification: send } = await import('@tauri-apps/plugin-notification');
     send({ title, body });
   } catch (e) {
-    console.error("发送通知失败:", e);
+    console.error('发送通知失败:', e);
   }
 }
 
@@ -49,7 +49,7 @@ export function useAlertMonitor(
             if (!fired.upper) {
               fired.upper = true;
               sendNotification(
-                "StockAI 价格提醒",
+                'StockAI 价格提醒',
                 `${alert.symbol} 突破上限 ${alert.upperLimit}，当前 ${quote.price.toFixed(2)}`,
               );
             }
@@ -61,7 +61,7 @@ export function useAlertMonitor(
             if (!fired.lower) {
               fired.lower = true;
               sendNotification(
-                "StockAI 价格提醒",
+                'StockAI 价格提醒',
                 `${alert.symbol} 跌破下限 ${alert.lowerLimit}，当前 ${quote.price.toFixed(2)}`,
               );
             }

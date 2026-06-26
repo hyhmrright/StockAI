@@ -1,9 +1,9 @@
-import React from "react";
-import { ProviderType, ProviderConfig, ModelChoice, Role } from "../../hooks/useSettings";
-import { PROVIDER_PROFILES } from "../../../shared/constants";
-import { useLanguage } from "../../hooks/useLanguage";
-import type { TranslationKey } from "../../i18n";
-import { ModelSelect } from "./ModelSelect";
+import React from 'react';
+import { ProviderType, ProviderConfig, ModelChoice, Role } from '../../hooks/useSettings';
+import { PROVIDER_PROFILES } from '../../../shared/constants';
+import { useLanguage } from '../../hooks/useLanguage';
+import type { TranslationKey } from '../../i18n';
+import { ModelSelect } from './ModelSelect';
 
 interface RoleRowProps {
   role: Role;
@@ -16,23 +16,32 @@ interface RoleRowProps {
 const PROVIDERS = Object.keys(PROVIDER_PROFILES) as ProviderType[];
 
 /** 该 provider 是否可用：本地 Ollama 无需 key，云端需已配 apiKey */
-function isProviderReady(provider: ProviderType, configs: RoleRowProps["providerConfigs"]): boolean {
-  return provider === "ollama" || !!configs[provider]?.apiKey;
+function isProviderReady(
+  provider: ProviderType,
+  configs: RoleRowProps['providerConfigs'],
+): boolean {
+  return provider === 'ollama' || !!configs[provider]?.apiKey;
 }
 
 const ROLE_TITLE_KEY: Record<Role, TranslationKey> = {
-  brain: "role_brain",
-  quick: "role_quick",
-  summarize: "role_summarize",
+  brain: 'role_brain',
+  quick: 'role_quick',
+  summarize: 'role_summarize',
 };
 const ROLE_DESC_KEY: Record<Role, TranslationKey> = {
-  brain: "role_brain_desc",
-  quick: "role_quick_desc",
-  summarize: "role_summarize_desc",
+  brain: 'role_brain_desc',
+  quick: 'role_quick_desc',
+  summarize: 'role_summarize_desc',
 };
 
 /** 角色矩阵的一行：选 provider（空 = 跟随活跃）+ 选模型 */
-export function RoleRow({ role, choice, providerConfigs, activeProvider, onChange }: RoleRowProps): React.ReactElement {
+export function RoleRow({
+  role,
+  choice,
+  providerConfigs,
+  activeProvider,
+  onChange,
+}: RoleRowProps): React.ReactElement {
   const { t } = useLanguage();
   const provider = choice?.provider;
 
@@ -56,19 +65,21 @@ export function RoleRow({ role, choice, providerConfigs, activeProvider, onChang
       </div>
 
       <select
-        value={provider ?? ""}
+        value={provider ?? ''}
         onChange={(e) => handleProviderChange(e.target.value)}
         className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer"
       >
         <option value="">
-          {t("role_follow_active", { provider: t(`provider_name_${activeProvider}` as TranslationKey) })}
+          {t('role_follow_active', {
+            provider: t(`provider_name_${activeProvider}` as TranslationKey),
+          })}
         </option>
         {PROVIDERS.map((p) => {
           const ready = isProviderReady(p, providerConfigs);
           const name = t(`provider_name_${p}` as TranslationKey);
           return (
             <option key={p} value={p} disabled={!ready}>
-              {ready ? name : t("role_provider_no_key", { provider: name })}
+              {ready ? name : t('role_provider_no_key', { provider: name })}
             </option>
           );
         })}
@@ -79,7 +90,7 @@ export function RoleRow({ role, choice, providerConfigs, activeProvider, onChang
           provider={provider}
           baseUrl={cfg.baseUrl}
           apiKey={cfg.apiKey}
-          value={choice?.model ?? ""}
+          value={choice?.model ?? ''}
           onChange={(model) => onChange({ provider, model })}
         />
       )}

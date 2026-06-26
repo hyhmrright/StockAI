@@ -56,18 +56,28 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     '[技术面概况]',
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.rsi != null ? `RSI: ${td.rsi}` : null,
-    ...(quant.valuation ? [
-      '',
-      '[估值数据]',
-      quant.valuation.intrinsicValue != null ? `内在价值: ${(quant.valuation.intrinsicValue / 1e8).toFixed(0)}亿` : null,
-      quant.valuation.marketCap != null ? `市值: ${(quant.valuation.marketCap / 1e8).toFixed(0)}亿` : null,
-      quant.valuation.marginOfSafety != null ? `安全边际: ${(quant.valuation.marginOfSafety * 100).toFixed(1)}%` : null,
-      `估值信号: ${quant.valuation.signal}`,
-    ] : []),
+    ...(quant.valuation
+      ? [
+          '',
+          '[估值数据]',
+          quant.valuation.intrinsicValue != null
+            ? `内在价值: ${(quant.valuation.intrinsicValue / 1e8).toFixed(0)}亿`
+            : null,
+          quant.valuation.marketCap != null
+            ? `市值: ${(quant.valuation.marketCap / 1e8).toFixed(0)}亿`
+            : null,
+          quant.valuation.marginOfSafety != null
+            ? `安全边际: ${(quant.valuation.marginOfSafety * 100).toFixed(1)}%`
+            : null,
+          `估值信号: ${quant.valuation.signal}`,
+        ]
+      : []),
     '',
     `[近期新闻 (${news.length} 条)]`,
     ...formatNewsForPrompt(news),
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return facts;
 }

@@ -15,9 +15,12 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
   // 风险等级样式映射，放在组件内以便引用 t()
   function riskStyle(level: string): { label: string; className: string } {
     switch (level) {
-      case 'low': return { label: t('low_risk'), className: 'text-emerald-400' };
-      case 'high': return { label: t('high_risk'), className: 'text-rose-400' };
-      default: return { label: t('medium_risk'), className: 'text-amber-400' };
+      case 'low':
+        return { label: t('low_risk'), className: 'text-emerald-400' };
+      case 'high':
+        return { label: t('high_risk'), className: 'text-rose-400' };
+      default:
+        return { label: t('medium_risk'), className: 'text-amber-400' };
     }
   }
 
@@ -33,16 +36,22 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
 
   return (
     <div className="mb-6">
-      <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">{t('risk_assessment')}</h2>
+      <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest">
+        {t('risk_assessment')}
+      </h2>
       <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-2">
         <div className="flex items-center justify-between">
           <span className={`text-sm font-bold ${className}`}>{label}</span>
-          <span className="text-xs text-gray-500">{t('volatility_percentile')} {risk.volatilityPercentile}%</span>
+          <span className="text-xs text-gray-500">
+            {t('volatility_percentile')} {risk.volatilityPercentile}%
+          </span>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <div className="text-xs text-gray-500">{t('annualized_volatility')}</div>
-            <div className="text-sm text-white">{(risk.annualizedVolatility * 100).toFixed(1)}%</div>
+            <div className="text-sm text-white">
+              {(risk.annualizedVolatility * 100).toFixed(1)}%
+            </div>
           </div>
           <div>
             <div className="text-xs text-gray-500">{t('max_drawdown')}</div>
@@ -50,7 +59,9 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
           </div>
           <div>
             <div className="text-xs text-gray-500">{t('sharpe_ratio')}</div>
-            <div className="text-sm text-white">{Number.isFinite(risk.sharpeProxy) ? risk.sharpeProxy.toFixed(2) : 'N/A'}</div>
+            <div className="text-sm text-white">
+              {Number.isFinite(risk.sharpeProxy) ? risk.sharpeProxy.toFixed(2) : 'N/A'}
+            </div>
           </div>
         </div>
         {guidance && (
@@ -59,7 +70,9 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
               <span className="text-xs text-gray-500">{t('suggested_position_cap')}</span>
               <span className="text-sm font-bold text-sky-400">{guidance.maxPositionPct}%</span>
             </div>
-            <p className="text-[10px] leading-tight text-gray-600 mt-1">{t('position_cap_basis')}</p>
+            <p className="text-[10px] leading-tight text-gray-600 mt-1">
+              {t('position_cap_basis')}
+            </p>
           </div>
         )}
         {volRange && (
@@ -72,7 +85,9 @@ const RiskCard: React.FC<RiskCardProps> = ({ risk, loading }) => {
                 <span className="text-emerald-400">+{volRange.upside}%</span>
               </span>
             </div>
-            <p className="text-[10px] leading-tight text-gray-600 mt-1">{t('volatility_range_disclaimer')}</p>
+            <p className="text-[10px] leading-tight text-gray-600 mt-1">
+              {t('volatility_range_disclaimer')}
+            </p>
           </div>
         )}
       </div>

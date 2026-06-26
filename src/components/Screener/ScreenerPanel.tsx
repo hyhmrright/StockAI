@@ -12,7 +12,11 @@ interface ScreenerPanelProps {
 }
 
 const ScreenerPanel: React.FC<ScreenerPanelProps> = ({
-  results, scanning, progress, onScan, onSelect,
+  results,
+  scanning,
+  progress,
+  onScan,
+  onSelect,
 }) => {
   const hasResults = results.length > 0;
   const isDone = !scanning && hasResults;
@@ -50,7 +54,9 @@ const ScreenerPanel: React.FC<ScreenerPanelProps> = ({
           <div className="h-1 bg-white/5 rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 transition-all duration-300"
-              style={{ width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%` }}
+              style={{
+                width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%`,
+              }}
             />
           </div>
         </div>

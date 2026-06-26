@@ -15,7 +15,8 @@ function makeQuant(symbol: string, score: number): QuantBundle {
 
 describe('useScreener', () => {
   it('scans watchlist items and returns sorted results', async () => {
-    const fetcher = vi.fn()
+    const fetcher = vi
+      .fn()
       .mockResolvedValueOnce(makeQuant('AAPL', 6.5))
       .mockResolvedValueOnce(makeQuant('TSLA', 8.2))
       .mockResolvedValueOnce(makeQuant('MSFT', 7.1));
@@ -41,9 +42,18 @@ describe('useScreener', () => {
   it('updates progress during scan', async () => {
     let resolveFirst: (v: QuantBundle) => void;
     let resolveSecond: (v: QuantBundle) => void;
-    const fetcher = vi.fn()
-      .mockReturnValueOnce(new Promise<QuantBundle>(r => { resolveFirst = r; }))
-      .mockReturnValueOnce(new Promise<QuantBundle>(r => { resolveSecond = r; }));
+    const fetcher = vi
+      .fn()
+      .mockReturnValueOnce(
+        new Promise<QuantBundle>((r) => {
+          resolveFirst = r;
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise<QuantBundle>((r) => {
+          resolveSecond = r;
+        }),
+      );
 
     const { result } = renderHook(() => useScreener(fetcher));
 
@@ -66,7 +76,8 @@ describe('useScreener', () => {
   });
 
   it('skips failed stocks and returns partial results', async () => {
-    const fetcher = vi.fn()
+    const fetcher = vi
+      .fn()
       .mockResolvedValueOnce(makeQuant('AAPL', 7))
       .mockRejectedValueOnce(new Error('network error'))
       .mockResolvedValueOnce(makeQuant('MSFT', 8));
@@ -88,8 +99,13 @@ describe('useScreener', () => {
 
   it('abandons previous scan when scan() is called again', async () => {
     let resolveFirst: (v: QuantBundle) => void;
-    const fetcher = vi.fn()
-      .mockReturnValueOnce(new Promise<QuantBundle>(r => { resolveFirst = r; }))
+    const fetcher = vi
+      .fn()
+      .mockReturnValueOnce(
+        new Promise<QuantBundle>((r) => {
+          resolveFirst = r;
+        }),
+      )
       .mockResolvedValue(makeQuant('TSLA', 9));
 
     const { result } = renderHook(() => useScreener(fetcher));

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { signalColor, signalLabel, signalBadge, sentimentBgClass, sentimentBadgeClass } from './signal-styles';
+import {
+  signalColor,
+  signalLabel,
+  signalBadge,
+  sentimentBgClass,
+  sentimentBadgeClass,
+} from './signal-styles';
 
 describe('signalColor', () => {
   it('bullish → emerald 样式', () => {

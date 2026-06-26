@@ -40,7 +40,11 @@ export function readCache<T>(key: string, opts: CacheOptions = {}): T | null {
     // age >= ttlMs 才算过期：使 ttlMs=0 能立即过期（禁用缓存），符合 TTL 语义
     const age = Date.now() - fs.statSync(file).mtimeMs;
     if (age >= ttlMs) {
-      try { fs.unlinkSync(file); } catch { /* 已被并发清理，忽略 */ }
+      try {
+        fs.unlinkSync(file);
+      } catch {
+        /* 已被并发清理，忽略 */
+      }
       return null;
     }
     return JSON.parse(fs.readFileSync(file, 'utf8')) as T;
@@ -62,19 +66,27 @@ export function writeCache<T>(key: string, value: T, opts: CacheOptions = {}): v
     fs.renameSync(tmp, file); // 原子替换，避免并发进程读到半截内容
     pruneOldest(dir, maxEntries);
   } catch (err) {
-    try { fs.unlinkSync(tmp); } catch { /* tmp 可能未生成 */ }
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      /* tmp 可能未生成 */
+    }
     logger.warn(`缓存写入失败（忽略）: ${toErrorMessage(err)}`);
   }
 }
 
 /** LRU 修剪：按 mtime 升序删除最旧的缓存文件，直到数量 ≤ maxEntries */
 function pruneOldest(dir: string, maxEntries: number): void {
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
   if (files.length <= maxEntries) return;
   const byMtime = files
-    .map(f => ({ f, m: fs.statSync(path.join(dir, f)).mtimeMs }))
+    .map((f) => ({ f, m: fs.statSync(path.join(dir, f)).mtimeMs }))
     .sort((a, b) => a.m - b.m);
   for (const { f } of byMtime.slice(0, files.length - maxEntries)) {
-    try { fs.unlinkSync(path.join(dir, f)); } catch { /* 已被并发删除，忽略 */ }
+    try {
+      fs.unlinkSync(path.join(dir, f));
+    } catch {
+      /* 已被并发删除，忽略 */
+    }
   }
 }

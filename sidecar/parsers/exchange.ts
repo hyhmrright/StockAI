@@ -6,16 +6,16 @@
 export interface ChinaStockInfo {
   code: string;
   googleSuffix: string; // Google Finance 后缀，如 "SHA"
-  yahooSuffix: string;  // Yahoo Finance 后缀，如 ".SS"
-  sinaPrefix: string;   // 新浪财经接口前缀，如 "sh"
+  yahooSuffix: string; // Yahoo Finance 后缀，如 ".SS"
+  sinaPrefix: string; // 新浪财经接口前缀，如 "sh"
 }
 
 /**
  * 美股信息
  */
 export interface USStockInfo {
-  symbol: string;       // 如 "AAPL"
-  sinaPrefix: string;   // 新浪财经接口前缀 "gb_"
+  symbol: string; // 如 "AAPL"
+  sinaPrefix: string; // 新浪财经接口前缀 "gb_"
 }
 
 /**
@@ -23,7 +23,7 @@ export interface USStockInfo {
  */
 export interface ParsedSymbol {
   rawInput: string;
-  displayName?: string;    // 从输入中提取的中文名（如 "锴威特"）
+  displayName?: string; // 从输入中提取的中文名（如 "锴威特"）
   chinaInfo?: ChinaStockInfo;
   usInfo?: USStockInfo;
 }
@@ -35,7 +35,7 @@ export interface ParsedSymbol {
 export function parseSymbol(input: string): ParsedSymbol {
   if (!input) return { rawInput: '' };
   const trimmed = input.trim();
-  
+
   // 0. 尝试识别显式前缀（如 sh601012, gb_aapl）
   const explicitMatch = trimmed.match(/^(sh|sz|bj|gb_)([a-z0-9.]+)/i);
   if (explicitMatch) {
@@ -45,14 +45,14 @@ export function parseSymbol(input: string): ParsedSymbol {
     if (prefix === 'gb_') {
       return {
         rawInput: trimmed,
-        usInfo: { symbol: coreSymbol, sinaPrefix: 'gb_' }
+        usInfo: { symbol: coreSymbol, sinaPrefix: 'gb_' },
       };
     } else {
       const chinaInfo = detectChinaStock(coreSymbol);
       if (chinaInfo) {
         return {
           rawInput: trimmed,
-          chinaInfo: { ...chinaInfo, sinaPrefix: prefix }
+          chinaInfo: { ...chinaInfo, sinaPrefix: prefix },
         };
       }
     }
@@ -80,7 +80,7 @@ export function parseSymbol(input: string): ParsedSymbol {
       usInfo: {
         symbol,
         sinaPrefix: 'gb_',
-      }
+      },
     };
   }
 

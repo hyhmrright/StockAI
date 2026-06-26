@@ -34,7 +34,7 @@ export interface FinancialMetrics {
   pb?: number;
   marketCap?: number;
   freeCashFlow?: number;
-  operatingCashFlow?: number;          // 绝对值（元）；东财字段为每股，见 parseEastmoneyFinancials 注释
+  operatingCashFlow?: number; // 绝对值（元）；东财字段为每股，见 parseEastmoneyFinancials 注释
   capitalExpenditure?: number;
   depreciation?: number;
   ebitda?: number;
@@ -46,4 +46,3 @@ export interface FinancialMetrics {
   netIncome?: number;
   revenue?: number;
 }
-

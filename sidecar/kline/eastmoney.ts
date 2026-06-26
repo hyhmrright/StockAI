@@ -1,13 +1,15 @@
-import type { KlinePoint, KlinePeriod, AdjustMode, NormalizedRequest } from "./types";
-import { KLINE_FETCH_TIMEOUT_MS } from "./types";
-import { parseChinaSymbol, chinaPrefixToEastmoneyMarket } from "./symbol";
+import type { KlinePoint, KlinePeriod, AdjustMode, NormalizedRequest } from './types';
+import { KLINE_FETCH_TIMEOUT_MS } from './types';
+import { parseChinaSymbol, chinaPrefixToEastmoneyMarket } from './symbol';
 
 export function mapPeriodToEastmoney(p: KlinePeriod): number {
-  return ({ "1m": 1, "5m": 5, "15m": 15, "30m": 30, "60m": 60, "1d": 101, "1w": 102, "1mo": 103 } as const)[p];
+  return (
+    { '1m': 1, '5m': 5, '15m': 15, '30m': 30, '60m': 60, '1d': 101, '1w': 102, '1mo': 103 } as const
+  )[p];
 }
 
 export function mapAdjustToEastmoney(a: AdjustMode): number {
-  return a === "qfq" ? 1 : a === "hfq" ? 2 : 0;
+  return a === 'qfq' ? 1 : a === 'hfq' ? 2 : 0;
 }
 
 export async function fetchEastmoneyKline(req: NormalizedRequest): Promise<KlinePoint[]> {
@@ -35,10 +37,12 @@ export function parseEastmoneyKline(json: EastmoneyKlineResponse): KlinePoint[] 
   const klines: string[] = json?.data?.klines || [];
   return klines.map((row) => {
     // 字段顺序：日期, 开, 收, 高, 低, 成交量(手), 成交额, 振幅, 涨跌幅, 涨跌额, 换手率
-    const f = row.split(",");
-    const time = Math.floor(new Date(
-      f[0].length === 10 ? f[0] + "T00:00:00+08:00" : f[0].replace(" ", "T") + "+08:00"
-    ).getTime() / 1000);
+    const f = row.split(',');
+    const time = Math.floor(
+      new Date(
+        f[0].length === 10 ? f[0] + 'T00:00:00+08:00' : f[0].replace(' ', 'T') + '+08:00',
+      ).getTime() / 1000,
+    );
     return {
       time,
       open: parseFloat(f[1]),

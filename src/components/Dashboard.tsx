@@ -38,19 +38,36 @@ const Dashboard: React.FC = () => {
 
   const providerProfile = PROVIDER_PROFILES[settings.activeProvider];
   const providerLabel = settings.activeProvider;
-  const modelLabel = settings.providerConfigs[settings.activeProvider]?.model ?? providerProfile.model;
+  const modelLabel =
+    settings.providerConfigs[settings.activeProvider]?.model ?? providerProfile.model;
 
   // 深度分析缓存指纹：provider/model/大师/语言任一变化即失效，避免显示陈旧结果
   const deepFingerprint = `${settings.activeProvider}:${modelLabel}:${settings.selectedMasters.join(',')}:${settings.language}`;
-  const { result: deepAnalysis, analyzing: deepAnalyzing, error: deepError, analyze: analyzeDeep } = useDeepAnalysis(currentSymbol, deepFingerprint);
+  const {
+    result: deepAnalysis,
+    analyzing: deepAnalyzing,
+    error: deepError,
+    analyze: analyzeDeep,
+  } = useDeepAnalysis(currentSymbol, deepFingerprint);
 
   // 追问上下文：从已抓新闻/量化/已有分析精简，作为对话事实底座（不重复抓取）
-  const chatContext = useMemo<ChatContext>(() => ({
-    newsTitles: news.slice(0, 8).map(n => n.title),
-    quantSummary: quant ? `综合 ${quant.composite.score}/100（${quant.composite.signal}）` : undefined,
-    analysisSummary: record?.result?.summary ?? deepAnalysis?.synthesis.summary,
-  }), [news, quant, record, deepAnalysis]);
-  const { messages: chatMessages, sending: chatSending, error: chatError, ask: chatAsk, reset: chatReset } = useChat(currentSymbol, chatContext);
+  const chatContext = useMemo<ChatContext>(
+    () => ({
+      newsTitles: news.slice(0, 8).map((n) => n.title),
+      quantSummary: quant
+        ? `综合 ${quant.composite.score}/100（${quant.composite.signal}）`
+        : undefined,
+      analysisSummary: record?.result?.summary ?? deepAnalysis?.synthesis.summary,
+    }),
+    [news, quant, record, deepAnalysis],
+  );
+  const {
+    messages: chatMessages,
+    sending: chatSending,
+    error: chatError,
+    ask: chatAsk,
+    reset: chatReset,
+  } = useChat(currentSymbol, chatContext);
 
   // 自动模式：新闻 + 量化数据均就绪后触发一次 LLM
   useEffect(() => {
@@ -63,7 +80,14 @@ const Dashboard: React.FC = () => {
   }, [step, news, currentSymbol, settings.autoAnalyze, autoFlowSymbol, analyze, quant, quantStep]);
 
   // 分析结果自动持久化（AI/深度/量化存历史 + 落账大师 signal），逻辑抽至 hook 以收敛组件行数
-  usePersistAnalysisResults({ symbol: currentSymbol, stockInfo, news, record, deepAnalysis, quant });
+  usePersistAnalysisResults({
+    symbol: currentSymbol,
+    stockInfo,
+    news,
+    record,
+    deepAnalysis,
+    quant,
+  });
 
   function handleSearch(symbol: string) {
     setCurrentSymbol(symbol);
@@ -88,10 +112,7 @@ const Dashboard: React.FC = () => {
 
       {/* 小屏纵向排列并整体滚动；lg 以上横向排列各区域独立滚动 */}
       <main className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-        <Watchlist
-          currentSymbol={currentSymbol}
-          onSelect={handleWatchlistSelect}
-        />
+        <Watchlist currentSymbol={currentSymbol} onSelect={handleWatchlistSelect} />
 
         <section className="flex-1 md:w-1/2 p-8 lg:overflow-y-auto bg-background/50 scrollbar-hide relative">
           {dataError && (
@@ -105,7 +126,9 @@ const Dashboard: React.FC = () => {
           )}
 
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t('analysis_details', { symbol: currentSymbol })}</h2>
+            <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">
+              {t('analysis_details', { symbol: currentSymbol })}
+            </h2>
             {busy && (
               <div className="flex items-center gap-3 text-xs text-emerald-500 font-medium bg-emerald-500/5 px-3 py-1.5 rounded-full border border-emerald-500/20 animate-pulse">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -118,15 +141,21 @@ const Dashboard: React.FC = () => {
 
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
-              <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">{t('latest_price')}</div>
+              <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">
+                {t('latest_price')}
+              </div>
               <div className="text-2xl font-mono font-bold text-emerald-400">
                 {stockInfo?.price?.toFixed(2) || t('no_data')}
                 <span className="text-sm ml-2 text-gray-500">{stockInfo?.currency}</span>
               </div>
             </div>
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
-              <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">{t('price_change')}</div>
-              <div className={`text-2xl font-mono font-bold ${(stockInfo?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <div className="text-gray-400 text-xs font-bold uppercase mb-2 tracking-wider">
+                {t('price_change')}
+              </div>
+              <div
+                className={`text-2xl font-mono font-bold ${(stockInfo?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+              >
                 {(stockInfo?.changePercent ?? 0) >= 0 ? '+' : ''}
                 {stockInfo?.changePercent?.toFixed(2) || '0.00'}%
               </div>
@@ -135,7 +164,9 @@ const Dashboard: React.FC = () => {
 
           {news.length > 0 && (
             <div className="mt-10">
-              <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">{t('latest_news')}</h2>
+              <h2 className="text-gray-400 text-xs font-bold mb-6 uppercase tracking-widest">
+                {t('latest_news')}
+              </h2>
               <div className="space-y-4">
                 {news.map((n, i) => (
                   <a
@@ -149,7 +180,9 @@ const Dashboard: React.FC = () => {
                       <span>{n.source}</span>
                       <span className="text-gray-500">{n.date}</span>
                     </div>
-                    <div className="text-base font-bold group-hover:text-emerald-400 transition-colors">{n.title}</div>
+                    <div className="text-base font-bold group-hover:text-emerald-400 transition-colors">
+                      {n.title}
+                    </div>
                   </a>
                 ))}
               </div>
@@ -188,10 +221,7 @@ const Dashboard: React.FC = () => {
         />
       </main>
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 };

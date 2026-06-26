@@ -10,10 +10,20 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 function makeQuote(symbol: string, price: number): RealtimeQuote {
   return {
-    symbol, name: symbol, price, change: 0, changePercent: 0,
-    open: price, high: price, low: price, prevClose: price,
-    volume: 0, amount: 0, timestamp: Date.now() / 1000,
-    currency: 'USD', market: '美股',
+    symbol,
+    name: symbol,
+    price,
+    change: 0,
+    changePercent: 0,
+    open: price,
+    high: price,
+    low: price,
+    prevClose: price,
+    volume: 0,
+    amount: 0,
+    timestamp: Date.now() / 1000,
+    currency: 'USD',
+    market: '美股',
   };
 }
 
@@ -37,9 +47,7 @@ describe('useAlertMonitor', () => {
     renderHook(() => useAlertMonitor(alerts, fetcher));
 
     await vi.advanceTimersByTimeAsync(100);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('突破上限'),
-    );
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('突破上限'));
     consoleSpy.mockRestore();
   });
 
@@ -54,9 +62,7 @@ describe('useAlertMonitor', () => {
     renderHook(() => useAlertMonitor(alerts, fetcher));
 
     await vi.advanceTimersByTimeAsync(100);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('跌破下限'),
-    );
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('跌破下限'));
     consoleSpy.mockRestore();
   });
 
@@ -86,11 +92,15 @@ describe('useAlertMonitor', () => {
     renderHook(() => useAlertMonitor(alerts, fetcher));
 
     await vi.advanceTimersByTimeAsync(100);
-    const countAfterFirst = consoleSpy.mock.calls.filter(c => String(c[0]).includes('alert-mock')).length;
+    const countAfterFirst = consoleSpy.mock.calls.filter((c) =>
+      String(c[0]).includes('alert-mock'),
+    ).length;
 
     await vi.advanceTimersByTimeAsync(10_000);
     await vi.advanceTimersByTimeAsync(100);
-    const countAfterSecond = consoleSpy.mock.calls.filter(c => String(c[0]).includes('alert-mock')).length;
+    const countAfterSecond = consoleSpy.mock.calls.filter((c) =>
+      String(c[0]).includes('alert-mock'),
+    ).length;
 
     expect(countAfterSecond).toBe(countAfterFirst);
     consoleSpy.mockRestore();
@@ -98,7 +108,8 @@ describe('useAlertMonitor', () => {
 
   it('re-arms after price returns within bounds', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const fetcher = vi.fn()
+    const fetcher = vi
+      .fn()
       .mockResolvedValueOnce(makeQuote('AAPL', 205))
       .mockResolvedValueOnce(makeQuote('AAPL', 195))
       .mockResolvedValueOnce(makeQuote('AAPL', 210));
@@ -115,7 +126,7 @@ describe('useAlertMonitor', () => {
     await vi.advanceTimersByTimeAsync(10_000);
     await vi.advanceTimersByTimeAsync(100);
 
-    const alertCalls = consoleSpy.mock.calls.filter(c => String(c[0]).includes('alert-mock'));
+    const alertCalls = consoleSpy.mock.calls.filter((c) => String(c[0]).includes('alert-mock'));
     expect(alertCalls.length).toBe(2);
     consoleSpy.mockRestore();
   });

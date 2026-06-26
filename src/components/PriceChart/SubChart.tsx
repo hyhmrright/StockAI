@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from 'react';
 import {
   createChart,
   type IChartApi,
@@ -7,17 +7,17 @@ import {
   type HistogramData,
   ColorType,
   CrosshairMode,
-} from "lightweight-charts";
-import type { KlinePoint } from "../../../shared/types";
-import type { SubChartIndicator } from "./types";
-import { CHART_THEME } from "./chart-theme";
-import { macd, rsi, kdj, obv, vwap } from "../../lib/indicators";
-import { upColor, downColor } from "../../lib/market-hours";
+} from 'lightweight-charts';
+import type { KlinePoint } from '../../../shared/types';
+import type { SubChartIndicator } from './types';
+import { CHART_THEME } from './chart-theme';
+import { macd, rsi, kdj, obv, vwap } from '../../lib/indicators';
+import { upColor, downColor } from '../../lib/market-hours';
 
 interface Props {
   data: KlinePoint[];
   indicator: SubChartIndicator;
-  market: "A股" | "美股";
+  market: 'A股' | '美股';
   height?: number;
 }
 
@@ -26,7 +26,7 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
   const chartRef = useRef<IChartApi | null>(null);
 
   // BOLL 不在副图绘制（由主图叠加上下轨），直接返回 null
-  if (indicator === "boll") return null;
+  if (indicator === 'boll') return null;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -48,14 +48,17 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
     chartRef.current = chart;
 
     if (data.length === 0) {
-      return () => { chart.remove(); chartRef.current = null; };
+      return () => {
+        chart.remove();
+        chartRef.current = null;
+      };
     }
 
-    const times  = data.map((p) => p.time as UTCTimestamp);
+    const times = data.map((p) => p.time as UTCTimestamp);
     const closes = data.map((p) => p.close);
-    const highs  = data.map((p) => p.high);
-    const lows   = data.map((p) => p.low);
-    const vols   = data.map((p) => p.volume);
+    const highs = data.map((p) => p.high);
+    const lows = data.map((p) => p.low);
+    const vols = data.map((p) => p.volume);
 
     const toLine = (vals: (number | null)[]): LineData<UTCTimestamp>[] =>
       vals
@@ -63,9 +66,13 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
         .filter((x): x is LineData<UTCTimestamp> => x !== null);
 
     const palette = CHART_THEME.series;
-    const lineOpts = { lineWidth: 1 as const, priceLineVisible: false as const, lastValueVisible: false as const };
+    const lineOpts = {
+      lineWidth: 1 as const,
+      priceLineVisible: false as const,
+      lastValueVisible: false as const,
+    };
 
-    if (indicator === "macd") {
+    if (indicator === 'macd') {
       const { dif, dea, hist } = macd(closes);
       const sDif = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
       sDif.setData(toLine(dif));
@@ -75,13 +82,17 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
       const histData: HistogramData<UTCTimestamp>[] = [];
       hist.forEach((v, i) => {
         if (v == null) return;
-        histData.push({ time: times[i], value: v, color: v >= 0 ? upColor(market) + "B0" : downColor(market) + "B0" });
+        histData.push({
+          time: times[i],
+          value: v,
+          color: v >= 0 ? upColor(market) + 'B0' : downColor(market) + 'B0',
+        });
       });
       sHist.setData(histData);
-    } else if (indicator === "rsi") {
+    } else if (indicator === 'rsi') {
       const series = chart.addLineSeries({ color: palette.cyan, ...lineOpts });
       series.setData(toLine(rsi(closes)));
-    } else if (indicator === "kdj") {
+    } else if (indicator === 'kdj') {
       const { k, d, j } = kdj(highs, lows, closes);
       const sK = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
       sK.setData(toLine(k));
@@ -89,19 +100,22 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
       sD.setData(toLine(d));
       const sJ = chart.addLineSeries({ color: palette.pink, ...lineOpts });
       sJ.setData(toLine(j));
-    } else if (indicator === "obv") {
+    } else if (indicator === 'obv') {
       const series = chart.addLineSeries({ color: palette.cyan, ...lineOpts });
       series.setData(obv(closes, vols).map((v, i) => ({ time: times[i], value: v })));
-    } else if (indicator === "vwap") {
+    } else if (indicator === 'vwap') {
       const series = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
       series.setData(vwap(highs, lows, closes, vols).map((v, i) => ({ time: times[i], value: v })));
     }
 
     chart.timeScale().fitContent();
-    return () => { chart.remove(); chartRef.current = null; };
+    return () => {
+      chart.remove();
+      chartRef.current = null;
+    };
   }, [data, indicator, market]);
 
-  return <div ref={containerRef} style={{ width: "100%", height }} />;
+  return <div ref={containerRef} style={{ width: '100%', height }} />;
 };
 
 export default SubChart;

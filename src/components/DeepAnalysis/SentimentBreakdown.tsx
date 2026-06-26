@@ -22,7 +22,9 @@ const SentimentBreakdown: React.FC<SentimentBreakdownProps> = ({ sentiment }) =>
       </div>
       <div className="flex h-2 rounded-full overflow-hidden bg-white/5">
         {positive > 0 && <div className="bg-emerald-500" style={{ width: `${pPct}%` }} />}
-        {neutral > 0 && <div className="bg-gray-500" style={{ width: `${(neutral / total) * 100}%` }} />}
+        {neutral > 0 && (
+          <div className="bg-gray-500" style={{ width: `${(neutral / total) * 100}%` }} />
+        )}
         {negative > 0 && <div className="bg-rose-500" style={{ width: `${nPct}%` }} />}
       </div>
       <div className="flex justify-between text-[10px] text-gray-500">

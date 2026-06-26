@@ -47,7 +47,7 @@ export async function scrapeStockNews(
             if (deepMode) {
               await enrichWithFullContent(news, ctx.getPage, deps?.extractContent);
             } else {
-              logger.info("深度模式已关闭，仅使用新闻摘要进行分析。");
+              logger.info('深度模式已关闭，仅使用新闻摘要进行分析。');
             }
           }
           break; // 无论结果是否为空，不再重试当前策略
@@ -81,7 +81,7 @@ async function enrichWithFullContent(
   extract?: typeof extractFullContent,
 ): Promise<void> {
   const doExtract = extract ?? extractFullContent;
-  logger.info("深度模式已开启，正在提取新闻正文...");
+  logger.info('深度模式已开启，正在提取新闻正文...');
   const count = Math.min(news.length, DEEP_MODE_MAX_ARTICLES);
   let page: Page | null = null;
   for (let i = 0; i < count; i++) {

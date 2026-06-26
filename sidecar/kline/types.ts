@@ -1,4 +1,10 @@
-import type { KlinePoint, RealtimeQuote, KlinePeriod, KlineRange, AdjustMode } from "../../shared/types";
+import type {
+  KlinePoint,
+  RealtimeQuote,
+  KlinePeriod,
+  KlineRange,
+  AdjustMode,
+} from '../../shared/types';
 
 export type { KlinePoint, RealtimeQuote, KlinePeriod, KlineRange, AdjustMode };
 
@@ -13,5 +19,5 @@ export interface NormalizedRequest {
   period: KlinePeriod;
   range: KlineRange;
   adjust: AdjustMode;
-  market: "A股" | "美股";
+  market: 'A股' | '美股';
 }

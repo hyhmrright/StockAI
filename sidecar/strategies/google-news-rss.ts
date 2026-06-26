@@ -9,7 +9,7 @@ import { parseSymbol } from '../parsers/exchange';
  * 不调用 ctx.getPage()，所以 RSS-only 命中路径不会启动 Chromium。
  */
 export class GoogleNewsRSSStrategy implements ScrapeStrategy {
-  readonly name = "Google News RSS";
+  readonly name = 'Google News RSS';
 
   constructor(private readonly _fetch: typeof globalThis.fetch = globalThis.fetch) {}
 
@@ -40,25 +40,29 @@ export class GoogleNewsRSSStrategy implements ScrapeStrategy {
   private parse(xml: string): StockNews[] {
     const items = xml.match(/<item>([\s\S]*?)<\/item>/g) ?? [];
 
-    return items.slice(0, 8).map(item => {
-      const rawTitle = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
-                    ?? item.match(/<title>(.*?)<\/title>/)?.[1]
-                    ?? '';
-      const title = rawTitle.replace(/\s*-\s*[^-]+$/, '').trim();
+    return items
+      .slice(0, 8)
+      .map((item) => {
+        const rawTitle =
+          item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] ??
+          item.match(/<title>(.*?)<\/title>/)?.[1] ??
+          '';
+        const title = rawTitle.replace(/\s*-\s*[^-]+$/, '').trim();
 
-      const link = item.match(/<link>\s*(.*?)\s*<\/link>/)?.[1] ?? '';
-      const source = item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] ?? '';
-      const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? '';
+        const link = item.match(/<link>\s*(.*?)\s*<\/link>/)?.[1] ?? '';
+        const source = item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] ?? '';
+        const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? '';
 
-      let date = todayISO();
-      if (pubDate) {
-        const parsed = new Date(pubDate);
-        if (!isNaN(parsed.getTime())) {
-          date = parsed.toISOString().split('T')[0];
+        let date = todayISO();
+        if (pubDate) {
+          const parsed = new Date(pubDate);
+          if (!isNaN(parsed.getTime())) {
+            date = parsed.toISOString().split('T')[0];
+          }
         }
-      }
 
-      return { title, url: link, source, date, content: '' };
-    }).filter(n => n.title && n.url);
+        return { title, url: link, source, date, content: '' };
+      })
+      .filter((n) => n.title && n.url);
   }
 }

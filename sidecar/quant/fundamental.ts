@@ -2,7 +2,9 @@ import type { FinancialMetrics, FundamentalResult, SubSignal } from './types';
 import type { CheckItem } from '../../shared/types';
 import { logger, toErrorMessage } from '../utils';
 
-export function parseEastmoneyFinancials(json: { data?: Record<string, number>[] }): FinancialMetrics {
+export function parseEastmoneyFinancials(json: {
+  data?: Record<string, number>[];
+}): FinancialMetrics {
   const row = json?.data?.[0];
   if (!row) return {};
   return {
@@ -76,7 +78,10 @@ export function parseYahooFinancials(json: {
     roe: fd.returnOnEquity?.raw != null ? fd.returnOnEquity.raw * 100 : undefined,
     grossMargin: fd.grossMargins?.raw != null ? fd.grossMargins.raw * 100 : undefined,
     netMargin: fd.profitMargins?.raw != null ? fd.profitMargins.raw * 100 : undefined,
-    debtToAsset: fd.debtToEquity?.raw != null ? (fd.debtToEquity.raw / (100 + fd.debtToEquity.raw)) * 100 : undefined,
+    debtToAsset:
+      fd.debtToEquity?.raw != null
+        ? (fd.debtToEquity.raw / (100 + fd.debtToEquity.raw)) * 100
+        : undefined,
     currentRatio: fd.currentRatio?.raw,
     revenueGrowth: fd.revenueGrowth?.raw != null ? fd.revenueGrowth.raw * 100 : undefined,
     netIncomeGrowth: fd.earningsGrowth?.raw != null ? fd.earningsGrowth.raw * 100 : undefined,
@@ -185,7 +190,13 @@ function scoreDimension(name: string, graders: MetricGrader[]): SubSignal {
     score += g;
     const actual = Number(value.toFixed(decimals ?? 1));
     details[key] = actual;
-    checkItems.push({ key, actual, threshold, comparator, passed: g > 0 ? true : g < 0 ? false : null });
+    checkItems.push({
+      key,
+      actual,
+      threshold,
+      comparator,
+      passed: g > 0 ? true : g < 0 ? false : null,
+    });
   }
 
   const normalized = counted > 0 ? (score / counted) * 60 : 0;
@@ -213,36 +224,94 @@ const FUND_THRESHOLDS = {
 } as const;
 
 /** gte 维度评分闭包：> good →1, > fair →0, 否则 -1 */
-const gradeGte = (t: { good: number; fair: number }) => (v: number) => (v > t.good ? 1 : v > t.fair ? 0 : -1);
+const gradeGte = (t: { good: number; fair: number }) => (v: number) =>
+  v > t.good ? 1 : v > t.fair ? 0 : -1;
 /** lte 维度评分闭包：< good →1, < fair →0, 否则 -1（越低越好） */
-const gradeLte = (t: { good: number; fair: number }) => (v: number) => (v < t.good ? 1 : v < t.fair ? 0 : -1);
+const gradeLte = (t: { good: number; fair: number }) => (v: number) =>
+  v < t.good ? 1 : v < t.fair ? 0 : -1;
 
 function scoreProfitability(m: FinancialMetrics): SubSignal {
   return scoreDimension('profitability', [
-    { value: m.roe, grade: gradeGte(FUND_THRESHOLDS.roe), key: 'roe', threshold: FUND_THRESHOLDS.roe.good, comparator: 'gte' },
-    { value: m.netMargin, grade: gradeGte(FUND_THRESHOLDS.netMargin), key: 'net_margin', threshold: FUND_THRESHOLDS.netMargin.good, comparator: 'gte' },
-    { value: m.grossMargin, grade: gradeGte(FUND_THRESHOLDS.grossMargin), key: 'gross_margin', threshold: FUND_THRESHOLDS.grossMargin.good, comparator: 'gte' },
+    {
+      value: m.roe,
+      grade: gradeGte(FUND_THRESHOLDS.roe),
+      key: 'roe',
+      threshold: FUND_THRESHOLDS.roe.good,
+      comparator: 'gte',
+    },
+    {
+      value: m.netMargin,
+      grade: gradeGte(FUND_THRESHOLDS.netMargin),
+      key: 'net_margin',
+      threshold: FUND_THRESHOLDS.netMargin.good,
+      comparator: 'gte',
+    },
+    {
+      value: m.grossMargin,
+      grade: gradeGte(FUND_THRESHOLDS.grossMargin),
+      key: 'gross_margin',
+      threshold: FUND_THRESHOLDS.grossMargin.good,
+      comparator: 'gte',
+    },
   ]);
 }
 
 function scoreGrowth(m: FinancialMetrics): SubSignal {
   return scoreDimension('growth', [
-    { value: m.revenueGrowth, grade: gradeGte(FUND_THRESHOLDS.revenueGrowth), key: 'revenue_growth', threshold: FUND_THRESHOLDS.revenueGrowth.good, comparator: 'gte' },
-    { value: m.netIncomeGrowth, grade: gradeGte(FUND_THRESHOLDS.netIncomeGrowth), key: 'net_income_growth', threshold: FUND_THRESHOLDS.netIncomeGrowth.good, comparator: 'gte' },
+    {
+      value: m.revenueGrowth,
+      grade: gradeGte(FUND_THRESHOLDS.revenueGrowth),
+      key: 'revenue_growth',
+      threshold: FUND_THRESHOLDS.revenueGrowth.good,
+      comparator: 'gte',
+    },
+    {
+      value: m.netIncomeGrowth,
+      grade: gradeGte(FUND_THRESHOLDS.netIncomeGrowth),
+      key: 'net_income_growth',
+      threshold: FUND_THRESHOLDS.netIncomeGrowth.good,
+      comparator: 'gte',
+    },
   ]);
 }
 
 function scoreFinancialHealth(m: FinancialMetrics): SubSignal {
   return scoreDimension('financial_health', [
-    { value: m.debtToAsset, grade: gradeLte(FUND_THRESHOLDS.debtToAsset), key: 'debt_to_asset', threshold: FUND_THRESHOLDS.debtToAsset.good, comparator: 'lte' },
-    { value: m.currentRatio, grade: gradeGte(FUND_THRESHOLDS.currentRatio), key: 'current_ratio', threshold: FUND_THRESHOLDS.currentRatio.good, comparator: 'gte', decimals: 2 },
+    {
+      value: m.debtToAsset,
+      grade: gradeLte(FUND_THRESHOLDS.debtToAsset),
+      key: 'debt_to_asset',
+      threshold: FUND_THRESHOLDS.debtToAsset.good,
+      comparator: 'lte',
+    },
+    {
+      value: m.currentRatio,
+      grade: gradeGte(FUND_THRESHOLDS.currentRatio),
+      key: 'current_ratio',
+      threshold: FUND_THRESHOLDS.currentRatio.good,
+      comparator: 'gte',
+      decimals: 2,
+    },
   ]);
 }
 
 function scoreValuation(m: FinancialMetrics): SubSignal {
   return scoreDimension('valuation', [
-    { value: m.pe, grade: gradeLte(FUND_THRESHOLDS.pe), key: 'pe', threshold: FUND_THRESHOLDS.pe.good, comparator: 'lte' },
-    { value: m.pb, grade: gradeLte(FUND_THRESHOLDS.pb), key: 'pb', threshold: FUND_THRESHOLDS.pb.good, comparator: 'lte', decimals: 2 },
+    {
+      value: m.pe,
+      grade: gradeLte(FUND_THRESHOLDS.pe),
+      key: 'pe',
+      threshold: FUND_THRESHOLDS.pe.good,
+      comparator: 'lte',
+    },
+    {
+      value: m.pb,
+      grade: gradeLte(FUND_THRESHOLDS.pb),
+      key: 'pb',
+      threshold: FUND_THRESHOLDS.pb.good,
+      comparator: 'lte',
+      decimals: 2,
+    },
   ]);
 }
 
@@ -254,7 +323,7 @@ export function scoreFundamentals(metrics: FinancialMetrics): FundamentalResult 
     scoreValuation(metrics),
   ];
 
-  const hasData = dimensions.some(d => Object.keys(d.details).length > 0);
+  const hasData = dimensions.some((d) => Object.keys(d.details).length > 0);
   if (!hasData) {
     return {
       dimensions,
@@ -276,9 +345,9 @@ export function scoreFundamentals(metrics: FinancialMetrics): FundamentalResult 
     composite: {
       signal,
       confidence: Math.round(confidence),
-      details: Object.fromEntries(dimensions.map(d => [d.name, `${d.signal} (${d.score})`])),
+      details: Object.fromEntries(dimensions.map((d) => [d.name, `${d.signal} (${d.score})`])),
       // 汇总四维全部逐项检查，供前端下钻展示「凭哪几条判 bullish」
-      checks: dimensions.flatMap(d => d.checkItems ?? []),
+      checks: dimensions.flatMap((d) => d.checkItems ?? []),
     },
   };
 }

@@ -3,7 +3,7 @@ import type {
   MasterLeaderboardEntry,
   MasterNavPoint,
   MasterPortfolioData,
-} from "../../shared/types";
+} from '../../shared/types';
 
 /**
  * 虚拟大师组合展示层的纯计算核心（前向跟踪 · 轨道 A）。
@@ -19,10 +19,10 @@ import type {
  */
 function isResolvable(s: MasterSignalRecord, priceNow: number | undefined): priceNow is number {
   return (
-    s.signal !== "neutral" &&
+    s.signal !== 'neutral' &&
     s.priceAt != null &&
     s.priceAt > 0 &&
-    typeof priceNow === "number" &&
+    typeof priceNow === 'number' &&
     Number.isFinite(priceNow) &&
     priceNow > 0
   );
@@ -32,7 +32,7 @@ function isResolvable(s: MasterSignalRecord, priceNow: number | undefined): pric
 function directionReturn(s: MasterSignalRecord, priceNow: number): number {
   const entry = s.priceAt as number;
   const raw = (priceNow - entry) / entry;
-  return s.signal === "bearish" ? -raw : raw;
+  return s.signal === 'bearish' ? -raw : raw;
 }
 
 export function computeMasterPortfolio(
@@ -57,7 +57,7 @@ export function computeMasterPortfolio(
 
   for (const [masterId, list] of byMaster) {
     const resolved = [...list]
-      .filter(s => isResolvable(s, priceMap[s.symbol]))
+      .filter((s) => isResolvable(s, priceMap[s.symbol]))
       .sort((a, b) => a.recordedAt - b.recordedAt);
 
     let hits = 0;

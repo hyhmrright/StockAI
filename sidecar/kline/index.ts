@@ -1,17 +1,17 @@
-import type { KlineRequest, KlinePoint, RealtimeQuote } from "../../shared/types";
-import type { NormalizedRequest } from "./types";
-import { detectMarket } from "../../shared/market";
-import { fetchYahooKline, fetchYahooQuote } from "./yahoo";
-import { fetchTencentKline, fetchTencentQuote } from "./tencent";
-import { fetchEastmoneyKline } from "./eastmoney";
-import { logger, toErrorMessage } from "../utils";
+import type { KlineRequest, KlinePoint, RealtimeQuote } from '../../shared/types';
+import type { NormalizedRequest } from './types';
+import { detectMarket } from '../../shared/market';
+import { fetchYahooKline, fetchYahooQuote } from './yahoo';
+import { fetchTencentKline, fetchTencentQuote } from './tencent';
+import { fetchEastmoneyKline } from './eastmoney';
+import { logger, toErrorMessage } from '../utils';
 
 function normalize(req: KlineRequest): NormalizedRequest {
   return {
     rawSymbol: req.symbol,
     period: req.period,
     range: req.range,
-    adjust: req.adjust ?? "qfq",
+    adjust: req.adjust ?? 'qfq',
     market: detectMarket(req.symbol),
   };
 }
@@ -21,7 +21,7 @@ function normalize(req: KlineRequest): NormalizedRequest {
  */
 export async function getKline(req: KlineRequest): Promise<KlinePoint[]> {
   const n = normalize(req);
-  if (n.market === "美股") return fetchYahooKline(n);
+  if (n.market === '美股') return fetchYahooKline(n);
 
   try {
     return await fetchTencentKline(n);
@@ -36,5 +36,5 @@ export async function getKline(req: KlineRequest): Promise<KlinePoint[]> {
  */
 export async function getQuote(symbol: string): Promise<RealtimeQuote> {
   const market = detectMarket(symbol);
-  return market === "美股" ? fetchYahooQuote(symbol) : fetchTencentQuote(symbol);
+  return market === '美股' ? fetchYahooQuote(symbol) : fetchTencentQuote(symbol);
 }

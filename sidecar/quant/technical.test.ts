@@ -115,13 +115,15 @@ describe('computeATR', () => {
   test('ATR 始终为非负数', () => {
     const kline = makeKline(Array.from({ length: 30 }, (_, i) => 100 + Math.sin(i) * 5));
     const atr = computeATR(kline, 14);
-    atr.forEach(v => expect(v).toBeGreaterThanOrEqual(0));
+    atr.forEach((v) => expect(v).toBeGreaterThanOrEqual(0));
   });
 });
 
 describe('analyzeTechnical', () => {
   test('返回 5 个子信号和一个综合信号', () => {
-    const kline = makeKline(Array.from({ length: 250 }, (_, i) => 100 + i * 0.1 + Math.sin(i / 10) * 5));
+    const kline = makeKline(
+      Array.from({ length: 250 }, (_, i) => 100 + i * 0.1 + Math.sin(i / 10) * 5),
+    );
     const result = analyzeTechnical(kline);
     expect(result.subSignals).toHaveLength(5);
     expect(['bullish', 'bearish', 'neutral']).toContain(result.composite.signal);

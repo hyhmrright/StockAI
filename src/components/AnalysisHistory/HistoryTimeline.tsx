@@ -11,7 +11,10 @@ const TYPE_COLORS: Record<AnalysisType, string> = {
   screener: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
 };
 
-const TYPE_LABEL_KEYS: Record<AnalysisType, 'type_ai' | 'type_deep' | 'type_quant' | 'type_backtest' | 'type_screener'> = {
+const TYPE_LABEL_KEYS: Record<
+  AnalysisType,
+  'type_ai' | 'type_deep' | 'type_quant' | 'type_backtest' | 'type_screener'
+> = {
   ai: 'type_ai',
   deep: 'type_deep',
   quant: 'type_quant',
@@ -29,7 +32,12 @@ interface HistoryTimelineProps {
 }
 
 const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
-  records, loading, hasMore, onLoadMore, onSelect, onDelete,
+  records,
+  loading,
+  hasMore,
+  onLoadMore,
+  onSelect,
+  onDelete,
 }) => {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const { t, language } = useLanguage();
@@ -70,7 +78,7 @@ const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
 
   function toggleSelect(id: number, e: React.MouseEvent) {
     e.stopPropagation();
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -101,7 +109,7 @@ const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
         </button>
       )}
 
-      {records.map(record => {
+      {records.map((record) => {
         const color = TYPE_COLORS[record.type];
         return (
           <div
@@ -112,7 +120,7 @@ const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
             <input
               type="checkbox"
               checked={selected.has(record.id)}
-              onClick={e => toggleSelect(record.id, e)}
+              onClick={(e) => toggleSelect(record.id, e)}
               onChange={() => {}}
               className="w-3.5 h-3.5 rounded accent-emerald-500 shrink-0 cursor-pointer"
             />
@@ -121,7 +129,9 @@ const HistoryTimeline: React.FC<HistoryTimelineProps> = ({
                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${color}`}>
                   {t(TYPE_LABEL_KEYS[record.type])}
                 </span>
-                <span className="text-[10px] text-gray-500">{formatRelativeTime(record.analyzedAt)}</span>
+                <span className="text-[10px] text-gray-500">
+                  {formatRelativeTime(record.analyzedAt)}
+                </span>
               </div>
               <p className="text-xs text-gray-400 truncate">{extractSummary(record)}</p>
             </div>

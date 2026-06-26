@@ -18,11 +18,17 @@ const MasterConsensusBreakdown: React.FC<MasterConsensusBreakdownProps> = ({ sig
       <div className="flex items-center justify-between text-xs">
         <span className="text-gray-400">{t('master_consensus')}</span>
         <span>
-          <span className="text-emerald-400">{t('bullish')} {c.bullish}</span>
+          <span className="text-emerald-400">
+            {t('bullish')} {c.bullish}
+          </span>
           <span className="mx-1.5 text-gray-600">·</span>
-          <span className="text-rose-400">{t('bearish')} {c.bearish}</span>
+          <span className="text-rose-400">
+            {t('bearish')} {c.bearish}
+          </span>
           <span className="mx-1.5 text-gray-600">·</span>
-          <span className="text-amber-400">{t('neutral')} {c.neutral}</span>
+          <span className="text-amber-400">
+            {t('neutral')} {c.neutral}
+          </span>
         </span>
       </div>
       <div className="flex h-2 rounded-full overflow-hidden bg-white/5">

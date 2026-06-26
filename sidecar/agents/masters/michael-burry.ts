@@ -60,7 +60,9 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     '',
     `[近期新闻 (${news.length} 条，注意炒作信号)]`,
     ...formatNewsForPrompt(news),
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return facts;
 }

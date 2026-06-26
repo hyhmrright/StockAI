@@ -1,4 +1,10 @@
-import type { QuantBundle, StockNews, MasterMeta, MasterSignal, Language } from '../../shared/types';
+import type {
+  QuantBundle,
+  StockNews,
+  MasterMeta,
+  MasterSignal,
+  Language,
+} from '../../shared/types';
 
 export type { MasterSignal };
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
-import { readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
-const ROOT = resolve(import.meta.dir, "..");
+const ROOT = resolve(import.meta.dir, '..');
 
 interface Target {
   path: string;
@@ -14,20 +14,20 @@ interface Target {
 
 const TARGETS: Target[] = [
   {
-    path: "package.json",
+    path: 'package.json',
     pattern: /^(\s+"version":\s*")(\d+\.\d+\.\d+)(")/m,
     label: 'package.json (顶层 "version")',
   },
   {
-    path: "src-tauri/tauri.conf.json",
+    path: 'src-tauri/tauri.conf.json',
     pattern: /^(\s+"version":\s*")(\d+\.\d+\.\d+)(")/m,
     label: 'src-tauri/tauri.conf.json (顶层 "version")',
   },
   {
     // 前提：单 crate。若未来加 [workspace.package].version，需将 pattern 限制在 [package] 段
-    path: "src-tauri/Cargo.toml",
+    path: 'src-tauri/Cargo.toml',
     pattern: /^(version\s*=\s*")(\d+\.\d+\.\d+)(")/m,
-    label: "src-tauri/Cargo.toml ([package].version)",
+    label: 'src-tauri/Cargo.toml ([package].version)',
   },
 ];
 
@@ -44,7 +44,7 @@ async function planAll(versionArg: string): Promise<Plan[]> {
 
   for (const target of TARGETS) {
     const fullPath = resolve(ROOT, target.path);
-    const raw = await readFile(fullPath, "utf-8");
+    const raw = await readFile(fullPath, 'utf-8');
     const match = raw.match(target.pattern);
     if (!match) {
       missing.push(target.label);
@@ -75,8 +75,7 @@ async function applyAll(plans: Plan[], versionArg: string, write: boolean): Prom
     if (write) {
       const next = plan.raw.replace(
         plan.target.pattern,
-        (_full, pre: string, _old: string, post: string) =>
-          `${pre}${versionArg}${post}`,
+        (_full, pre: string, _old: string, post: string) => `${pre}${versionArg}${post}`,
       );
       await writeFile(plan.fullPath, next);
       console.log(`✓ ${plan.target.label}: ${plan.oldVersion} → ${versionArg}`);
@@ -85,17 +84,17 @@ async function applyAll(plans: Plan[], versionArg: string, write: boolean): Prom
       console.log(`→ ${plan.target.label}: ${plan.oldVersion} → ${versionArg}  (dry-run)`);
     }
   }
-  if (!write) console.log("\n(dry-run) 加 --write 实际写盘");
-  else if (touched === 0) console.log("\n所有目标已是目标版本，无需改动");
+  if (!write) console.log('\n(dry-run) 加 --write 实际写盘');
+  else if (touched === 0) console.log('\n所有目标已是目标版本，无需改动');
 }
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  const write = args.includes("--write");
-  const versionArg = args.find((a) => !a.startsWith("--"));
+  const write = args.includes('--write');
+  const versionArg = args.find((a) => !a.startsWith('--'));
 
   if (!versionArg) {
-    console.error("用法: bun scripts/bump-version.ts <x.y.z> [--write]");
+    console.error('用法: bun scripts/bump-version.ts <x.y.z> [--write]');
     process.exit(2);
   }
   if (!SEMVER.test(versionArg)) {

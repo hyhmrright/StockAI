@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from "react";
-import type { DeepAnalysisResult, StockNews, QuantBundle } from "../../shared/types";
-import { deepAnalyze } from "../lib/ipc";
-import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from "./cache-utils";
+import { useCallback, useRef, useState } from 'react';
+import type { DeepAnalysisResult, StockNews, QuantBundle } from '../../shared/types';
+import { deepAnalyze } from '../lib/ipc';
+import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from './cache-utils';
 
 export interface UseDeepAnalysisResult {
   result: DeepAnalysisResult | null;
@@ -10,7 +10,11 @@ export interface UseDeepAnalysisResult {
   analyze: (news: StockNews[], quant?: QuantBundle) => Promise<void>;
 }
 
-type DeepAnalyzeFn = (symbol: string, news: StockNews[], quant?: QuantBundle) => Promise<DeepAnalysisResult>;
+type DeepAnalyzeFn = (
+  symbol: string,
+  news: StockNews[],
+  quant?: QuantBundle,
+) => Promise<DeepAnalysisResult>;
 
 /**
  * 深度分析结果按 symbol + 配置指纹缓存。
@@ -19,7 +23,7 @@ type DeepAnalyzeFn = (symbol: string, news: StockNews[], quant?: QuantBundle) =>
  */
 export function useDeepAnalysis(
   symbol: string,
-  configFingerprint = "",
+  configFingerprint = '',
   runner: DeepAnalyzeFn = deepAnalyze,
 ): UseDeepAnalysisResult {
   const cacheRef = useRef<Map<string, DeepAnalysisResult>>(new Map());
@@ -30,36 +34,49 @@ export function useDeepAnalysis(
 
   const cacheKey = `${symbol}::${configFingerprint}`;
 
-  const analyze = useCallback(async (news: StockNews[], quant?: QuantBundle) => {
-    if (!symbol) return;
-    const key = `${symbol}::${configFingerprint}`;
-    if (news.length === 0) {
-      setWithLRI(errorRef.current, key, "尚未抓到新闻，无法分析。请等待数据加载完成后再点击。", MAX_SYMBOLS_IN_CACHE);
-      force(n => n + 1);
-      return;
-    }
-
-    const myReqId = (reqIdRef.current.get(key) ?? 0) + 1;
-    reqIdRef.current.set(key, myReqId);
-
-    inFlightRef.current.add(key);
-    errorRef.current.delete(key);
-    force(n => n + 1);
-
-    try {
-      const data = await runner(symbol, news, quant);
-      if (reqIdRef.current.get(key) !== myReqId) return;
-      setWithLRI(cacheRef.current, key, data, MAX_SYMBOLS_IN_CACHE);
-    } catch (err) {
-      if (reqIdRef.current.get(key) !== myReqId) return;
-      setWithLRI(errorRef.current, key, err instanceof Error ? err.message : String(err), MAX_SYMBOLS_IN_CACHE);
-    } finally {
-      if (reqIdRef.current.get(key) === myReqId) {
-        inFlightRef.current.delete(key);
-        force(n => n + 1);
+  const analyze = useCallback(
+    async (news: StockNews[], quant?: QuantBundle) => {
+      if (!symbol) return;
+      const key = `${symbol}::${configFingerprint}`;
+      if (news.length === 0) {
+        setWithLRI(
+          errorRef.current,
+          key,
+          '尚未抓到新闻，无法分析。请等待数据加载完成后再点击。',
+          MAX_SYMBOLS_IN_CACHE,
+        );
+        force((n) => n + 1);
+        return;
       }
-    }
-  }, [symbol, configFingerprint, runner]);
+
+      const myReqId = (reqIdRef.current.get(key) ?? 0) + 1;
+      reqIdRef.current.set(key, myReqId);
+
+      inFlightRef.current.add(key);
+      errorRef.current.delete(key);
+      force((n) => n + 1);
+
+      try {
+        const data = await runner(symbol, news, quant);
+        if (reqIdRef.current.get(key) !== myReqId) return;
+        setWithLRI(cacheRef.current, key, data, MAX_SYMBOLS_IN_CACHE);
+      } catch (err) {
+        if (reqIdRef.current.get(key) !== myReqId) return;
+        setWithLRI(
+          errorRef.current,
+          key,
+          err instanceof Error ? err.message : String(err),
+          MAX_SYMBOLS_IN_CACHE,
+        );
+      } finally {
+        if (reqIdRef.current.get(key) === myReqId) {
+          inFlightRef.current.delete(key);
+          force((n) => n + 1);
+        }
+      }
+    },
+    [symbol, configFingerprint, runner],
+  );
 
   return {
     result: cacheRef.current.get(cacheKey) ?? null,

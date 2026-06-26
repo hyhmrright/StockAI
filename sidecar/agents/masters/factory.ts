@@ -41,7 +41,9 @@ export const SERVICE_UNAVAIL_MSG: Record<Language, string> = {
 function parseResponse(raw: string, masterId: string, lang: Language): MasterSignal {
   try {
     const parsed = JSON.parse(raw);
-    const signal = ['bullish', 'bearish', 'neutral'].includes(parsed.signal) ? parsed.signal : 'neutral';
+    const signal = ['bullish', 'bearish', 'neutral'].includes(parsed.signal)
+      ? parsed.signal
+      : 'neutral';
     const confidence = Math.max(0, Math.min(100, Number(parsed.confidence) || 50));
     const reasoning = String(parsed.reasoning || '').slice(0, 500);
     return { masterId, signal, confidence, reasoning };
@@ -65,7 +67,12 @@ export function createMasterAgent(
         return parseResponse(raw, meta.id, lang);
       } catch (err) {
         logger.warn(`[${meta.id}] 分析失败: ${toErrorMessage(err)}`);
-        return { masterId: meta.id, signal: 'neutral', confidence: 50, reasoning: SERVICE_UNAVAIL_MSG[lang] };
+        return {
+          masterId: meta.id,
+          signal: 'neutral',
+          confidence: 50,
+          reasoning: SERVICE_UNAVAIL_MSG[lang],
+        };
       }
     },
   };

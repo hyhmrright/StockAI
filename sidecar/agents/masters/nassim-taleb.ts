@@ -61,18 +61,22 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.macd_trend != null ? `MACD 趋势: ${td.macd_trend}` : null,
     '',
-    ...(quant.risk ? [
-      '[风险指标]',
-      `年化波动率: ${(quant.risk.annualizedVolatility * 100).toFixed(1)}%`,
-      `波动率百分位: ${quant.risk.volatilityPercentile}%`,
-      `最大回撤: ${(quant.risk.maxDrawdown * 100).toFixed(1)}%`,
-      `夏普比率: ${quant.risk.sharpeProxy}`,
-      `风险等级: ${quant.risk.riskLevel}`,
-      '',
-    ] : []),
+    ...(quant.risk
+      ? [
+          '[风险指标]',
+          `年化波动率: ${(quant.risk.annualizedVolatility * 100).toFixed(1)}%`,
+          `波动率百分位: ${quant.risk.volatilityPercentile}%`,
+          `最大回撤: ${(quant.risk.maxDrawdown * 100).toFixed(1)}%`,
+          `夏普比率: ${quant.risk.sharpeProxy}`,
+          `风险等级: ${quant.risk.riskLevel}`,
+          '',
+        ]
+      : []),
     `[近期新闻 (${news.length} 条，关注尾部风险信号)]`,
     ...formatNewsForPrompt(news),
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return facts;
 }

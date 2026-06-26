@@ -1,15 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
-import ChartCanvas from "./ChartCanvas";
-import SubChart from "./SubChart";
-import QuoteHeader from "./QuoteHeader";
-import Toolbar from "./Toolbar";
-import CrosshairTooltip from "./CrosshairTooltip";
-import { fetchKline } from "../../lib/ipc";
-import { detectMarket } from "../../lib/market-hours";
-import { sma } from "../../lib/indicators";
-import { DEFAULT_CONFIG, rangeToPeriod, maPeriodsForMarket, type ChartConfig } from "./types";
-import { useRealtimeQuote } from "../../hooks/useRealtimeQuote";
-import type { KlinePoint } from "../../../shared/types";
+import React, { useEffect, useMemo, useState } from 'react';
+import ChartCanvas from './ChartCanvas';
+import SubChart from './SubChart';
+import QuoteHeader from './QuoteHeader';
+import Toolbar from './Toolbar';
+import CrosshairTooltip from './CrosshairTooltip';
+import { fetchKline } from '../../lib/ipc';
+import { detectMarket } from '../../lib/market-hours';
+import { sma } from '../../lib/indicators';
+import { DEFAULT_CONFIG, rangeToPeriod, maPeriodsForMarket, type ChartConfig } from './types';
+import { useRealtimeQuote } from '../../hooks/useRealtimeQuote';
+import type { KlinePoint } from '../../../shared/types';
 
 interface Props {
   symbol: string;
@@ -35,17 +35,20 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
       adjust: config.adjust,
     })
       .then(setData)
-      .catch((e) => setError(e?.message || "K 线加载失败"));
+      .catch((e) => setError(e?.message || 'K 线加载失败'));
   }, [symbol, config.range, config.adjust]);
 
   // 拉取比较基准的 K 线（symbol/range 变化时同步重拉）
   useEffect(() => {
-    if (!config.compareSymbol) { setCompareData([]); return; }
+    if (!config.compareSymbol) {
+      setCompareData([]);
+      return;
+    }
     fetchKline({
       symbol: config.compareSymbol,
       period: rangeToPeriod(config.range),
       range: config.range,
-      adjust: "qfq",
+      adjust: 'qfq',
     })
       .then(setCompareData)
       .catch(() => setCompareData([]));
@@ -65,7 +68,7 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
         time: merged[i].time,
         open: merged[i].open,
         high: Math.max(merged[i].high, quote.price),
-        low:  Math.min(merged[i].low,  quote.price),
+        low: Math.min(merged[i].low, quote.price),
         close: quote.price,
         volume: quote.volume || merged[i].volume,
         amount: quote.amount || merged[i].amount,
@@ -83,8 +86,8 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
     const periods = maPeriodsForMarket(market);
     return {
       short: config.showMA.short ? sma(closes, periods.short)[idx] : null,
-      mid:   config.showMA.mid   ? sma(closes, periods.mid)[idx]   : null,
-      long:  config.showMA.long  ? sma(closes, periods.long)[idx]  : null,
+      mid: config.showMA.mid ? sma(closes, periods.mid)[idx] : null,
+      long: config.showMA.long ? sma(closes, periods.long)[idx] : null,
     };
   }, [crosshair, data, market, config.showMA]);
 
@@ -103,7 +106,7 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
           market={market}
           logScale={config.logScale}
           showMA={config.showMA}
-          showBoll={config.subIndicator === "boll"}
+          showBoll={config.subIndicator === 'boll'}
           prevClose={quote?.prevClose}
           currentPrice={quote?.price}
           compareData={compareData}

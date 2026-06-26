@@ -15,8 +15,10 @@ interface SentimentItem {
 
 const USER_PROMPT_INTRO: Record<Language, (n: number) => string> = {
   zh: (n) => `对以下 ${n} 条新闻逐条标注情绪（positive/negative/neutral）：`,
-  en: (n) => `Label the sentiment (positive/negative/neutral) of each of the following ${n} news items:`,
-  ja: (n) => `以下の${n}件のニュースそれぞれに感情（positive/negative/neutral）をラベル付けしてください：`,
+  en: (n) =>
+    `Label the sentiment (positive/negative/neutral) of each of the following ${n} news items:`,
+  ja: (n) =>
+    `以下の${n}件のニュースそれぞれに感情（positive/negative/neutral）をラベル付けしてください：`,
 };
 
 const FORMAT_FOOTER: Record<Language, string> = {
@@ -26,9 +28,9 @@ const FORMAT_FOOTER: Record<Language, string> = {
 };
 
 function buildPrompt(news: StockNews[], lang: Language = 'zh'): string {
-  const items = news.map((n, i) =>
-    `${i + 1}. ${n.title}${n.content ? '\n   ' + n.content.substring(0, 300) : ''}`,
-  ).join('\n\n');
+  const items = news
+    .map((n, i) => `${i + 1}. ${n.title}${n.content ? '\n   ' + n.content.substring(0, 300) : ''}`)
+    .join('\n\n');
   const intro = (USER_PROMPT_INTRO[lang] ?? USER_PROMPT_INTRO.zh)(news.length);
   return `${intro}\n\n${items}\n\n${FORMAT_FOOTER[lang] ?? FORMAT_FOOTER.zh}`;
 }
@@ -41,27 +43,44 @@ export function computeSentimentSignal(items: SentimentItem[]): SentimentSignal 
     else breakdown.neutral++;
   }
   let signal: 'bullish' | 'bearish' | 'neutral';
-  if (breakdown.positive > breakdown.negative && breakdown.positive > breakdown.neutral) signal = 'bullish';
-  else if (breakdown.negative > breakdown.positive && breakdown.negative > breakdown.neutral) signal = 'bearish';
+  if (breakdown.positive > breakdown.negative && breakdown.positive > breakdown.neutral)
+    signal = 'bullish';
+  else if (breakdown.negative > breakdown.positive && breakdown.negative > breakdown.neutral)
+    signal = 'bearish';
   else signal = 'neutral';
   const maxCount = Math.max(breakdown.positive, breakdown.negative, breakdown.neutral);
   const confidence = breakdown.total > 0 ? Math.round((maxCount / breakdown.total) * 100) : 50;
   return { signal, confidence, newsBreakdown: breakdown };
 }
 
-export async function analyzeSentiment(news: StockNews[], chat: ChatProvider, language?: Language): Promise<SentimentSignal> {
+export async function analyzeSentiment(
+  news: StockNews[],
+  chat: ChatProvider,
+  language?: Language,
+): Promise<SentimentSignal> {
   const lang = language ?? 'zh';
-  if (news.length === 0) return { signal: 'neutral', confidence: 50, newsBreakdown: { positive: 0, negative: 0, neutral: 0, total: 0 } };
+  if (news.length === 0)
+    return {
+      signal: 'neutral',
+      confidence: 50,
+      newsBreakdown: { positive: 0, negative: 0, neutral: 0, total: 0 },
+    };
   try {
     const raw = await chat.chat(SYSTEM_PROMPTS[lang], buildPrompt(news, lang));
     const parsed = JSON.parse(raw) as { items?: SentimentItem[] };
-    const items: SentimentItem[] = (parsed.items || []).map(it => ({
+    const items: SentimentItem[] = (parsed.items || []).map((it) => ({
       index: it.index,
-      sentiment: ['positive', 'negative', 'neutral'].includes(it.sentiment) ? it.sentiment : 'neutral',
+      sentiment: ['positive', 'negative', 'neutral'].includes(it.sentiment)
+        ? it.sentiment
+        : 'neutral',
     }));
     return computeSentimentSignal(items);
   } catch (err) {
     logger.warn(`情绪分析失败: ${toErrorMessage(err)}`);
-    return { signal: 'neutral', confidence: 50, newsBreakdown: { positive: 0, negative: 0, neutral: 0, total: 0 } };
+    return {
+      signal: 'neutral',
+      confidence: 50,
+      newsBreakdown: { positive: 0, negative: 0, neutral: 0, total: 0 },
+    };
   }
 }

@@ -196,10 +196,11 @@ function meanReversion(closes: number[]): SubSignal {
     name: 'mean_reversion',
     signal: classifySignal(score, SIGNAL_THRESHOLD.meanReversion),
     score: clampScore(score),
-    weight: 0.20,
+    weight: 0.2,
     details: {
       rsi: Number(rsiVal.toFixed(1)),
-      bb_position: price <= bbLast.lower ? 'below_lower' : price >= bbLast.upper ? 'above_upper' : 'within',
+      bb_position:
+        price <= bbLast.lower ? 'below_lower' : price >= bbLast.upper ? 'above_upper' : 'within',
       bb_upper: Number(bbLast.upper.toFixed(2)),
       bb_middle: Number(bbLast.middle.toFixed(2)),
       bb_lower: Number(bbLast.lower.toFixed(2)),
@@ -240,7 +241,7 @@ function momentum(closes: number[]): SubSignal {
 }
 
 function volatilityAnalysis(kline: KlinePoint[]): SubSignal {
-  const closes = kline.map(k => k.close);
+  const closes = kline.map((k) => k.close);
   const atr = computeATR(kline, 14);
   const last = closes.length - 1;
   const atrVal = atr[last];
@@ -279,8 +280,8 @@ function volumeAnalysis(kline: KlinePoint[]): SubSignal {
     return { name: 'volume', signal: 'neutral', score: 0, weight: 0.15, details: {} };
   }
 
-  const volumes = kline.map(k => k.volume);
-  const closes = kline.map(k => k.close);
+  const volumes = kline.map((k) => k.volume);
+  const closes = kline.map((k) => k.close);
   const volEma20 = computeEMA(volumes, 20);
   const recentVol = volumes[last];
   const avgVol = volEma20[last];
@@ -317,7 +318,7 @@ export function analyzeTechnical(kline: KlinePoint[]): TechnicalResult {
     };
   }
 
-  const closes = kline.map(k => k.close);
+  const closes = kline.map((k) => k.close);
   const subSignals = [
     trendFollowing(closes, kline),
     meanReversion(closes),
@@ -336,8 +337,11 @@ export function analyzeTechnical(kline: KlinePoint[]): TechnicalResult {
       signal: classifySignal(normalizedScore, SIGNAL_THRESHOLD.composite),
       confidence: Math.round(confidence),
       details: {
-        ...subSignals.reduce<Record<string, number | string>>((acc, s) => Object.assign(acc, s.details), {}),
-        ...Object.fromEntries(subSignals.map(s => [s.name, `${s.signal} (${s.score})`])),
+        ...subSignals.reduce<Record<string, number | string>>(
+          (acc, s) => Object.assign(acc, s.details),
+          {},
+        ),
+        ...Object.fromEntries(subSignals.map((s) => [s.name, `${s.signal} (${s.score})`])),
       },
     },
   };

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { getStore } from "../lib/store";
+import { useState, useEffect } from 'react';
+import { getStore } from '../lib/store';
 
 export interface WatchlistItem {
   sym: string;
@@ -7,13 +7,13 @@ export interface WatchlistItem {
 }
 
 export const DEFAULT_WATCHLIST: WatchlistItem[] = [
-  { sym: "AAPL", name: "Apple Inc." },
-  { sym: "TSLA", name: "Tesla, Inc." },
-  { sym: "NVDA", name: "NVIDIA Corp." },
-  { sym: "MSFT", name: "Microsoft Corp." },
+  { sym: 'AAPL', name: 'Apple Inc.' },
+  { sym: 'TSLA', name: 'Tesla, Inc.' },
+  { sym: 'NVDA', name: 'NVIDIA Corp.' },
+  { sym: 'MSFT', name: 'Microsoft Corp.' },
 ];
 
-const STORE_KEY = "watchlist";
+const STORE_KEY = 'watchlist';
 
 /**
  * 关注列表持久化 Hook
@@ -28,7 +28,7 @@ export function useWatchlist() {
         const saved = await store.get<WatchlistItem[]>(STORE_KEY);
         if (saved && saved.length > 0) setItems(saved);
       } catch (e) {
-        console.error("加载关注列表失败:", e);
+        console.error('加载关注列表失败:', e);
       }
     }
     init();
@@ -41,18 +41,18 @@ export function useWatchlist() {
       await store.set(STORE_KEY, next);
       await store.save();
     } catch (e) {
-      console.error("保存关注列表失败:", e);
+      console.error('保存关注列表失败:', e);
     }
   }
 
   function add(sym: string) {
     const normalized = sym.trim().toUpperCase();
-    if (!normalized || items.some(i => i.sym === normalized)) return;
+    if (!normalized || items.some((i) => i.sym === normalized)) return;
     save([...items, { sym: normalized, name: normalized }]);
   }
 
   function remove(sym: string) {
-    save(items.filter(i => i.sym !== sym));
+    save(items.filter((i) => i.sym !== sym));
   }
 
   return { items, add, remove };

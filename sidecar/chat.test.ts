@@ -15,9 +15,15 @@ describe('buildChatMessages', () => {
   });
 
   test('注入新闻/量化/分析上下文', () => {
-    const msgs = buildChatMessages(makePayload({
-      context: { newsTitles: ['财报超预期'], quantSummary: '综合 72/100', analysisSummary: '看涨' },
-    }));
+    const msgs = buildChatMessages(
+      makePayload({
+        context: {
+          newsTitles: ['财报超预期'],
+          quantSummary: '综合 72/100',
+          analysisSummary: '看涨',
+        },
+      }),
+    );
     const sys = msgs[0].content;
     expect(sys).toContain('财报超预期');
     expect(sys).toContain('72/100');
@@ -29,9 +35,14 @@ describe('buildChatMessages', () => {
   });
 
   test('保留多轮历史顺序', () => {
-    const msgs = buildChatMessages(makePayload({
-      history: [{ role: 'user', content: 'Q1' }, { role: 'assistant', content: 'A1' }],
-    }));
+    const msgs = buildChatMessages(
+      makePayload({
+        history: [
+          { role: 'user', content: 'Q1' },
+          { role: 'assistant', content: 'A1' },
+        ],
+      }),
+    );
     expect(msgs).toHaveLength(4); // system + Q1 + A1 + 本次问题
     expect(msgs[1]).toEqual({ role: 'user', content: 'Q1' });
     expect(msgs[2]).toEqual({ role: 'assistant', content: 'A1' });

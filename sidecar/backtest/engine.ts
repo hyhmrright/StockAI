@@ -33,7 +33,9 @@ function computeSharpe(returns: number[]): number {
   const avg = returns.reduce((s, r) => s + r, 0) / returns.length;
   const variance = returns.reduce((s, r) => s + (r - avg) ** 2, 0) / returns.length;
   const std = Math.sqrt(variance);
-  return std > 0 ? (avg * TRADING_DAYS_PER_YEAR - RISK_FREE_RATE) / (std * Math.sqrt(TRADING_DAYS_PER_YEAR)) : 0;
+  return std > 0
+    ? (avg * TRADING_DAYS_PER_YEAR - RISK_FREE_RATE) / (std * Math.sqrt(TRADING_DAYS_PER_YEAR))
+    : 0;
 }
 
 /** 从权益曲线计算最大回撤（负数） */
@@ -56,14 +58,21 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
 
   // 数据不足时返回空回测结果
   if (sorted.length < MIN_LOOKBACK) {
-    const bah = sorted.length >= 2
-      ? (sorted[sorted.length - 1].close - sorted[0].close) / sorted[0].close
-      : 0;
+    const bah =
+      sorted.length >= 2
+        ? (sorted[sorted.length - 1].close - sorted[0].close) / sorted[0].close
+        : 0;
     return {
-      symbol, totalReturn: 0, annualizedReturn: 0, maxDrawdown: 0,
-      winRate: 0, totalTrades: 0, sharpeRatio: 0, buyAndHoldReturn: bah,
+      symbol,
+      totalReturn: 0,
+      annualizedReturn: 0,
+      maxDrawdown: 0,
+      winRate: 0,
+      totalTrades: 0,
+      sharpeRatio: 0,
+      buyAndHoldReturn: bah,
       trades: [],
-      equityCurve: sorted.map(k => ({ time: k.time, value: initialCapital })),
+      equityCurve: sorted.map((k) => ({ time: k.time, value: initialCapital })),
     };
   }
 
@@ -87,13 +96,27 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
         shares = investable / bar.close;
         cash = 0;
         position = 'long';
-        trades.push({ type: 'buy', date: bar.time, price: bar.close, shares, value: investable, score: r2(score) });
+        trades.push({
+          type: 'buy',
+          date: bar.time,
+          price: bar.close,
+          shares,
+          value: investable,
+          score: r2(score),
+        });
       }
     } else if (position === 'long' && score <= sellThreshold) {
       // 卖出：清仓，扣除交易费
       const proceeds = shares * bar.close * (1 - transactionCost);
       cash = proceeds;
-      trades.push({ type: 'sell', date: bar.time, price: bar.close, shares, value: cash, score: r2(score) });
+      trades.push({
+        type: 'sell',
+        date: bar.time,
+        price: bar.close,
+        shares,
+        value: cash,
+        score: r2(score),
+      });
       shares = 0;
       position = 'none';
     }
@@ -105,7 +128,14 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   if (position === 'long') {
     const lastBar = sorted[sorted.length - 1];
     const proceeds = shares * lastBar.close * (1 - transactionCost);
-    trades.push({ type: 'sell', date: lastBar.time, price: lastBar.close, shares, value: proceeds, score: 50 });
+    trades.push({
+      type: 'sell',
+      date: lastBar.time,
+      price: lastBar.close,
+      shares,
+      value: proceeds,
+      score: 50,
+    });
     cash += proceeds;
     shares = 0;
   }
@@ -115,8 +145,8 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   const annualizedReturn = years > 0 ? (cash / initialCapital) ** (1 / years) - 1 : 0;
 
   // 胜率：按买卖配对计算
-  const buyTrades = trades.filter(t => t.type === 'buy');
-  const sellTrades = trades.filter(t => t.type === 'sell');
+  const buyTrades = trades.filter((t) => t.type === 'buy');
+  const sellTrades = trades.filter((t) => t.type === 'sell');
   const wins = sellTrades.filter((s, i) => buyTrades[i] && s.price > buyTrades[i].price).length;
   const winRate = sellTrades.length > 0 ? wins / sellTrades.length : 0;
 
@@ -131,7 +161,7 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
     totalTrades: trades.length,
     sharpeRatio: r2(computeSharpe(returns)),
     buyAndHoldReturn: r4(
-      (sorted[sorted.length - 1].close - sorted[MIN_LOOKBACK].close) / sorted[MIN_LOOKBACK].close
+      (sorted[sorted.length - 1].close - sorted[MIN_LOOKBACK].close) / sorted[MIN_LOOKBACK].close,
     ),
     trades,
     equityCurve,

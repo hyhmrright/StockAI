@@ -62,7 +62,9 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     '',
     `[近期新闻 (${news.length} 条，关注催化剂事件)]`,
     ...formatNewsForPrompt(news),
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return facts;
 }

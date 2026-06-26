@@ -16,7 +16,7 @@ const DeepAnalysisPanel: React.FC<DeepAnalysisPanelProps> = ({ result }) => {
       <SynthesisSummary synthesis={result.synthesis} totalMasters={result.masterSignals.length} />
       <MasterConsensusBreakdown signals={result.masterSignals} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-        {result.masterSignals.map(signal => (
+        {result.masterSignals.map((signal) => (
           <MasterCard key={signal.masterId} signal={signal} />
         ))}
       </div>

@@ -32,7 +32,10 @@ const MasterPortfolioPanel: React.FC = () => {
 
   function renderRow(e: MasterLeaderboardEntry) {
     return (
-      <div key={e.masterId} className="flex items-center gap-2 py-2 border-b border-white/5 last:border-b-0">
+      <div
+        key={e.masterId}
+        className="flex items-center gap-2 py-2 border-b border-white/5 last:border-b-0"
+      >
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-white truncate">{masterName(e.masterId)}</div>
           <div className="text-[10px] text-gray-500">
@@ -45,14 +48,18 @@ const MasterPortfolioPanel: React.FC = () => {
           {e.hitRate === null ? (
             <span className="text-xs text-gray-600">—</span>
           ) : (
-            <span className={`text-sm font-bold ${hitRateColor(e.hitRate)}`}>{(e.hitRate * 100).toFixed(0)}%</span>
+            <span className={`text-sm font-bold ${hitRateColor(e.hitRate)}`}>
+              {(e.hitRate * 100).toFixed(0)}%
+            </span>
           )}
         </div>
         <div className="w-14 text-right text-[11px] tabular-nums">
           {e.avgReturn === null ? (
             <span className="text-gray-600">—</span>
           ) : (
-            <span className={e.avgReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{formatPct(e.avgReturn)}</span>
+            <span className={e.avgReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+              {formatPct(e.avgReturn)}
+            </span>
           )}
         </div>
       </div>
@@ -69,17 +76,23 @@ const MasterPortfolioPanel: React.FC = () => {
       );
     }
     if (step === 'error') {
-      return <p className="py-4 text-xs text-rose-400 text-center">{t('master_portfolio_error')}</p>;
+      return (
+        <p className="py-4 text-xs text-rose-400 text-center">{t('master_portfolio_error')}</p>
+      );
     }
     if (!data || data.totalSignals === 0) {
-      return <p className="py-4 text-xs text-gray-500 leading-relaxed">{t('master_portfolio_empty')}</p>;
+      return (
+        <p className="py-4 text-xs text-gray-500 leading-relaxed">{t('master_portfolio_empty')}</p>
+      );
     }
 
     const since = data.firstSignalAt ? new Date(data.firstSignalAt).toLocaleDateString() : '—';
     return (
       <>
         {data.resolvedSignals === 0 && (
-          <p className="mb-2 text-[11px] text-amber-400/80 leading-relaxed">{t('master_portfolio_no_resolved')}</p>
+          <p className="mb-2 text-[11px] text-amber-400/80 leading-relaxed">
+            {t('master_portfolio_no_resolved')}
+          </p>
         )}
         <div className="flex items-center gap-2 px-0 pb-1 text-[10px] text-gray-500 uppercase tracking-wider">
           <div className="flex-1">{t('mp_col_master')}</div>
@@ -89,7 +102,11 @@ const MasterPortfolioPanel: React.FC = () => {
         </div>
         <div>{data.leaderboard.map(renderRow)}</div>
         <p className="mt-3 text-[10px] text-gray-600 leading-relaxed">
-          {t('master_portfolio_disclosure', { since, resolved: data.resolvedSignals, total: data.totalSignals })}
+          {t('master_portfolio_disclosure', {
+            since,
+            resolved: data.resolvedSignals,
+            total: data.totalSignals,
+          })}
         </p>
       </>
     );
@@ -99,10 +116,14 @@ const MasterPortfolioPanel: React.FC = () => {
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <button
-          onClick={() => setOpen(o => !o)}
+          onClick={() => setOpen((o) => !o)}
           className="flex items-center gap-1.5 text-gray-400 text-xs font-bold uppercase tracking-widest hover:text-gray-200 transition-colors"
         >
-          {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          {open ? (
+            <ChevronDown className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5" />
+          )}
           <Trophy className="w-3.5 h-3.5 text-amber-400" />
           {t('master_portfolio_title')}
         </button>

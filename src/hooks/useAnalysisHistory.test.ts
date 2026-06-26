@@ -45,25 +45,20 @@ describe('useAnalysisHistory', () => {
   it('filters by analysis type', async () => {
     const { result } = renderHook(() => useAnalysisHistory('AAPL', 'ai'));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(mockGetHistory).toHaveBeenCalledWith(
-      expect.objectContaining({ analysisType: 'ai' }),
-    );
+    expect(mockGetHistory).toHaveBeenCalledWith(expect.objectContaining({ analysisType: 'ai' }));
   });
 
   it('reloads when symbol changes', async () => {
-    const { result, rerender } = renderHook(
-      ({ sym }) => useAnalysisHistory(sym),
-      { initialProps: { sym: 'AAPL' } },
-    );
+    const { result, rerender } = renderHook(({ sym }) => useAnalysisHistory(sym), {
+      initialProps: { sym: 'AAPL' },
+    });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(mockGetHistory).toHaveBeenCalledTimes(1);
 
     rerender({ sym: 'TSLA' });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(mockGetHistory).toHaveBeenCalledTimes(2);
-    expect(mockGetHistory).toHaveBeenLastCalledWith(
-      expect.objectContaining({ symbol: 'TSLA' }),
-    );
+    expect(mockGetHistory).toHaveBeenLastCalledWith(expect.objectContaining({ symbol: 'TSLA' }));
   });
 
   it('loads more records with offset', async () => {
@@ -75,9 +70,7 @@ describe('useAnalysisHistory', () => {
     mockGetHistory.mockResolvedValueOnce([]);
     await act(async () => result.current.loadMore());
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(mockGetHistory).toHaveBeenLastCalledWith(
-      expect.objectContaining({ offset: 20 }),
-    );
+    expect(mockGetHistory).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 20 }));
   });
 
   it('removes records by id', async () => {

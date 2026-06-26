@@ -20,7 +20,7 @@ import type { StockNews, QuantBundle, ChatPayload, ProviderType } from '../share
 
 /** 某 provider 静态目录的模型 id 列表（动态拉取无端点或返回空时兜底） */
 function staticModelValues(provider: ProviderType): string[] {
-  return (STATIC_MODELS[provider] ?? []).map(m => m.value);
+  return (STATIC_MODELS[provider] ?? []).map((m) => m.value);
 }
 
 /**
@@ -28,28 +28,43 @@ function staticModelValues(provider: ProviderType): string[] {
  * 返回项为各 provider /models 的原始 model id——不过滤 embedding/vision 等非对话模型，与其它 provider 一致。
  * 抛出的错误交由 classifyListModelsError 归类为稳定错误码。fetchImpl 供测试注入，默认全局 fetch。
  */
-export async function fetchProviderModels(provider: ProviderType, baseUrl: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<string[]> {
+export async function fetchProviderModels(
+  provider: ProviderType,
+  baseUrl: string,
+  apiKey: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string[]> {
   const caps = PROVIDER_CAPS[provider];
   const url = `${baseUrl.replace(/\/$/, '')}${caps.modelsPath}`;
-  const headers: Record<string, string> = caps.authStyle === 'anthropic'
-    ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
-    : { Authorization: `Bearer ${apiKey}` };
+  const headers: Record<string, string> =
+    caps.authStyle === 'anthropic'
+      ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
+      : { Authorization: `Bearer ${apiKey}` };
   const resp = await withTimeout(fetchImpl(url, { headers }), 10_000, '获取模型列表超时');
   if (!resp.ok) {
     // 把 HTTP 状态挂到 error.status，供 classifyListModelsError 区分鉴权/服务器/请求错误。
     // 消息用语言中性英文：它会经 {message} 注入前端 i18n 模板，避免对 en/ja 用户夹带中文。
-    const err = new Error(`list-models request failed (${resp.status})`) as Error & { status?: number };
+    const err = new Error(`list-models request failed (${resp.status})`) as Error & {
+      status?: number;
+    };
     err.status = resp.status;
     throw err;
   }
-  const data = await resp.json() as { data?: Array<{ id?: string }> };
-  return (data.data ?? []).map(m => m.id).filter((id): id is string => !!id);
+  const data = (await resp.json()) as { data?: Array<{ id?: string }> };
+  return (data.data ?? []).map((m) => m.id).filter((id): id is string => !!id);
 }
 
-function tryParseQuant(quantJson: string | undefined, out: typeof outputJson): QuantBundle | undefined | false {
+function tryParseQuant(
+  quantJson: string | undefined,
+  out: typeof outputJson,
+): QuantBundle | undefined | false {
   if (!quantJson) return undefined;
-  try { return JSON.parse(quantJson); }
-  catch { out(errorEnvelope('ERR_INVALID_PARAM', 'quantJson 格式无效')); return false; }
+  try {
+    return JSON.parse(quantJson);
+  } catch {
+    out(errorEnvelope('ERR_INVALID_PARAM', 'quantJson 格式无效'));
+    return false;
+  }
 }
 
 export interface RawConfig {
@@ -94,10 +109,10 @@ export function createHandlers(deps: HandlerDeps = {}) {
           const list = await withTimeout(
             ollama.list(),
             10_000,
-            "获取 Ollama 模型列表超时，请检查服务是否响应"
+            '获取 Ollama 模型列表超时，请检查服务是否响应',
           );
 
-          out(successEnvelope({ models: list.models.map(m => m.name) }));
+          out(successEnvelope({ models: list.models.map((m) => m.name) }));
           return;
         }
 
@@ -169,7 +184,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
           out(errorEnvelope('ERR_MISSING_PARAM', '未提供 symbol'));
           return;
         }
-        const { getKline } = await import("./kline");
+        const { getKline } = await import('./kline');
         const points = await getKline(req);
         out(successEnvelope(points));
       } catch (error) {
@@ -186,7 +201,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
         return;
       }
       try {
-        const { getQuote } = await import("./kline");
+        const { getQuote } = await import('./kline');
         const quote = await getQuote(symbol);
         out(successEnvelope(quote));
       } catch (error) {
@@ -233,7 +248,12 @@ export function createHandlers(deps: HandlerDeps = {}) {
      * 仅调 LLM 分析已抓到的新闻 — 新交互流程第二步
      * news 由前端从 bundle 缓存传回，避免在 sidecar 重复抓取
      */
-    async handleAnalyzeOnly(symbol: string, news: StockNews[], config: ResolvedConfig, quantJson?: string) {
+    async handleAnalyzeOnly(
+      symbol: string,
+      news: StockNews[],
+      config: ResolvedConfig,
+      quantJson?: string,
+    ) {
       try {
         if (!Array.isArray(news) || news.length === 0) {
           out(errorEnvelope('ERR_MISSING_PARAM', '未提供有效的 news 数组，请先拉取新闻'));
@@ -242,12 +262,18 @@ export function createHandlers(deps: HandlerDeps = {}) {
         const quant = tryParseQuant(quantJson, out);
         if (quant === false) return;
         const analyzeOnly = deps._analyzeOnly ?? (await import('./analysis')).analyzeNewsWithLLM;
-        const analysis = await analyzeOnly(symbol, news, config.provider, {
-          apiKey: config.apiKey,
-          baseUrl: config.baseUrl,
-          model: config.modelName,
-          language: config.language,
-        }, quant);
+        const analysis = await analyzeOnly(
+          symbol,
+          news,
+          config.provider,
+          {
+            apiKey: config.apiKey,
+            baseUrl: config.baseUrl,
+            model: config.modelName,
+            language: config.language,
+          },
+          quant,
+        );
         out(successEnvelope(analysis));
       } catch (error) {
         out(errorEnvelopeFromUnknown('ERR_ANALYSIS_FAILED', error));
@@ -277,7 +303,12 @@ export function createHandlers(deps: HandlerDeps = {}) {
         const { getKline } = await import('./kline');
         const kline = await getKline({ symbol, period: '1d', range: '1y' });
         if (kline.length < 60) {
-          out(errorEnvelope('ERR_INSUFFICIENT_DATA', `K 线数据不足（${kline.length} 天），需要至少 60 天`));
+          out(
+            errorEnvelope(
+              'ERR_INSUFFICIENT_DATA',
+              `K 线数据不足（${kline.length} 天），需要至少 60 天`,
+            ),
+          );
           return;
         }
         const { runBacktest } = await import('./backtest/engine');
@@ -295,7 +326,12 @@ export function createHandlers(deps: HandlerDeps = {}) {
       }
     },
 
-    async handleDeepAnalysis(symbol: string, news: StockNews[], config: ResolvedConfig, quantJson?: string) {
+    async handleDeepAnalysis(
+      symbol: string,
+      news: StockNews[],
+      config: ResolvedConfig,
+      quantJson?: string,
+    ) {
       try {
         if (!Array.isArray(news) || news.length === 0) {
           out(errorEnvelope('ERR_MISSING_PARAM', '深度分析需要 news 数据'));
@@ -355,12 +391,15 @@ export function createHandlers(deps: HandlerDeps = {}) {
         const messages = buildChatMessages(payload, config.language);
         // 对话追问走 summarize 角色（基于已抓上下文的信息提炼，可用更便宜的模型）
         const { summarize } = config.roles;
-        const reply = await runChat({
-          provider: summarize.provider,
-          apiKey: summarize.apiKey,
-          baseUrl: summarize.baseUrl,
-          modelName: summarize.model,
-        }, messages);
+        const reply = await runChat(
+          {
+            provider: summarize.provider,
+            apiKey: summarize.apiKey,
+            baseUrl: summarize.baseUrl,
+            modelName: summarize.model,
+          },
+          messages,
+        );
         out(successEnvelope({ reply }));
       } catch (error) {
         out(errorEnvelopeFromUnknown('ERR_CHAT', error));

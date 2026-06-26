@@ -33,6 +33,7 @@ export const BROWSER_LAUNCH_ARGS = [
 
 /** Playwright 浏览器上下文默认配置 */
 export const BROWSER_CONTEXT_DEFAULTS = {
-  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  userAgent:
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   locale: 'zh-CN',
 };

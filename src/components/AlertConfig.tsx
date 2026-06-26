@@ -40,14 +40,14 @@ const AlertConfig: React.FC<AlertConfigProps> = ({ symbol, alert, onSave, onRemo
           type="number"
           placeholder="上限"
           value={upper}
-          onChange={e => setUpper(e.target.value)}
+          onChange={(e) => setUpper(e.target.value)}
           className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-gray-200 outline-none focus:border-emerald-500/40 w-0"
         />
         <input
           type="number"
           placeholder="下限"
           value={lower}
-          onChange={e => setLower(e.target.value)}
+          onChange={(e) => setLower(e.target.value)}
           className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-gray-200 outline-none focus:border-rose-500/40 w-0"
         />
       </div>

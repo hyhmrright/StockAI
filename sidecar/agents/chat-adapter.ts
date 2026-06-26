@@ -47,12 +47,14 @@ function createOpenAIClient(config: ChatConfig): CompletionDep {
 
   return {
     async createCompletion(opts) {
-      const profile = PROVIDER_PROFILES[config.provider as ProviderType] ?? PROVIDER_PROFILES.openai;
+      const profile =
+        PROVIDER_PROFILES[config.provider as ProviderType] ?? PROVIDER_PROFILES.openai;
       const response = await client.chat.completions.create(
         {
           model: opts.model,
           messages: opts.messages as OpenAI.ChatCompletionMessageParam[],
-          response_format: opts.response_format as OpenAI.ChatCompletionCreateParams['response_format'],
+          response_format:
+            opts.response_format as OpenAI.ChatCompletionCreateParams['response_format'],
         },
         { timeout: profile.timeout },
       );

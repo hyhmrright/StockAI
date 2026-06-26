@@ -4,10 +4,23 @@ import type { AnalystSignal, ValuationSnapshot, RiskSnapshot } from '../../share
 
 const neutral: AnalystSignal = { signal: 'neutral', confidence: 50, details: {} };
 function val(signal: ValuationSnapshot['signal'], confidence: number): ValuationSnapshot {
-  return { intrinsicValue: null, marketCap: null, marginOfSafety: null, signal, confidence, models: {} };
+  return {
+    intrinsicValue: null,
+    marketCap: null,
+    marginOfSafety: null,
+    signal,
+    confidence,
+    models: {},
+  };
 }
 function risk(riskLevel: RiskSnapshot['riskLevel']): RiskSnapshot {
-  return { annualizedVolatility: 0.3, volatilityPercentile: 50, maxDrawdown: -0.2, sharpeProxy: 1, riskLevel };
+  return {
+    annualizedVolatility: 0.3,
+    volatilityPercentile: 50,
+    maxDrawdown: -0.2,
+    sharpeProxy: 1,
+    riskLevel,
+  };
 }
 
 describe('computeComposite', () => {
@@ -55,8 +68,12 @@ describe('computeComposite', () => {
 describe('computeComposite 四维（估值 + 风险）', () => {
   test('低估上抬分数、高估下压、估值适中不动（基准为中性 50）', () => {
     const baseScore = computeComposite(neutral, neutral).score; // 50
-    expect(computeComposite(neutral, neutral, val('undervalued', 100)).score).toBeGreaterThan(baseScore);
-    expect(computeComposite(neutral, neutral, val('overvalued', 100)).score).toBeLessThan(baseScore);
+    expect(computeComposite(neutral, neutral, val('undervalued', 100)).score).toBeGreaterThan(
+      baseScore,
+    );
+    expect(computeComposite(neutral, neutral, val('overvalued', 100)).score).toBeLessThan(
+      baseScore,
+    );
     expect(computeComposite(neutral, neutral, val('fair', 100)).score).toBe(baseScore);
   });
 

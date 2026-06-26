@@ -9,9 +9,24 @@ interface StockInfoCardProps {
 type Trend = 'up' | 'down' | 'flat';
 
 const TREND_STYLES = {
-  up:   { priceColor: 'text-emerald-400', badgeBg: 'bg-emerald-500/15 text-emerald-400', icon: TrendingUp,   sign: '+' },
-  down: { priceColor: 'text-rose-400',    badgeBg: 'bg-rose-500/15 text-rose-400',       icon: TrendingDown, sign: '' },
-  flat: { priceColor: 'text-gray-400',    badgeBg: 'bg-gray-500/15 text-gray-400',        icon: Minus,        sign: '' },
+  up: {
+    priceColor: 'text-emerald-400',
+    badgeBg: 'bg-emerald-500/15 text-emerald-400',
+    icon: TrendingUp,
+    sign: '+',
+  },
+  down: {
+    priceColor: 'text-rose-400',
+    badgeBg: 'bg-rose-500/15 text-rose-400',
+    icon: TrendingDown,
+    sign: '',
+  },
+  flat: {
+    priceColor: 'text-gray-400',
+    badgeBg: 'bg-gray-500/15 text-gray-400',
+    icon: Minus,
+    sign: '',
+  },
 } as const;
 
 /**
@@ -34,18 +49,26 @@ const StockInfoCard: React.FC<StockInfoCardProps> = ({ info }) => {
             </span>
             <span className="text-sm font-semibold text-white truncate">{info.name}</span>
           </div>
-          <div className="mt-0.5 text-[11px] text-gray-500">{info.code} · {info.market}</div>
+          <div className="mt-0.5 text-[11px] text-gray-500">
+            {info.code} · {info.market}
+          </div>
         </div>
 
         {info.price !== undefined && (
           <div className="text-right shrink-0">
             <div className={`text-base font-bold tabular-nums ${priceColor}`}>
-              {currencySymbol}{info.price.toFixed(2)}
+              {currencySymbol}
+              {info.price.toFixed(2)}
             </div>
             {info.changePercent !== undefined && (
-              <div className={`flex items-center justify-end gap-0.5 text-[11px] tabular-nums ${badgeBg} px-1.5 py-0.5 rounded mt-0.5`}>
+              <div
+                className={`flex items-center justify-end gap-0.5 text-[11px] tabular-nums ${badgeBg} px-1.5 py-0.5 rounded mt-0.5`}
+              >
                 <ChangeIcon className="w-3 h-3" />
-                <span>{sign}{info.changePercent.toFixed(2)}%</span>
+                <span>
+                  {sign}
+                  {info.changePercent.toFixed(2)}%
+                </span>
               </div>
             )}
           </div>

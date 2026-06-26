@@ -1,16 +1,16 @@
-import { useCallback, useState } from "react";
-import { check, type Update } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
+import { useCallback, useState } from 'react';
+import { check, type Update } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 
 /** 更新流程状态机 */
 export type UpdateStatus =
-  | "idle" // 未检查
-  | "checking" // 正在检查
-  | "available" // 发现新版本
-  | "downloading" // 下载安装中
-  | "ready" // 已安装，待重启
-  | "uptodate" // 已是最新
-  | "error"; // 检查或下载失败
+  | 'idle' // 未检查
+  | 'checking' // 正在检查
+  | 'available' // 发现新版本
+  | 'downloading' // 下载安装中
+  | 'ready' // 已安装，待重启
+  | 'uptodate' // 已是最新
+  | 'error'; // 检查或下载失败
 
 interface UpdaterState {
   status: UpdateStatus;
@@ -24,21 +24,21 @@ interface UpdaterState {
  * 所有异常都被捕获并落到 status="error"，调用方按需展示（启动静默检查不打扰用户）。
  */
 export function useUpdater() {
-  const [state, setState] = useState<UpdaterState>({ status: "idle", progress: 0 });
+  const [state, setState] = useState<UpdaterState>({ status: 'idle', progress: 0 });
   const [update, setUpdate] = useState<Update | null>(null);
 
   const checkForUpdate = useCallback(async () => {
-    setState({ status: "checking", progress: 0 });
+    setState({ status: 'checking', progress: 0 });
     try {
       const found = await check();
       if (found) {
         setUpdate(found);
-        setState({ status: "available", version: found.version, progress: 0 });
+        setState({ status: 'available', version: found.version, progress: 0 });
       } else {
-        setState({ status: "uptodate", progress: 0 });
+        setState({ status: 'uptodate', progress: 0 });
       }
     } catch (e) {
-      setState({ status: "error", progress: 0, error: String(e) });
+      setState({ status: 'error', progress: 0, error: String(e) });
     }
   }, []);
 
@@ -47,29 +47,29 @@ export function useUpdater() {
     try {
       let total = 0;
       let downloaded = 0;
-      setState((s) => ({ ...s, status: "downloading", progress: 0 }));
+      setState((s) => ({ ...s, status: 'downloading', progress: 0 }));
       await update.downloadAndInstall((event) => {
         switch (event.event) {
-          case "Started":
+          case 'Started':
             total = event.data.contentLength ?? 0;
             break;
-          case "Progress":
+          case 'Progress':
             downloaded += event.data.chunkLength;
             setState((s) => ({
               ...s,
-              status: "downloading",
+              status: 'downloading',
               progress: total ? Math.round((downloaded / total) * 100) : 0,
             }));
             break;
-          case "Finished":
-            setState((s) => ({ ...s, status: "ready", progress: 100 }));
+          case 'Finished':
+            setState((s) => ({ ...s, status: 'ready', progress: 100 }));
             break;
         }
       });
       // 安装完成后重启进入新版本
       await relaunch();
     } catch (e) {
-      setState({ status: "error", progress: 0, error: String(e) });
+      setState({ status: 'error', progress: 0, error: String(e) });
     }
   }, [update]);
 

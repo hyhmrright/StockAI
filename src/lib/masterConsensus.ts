@@ -1,4 +1,4 @@
-import type { MasterSignal } from "../../shared/types";
+import type { MasterSignal } from '../../shared/types';
 
 /** 大师多空分布：把单一共识度数字展开为「N 人中 X 看涨 Y 看跌 Z 中性」+ 占比 */
 export interface MasterConsensus {
@@ -18,8 +18,8 @@ export function computeMasterConsensus(signals: MasterSignal[]): MasterConsensus
   let bearish = 0;
   let neutral = 0;
   for (const s of signals) {
-    if (s.signal === "bullish") bullish++;
-    else if (s.signal === "bearish") bearish++;
+    if (s.signal === 'bullish') bullish++;
+    else if (s.signal === 'bearish') bearish++;
     else neutral++;
   }
   const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);

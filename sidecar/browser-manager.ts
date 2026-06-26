@@ -22,7 +22,7 @@ export class BrowserManager {
     if (this.pagePromise) return this.pagePromise;
 
     this.pagePromise = (async () => {
-      logger.info("首次需要浏览器，准备启动...");
+      logger.info('首次需要浏览器，准备启动...');
 
       // 延迟加载 playwright-core：Bun --compile 下 CJS 模块的 __dirname 会烘焙为构建机绝对路径，
       // 静态导入会在 sidecar 启动时立即崩溃；动态导入将错误推迟到真正需要浏览器时，
@@ -36,7 +36,7 @@ export class BrowserManager {
       try {
         this.browser = await chromium.launch({
           headless: true,
-          args: BROWSER_LAUNCH_ARGS
+          args: BROWSER_LAUNCH_ARGS,
         });
       } catch (err) {
         logger.warn(`默认浏览器启动失败: ${toErrorMessage(err)}。尝试寻找系统浏览器...`);
@@ -48,10 +48,10 @@ export class BrowserManager {
           this.browser = await chromium.launch({
             executablePath,
             headless: true,
-            args: BROWSER_LAUNCH_ARGS
+            args: BROWSER_LAUNCH_ARGS,
           });
         } else {
-          throw new Error("无法找到可用浏览器 (默认与系统浏览器均不可用)。请检查环境。");
+          throw new Error('无法找到可用浏览器 (默认与系统浏览器均不可用)。请检查环境。');
         }
       }
 
@@ -80,7 +80,7 @@ export class BrowserManager {
    */
   private async setupPlaywrightResources(): Promise<void> {
     const exeDir = getExecutableDir();
-    
+
     // 可能存在 browsers.json 的路径列表 (按优先级)
     const candidates = [
       path.join(exeDir, '../../Resources/browsers.json'), // Tauri 2.0: Sidecar 在 Contents/MacOS/bin/ → Resources/
@@ -99,8 +99,8 @@ export class BrowserManager {
         return;
       }
     }
-    
-    logger.warn("⚠️ 未能在任何已知路径下找到 browsers.json。Playwright 可能会启动失败。");
+
+    logger.warn('⚠️ 未能在任何已知路径下找到 browsers.json。Playwright 可能会启动失败。');
   }
 
   /**
@@ -121,7 +121,7 @@ export class BrowserManager {
       const programFiles = process.env.PROGRAMFILES || 'C:\\Program Files';
       const programFilesX86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)';
       const localAppData = process.env.LOCALAPPDATA || '';
-      
+
       paths = [
         path.join(programFiles, 'Google\\Chrome\\Application\\chrome.exe'),
         path.join(programFilesX86, 'Google\\Chrome\\Application\\chrome.exe'),
@@ -138,7 +138,7 @@ export class BrowserManager {
       ];
     }
 
-    return paths.find(p => fs.existsSync(p)) || null;
+    return paths.find((p) => fs.existsSync(p)) || null;
   }
 
   /**
@@ -146,7 +146,11 @@ export class BrowserManager {
    */
   async close(): Promise<void> {
     if (this.pagePromise) {
-      try { await this.pagePromise; } catch { /* 忽略启动期间的错误 */ }
+      try {
+        await this.pagePromise;
+      } catch {
+        /* 忽略启动期间的错误 */
+      }
     }
     if (this.context) {
       await this.context.close().catch(() => {});

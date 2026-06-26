@@ -9,7 +9,7 @@ const OWNER_EARNINGS = {
   maintenanceCapexRatio: 0.85, // 维护性 capex 占总 capex
   growthScale: 0.7, // 营收增速折扣
   growthCap: 0.08, // 成长率上限
-  discountRate: 0.10,
+  discountRate: 0.1,
   terminalGrowth: 0.025,
   qualityDiscount: 0.85, // 整体质量折扣
 } as const;
@@ -19,7 +19,7 @@ const WACC_PARAMS = {
   debtCostFallback: 0.03, // 无利息数据时 = riskFree + 此值
   taxShieldRetention: 0.75, // 1 - 25% 有效税率
   min: 0.06,
-  max: 0.20,
+  max: 0.2,
 } as const;
 const DCF = {
   growthCap: 0.15,
@@ -39,22 +39,29 @@ export function computeValuation(metrics: FinancialMetrics): ValuationSnapshot |
 
   // 模型1：Owner Earnings（巴菲特真实盈利法）
   const oe = computeOwnerEarnings(metrics);
-  if (oe) { models.ownerEarnings = oe; values.push(oe.value); }
+  if (oe) {
+    models.ownerEarnings = oe;
+    values.push(oe.value);
+  }
 
   // 模型2：DCF 三情景
   const dcf = computeDCF(metrics);
-  if (dcf) { models.dcf = dcf; values.push(dcf.base); }
+  if (dcf) {
+    models.dcf = dcf;
+    values.push(dcf.base);
+  }
 
   // 模型3：相对估值（PE/PB）
   const rel = computeRelativeValuation(metrics);
-  if (rel) { models.relative = rel; }
+  if (rel) {
+    models.relative = rel;
+  }
 
   if (values.length === 0 && !rel) return null;
 
   // 可用模型等权平均内在价值
-  const intrinsicValue = values.length > 0
-    ? values.reduce((a, b) => a + b, 0) / values.length
-    : null;
+  const intrinsicValue =
+    values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
 
   const marketCap = metrics.marketCap ?? null;
   let marginOfSafety: number | null = null;
@@ -62,13 +69,25 @@ export function computeValuation(metrics: FinancialMetrics): ValuationSnapshot |
 
   if (intrinsicValue && marketCap && marketCap > 0) {
     marginOfSafety = (intrinsicValue - marketCap) / marketCap;
-    signal = marginOfSafety > MOS_BAND ? 'undervalued' : marginOfSafety < -MOS_BAND ? 'overvalued' : 'fair';
+    signal =
+      marginOfSafety > MOS_BAND
+        ? 'undervalued'
+        : marginOfSafety < -MOS_BAND
+          ? 'overvalued'
+          : 'fair';
   } else if (rel) {
-    signal = rel.signal.includes('低估') ? 'undervalued' : rel.signal.includes('高估') ? 'overvalued' : 'fair';
+    signal = rel.signal.includes('低估')
+      ? 'undervalued'
+      : rel.signal.includes('高估')
+        ? 'overvalued'
+        : 'fair';
   }
 
   // 置信度：每个绝对估值模型贡献固定分，相对估值补充
-  const confidence = Math.min(100, values.length * MODEL_CONFIDENCE.absolute + (rel ? MODEL_CONFIDENCE.relative : 0));
+  const confidence = Math.min(
+    100,
+    values.length * MODEL_CONFIDENCE.absolute + (rel ? MODEL_CONFIDENCE.relative : 0),
+  );
 
   return { intrinsicValue, marketCap, marginOfSafety, signal, confidence, models };
 }
@@ -87,26 +106,27 @@ function computeOwnerEarnings(m: FinancialMetrics): { value: number; details: st
   if (ownerEarnings <= 0) return undefined;
 
   // 成长率：营收增速打折，封顶
-  const growthRate = Math.min((m.revenueGrowth ?? 5) / 100, OWNER_EARNINGS.growthCap) * OWNER_EARNINGS.growthScale;
+  const growthRate =
+    Math.min((m.revenueGrowth ?? 5) / 100, OWNER_EARNINGS.growthCap) * OWNER_EARNINGS.growthScale;
   const discountRate = OWNER_EARNINGS.discountRate;
   const terminalGrowth = OWNER_EARNINGS.terminalGrowth;
 
   // 第一阶段：高成长期5年
   let pv = 0;
   for (let y = 1; y <= 5; y++) {
-    pv += ownerEarnings * (1 + growthRate) ** y / (1 + discountRate) ** y;
+    pv += (ownerEarnings * (1 + growthRate) ** y) / (1 + discountRate) ** y;
   }
 
   // 第二阶段：过渡期5年（成长率减半）
   const transGrowth = growthRate / 2;
   const stage1Final = ownerEarnings * (1 + growthRate) ** 5;
   for (let y = 1; y <= 5; y++) {
-    pv += stage1Final * (1 + transGrowth) ** y / (1 + discountRate) ** (5 + y);
+    pv += (stage1Final * (1 + transGrowth) ** y) / (1 + discountRate) ** (5 + y);
   }
 
   // 永续价值
   const finalEarnings = stage1Final * (1 + transGrowth) ** 5;
-  const terminalValue = finalEarnings * (1 + terminalGrowth) / (discountRate - terminalGrowth);
+  const terminalValue = (finalEarnings * (1 + terminalGrowth)) / (discountRate - terminalGrowth);
   pv += terminalValue / (1 + discountRate) ** 10;
 
   // 整体质量折扣
@@ -130,9 +150,10 @@ function computeWACC(m: FinancialMetrics): number {
   if (totalValue <= 0) return costOfEquity;
 
   // 实际负债成本：利息支出/有息负债；无数据时用无风险+3%
-  const costOfDebt = m.interestExpense && m.totalDebt && m.totalDebt > 0
-    ? Math.abs(m.interestExpense) / m.totalDebt
-    : riskFreeRate + WACC_PARAMS.debtCostFallback;
+  const costOfDebt =
+    m.interestExpense && m.totalDebt && m.totalDebt > 0
+      ? Math.abs(m.interestExpense) / m.totalDebt
+      : riskFreeRate + WACC_PARAMS.debtCostFallback;
 
   const wE = marketCap / totalValue;
   const wD = netDebt / totalValue;
@@ -143,7 +164,9 @@ function computeWACC(m: FinancialMetrics): number {
   return Math.max(WACC_PARAMS.min, Math.min(WACC_PARAMS.max, wacc));
 }
 
-function computeDCF(m: FinancialMetrics): { base: number; bear: number; bull: number; wacc: number } | undefined {
+function computeDCF(
+  m: FinancialMetrics,
+): { base: number; bear: number; bull: number; wacc: number } | undefined {
   const rawFcf = m.freeCashFlow;
   if (!rawFcf || rawFcf <= 0) return undefined;
   // 将已验证的非空 FCF 绑定为明确类型，供闭包安全引用
@@ -159,17 +182,17 @@ function computeDCF(m: FinancialMetrics): { base: number; bear: number; bull: nu
     let pv = 0;
 
     // 高速成长期3年
-    for (let y = 1; y <= 3; y++) pv += fcf * (1 + g) ** y / (1 + w) ** y;
+    for (let y = 1; y <= 3; y++) pv += (fcf * (1 + g) ** y) / (1 + w) ** y;
 
     // 过渡期4年
     const transG = (g + termG) / 2;
     const stage1 = fcf * (1 + g) ** 3;
-    for (let y = 1; y <= 4; y++) pv += stage1 * (1 + transG) ** y / (1 + w) ** (3 + y);
+    for (let y = 1; y <= 4; y++) pv += (stage1 * (1 + transG) ** y) / (1 + w) ** (3 + y);
 
     // 永续价值（WACC须大于终值增速）
     const finalFCF = stage1 * (1 + transG) ** 4;
     if (w <= termG) return pv;
-    pv += finalFCF * (1 + termG) / (w - termG) / (1 + w) ** 7;
+    pv += (finalFCF * (1 + termG)) / (w - termG) / (1 + w) ** 7;
 
     return pv * DCF.qualityDiscount;
   }
@@ -182,7 +205,9 @@ function computeDCF(m: FinancialMetrics): { base: number; bear: number; bull: nu
   };
 }
 
-function computeRelativeValuation(m: FinancialMetrics): { signal: string; details: string } | undefined {
+function computeRelativeValuation(
+  m: FinancialMetrics,
+): { signal: string; details: string } | undefined {
   const signals: string[] = [];
 
   if (m.pe != null) {
@@ -199,10 +224,9 @@ function computeRelativeValuation(m: FinancialMetrics): { signal: string; detail
 
   if (signals.length === 0) return undefined;
 
-  const hasLow = signals.some(s => s.includes('低估'));
-  const hasHigh = signals.some(s => s.includes('高估'));
+  const hasLow = signals.some((s) => s.includes('低估'));
+  const hasHigh = signals.some((s) => s.includes('高估'));
   const signal = hasLow && !hasHigh ? '相对低估' : hasHigh && !hasLow ? '相对高估' : '估值适中';
 
   return { signal, details: signals.join('; ') };
 }
-

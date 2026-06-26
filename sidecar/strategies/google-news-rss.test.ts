@@ -4,8 +4,7 @@ import { GoogleNewsRSSStrategy } from './google-news-rss';
 describe('GoogleNewsRSSStrategy', () => {
   it('应该在 fetch 成功时解析 XML', async () => {
     const mockXml = '<rss><item><title>Test News</title><link>https://test.com</link></item></rss>';
-    const mockFetch = async (_url: string) =>
-      ({ ok: true, text: async () => mockXml }) as Response;
+    const mockFetch = async (_url: string) => ({ ok: true, text: async () => mockXml }) as Response;
 
     const strategy = new GoogleNewsRSSStrategy(mockFetch as typeof fetch);
     const results = await strategy.scrape('601012', {} as any);
@@ -15,8 +14,7 @@ describe('GoogleNewsRSSStrategy', () => {
   });
 
   it('应该在 fetch 失败 (resp.ok === false) 时返回空列表', async () => {
-    const mockFetch = async (_url: string) =>
-      ({ ok: false, status: 404 }) as Response;
+    const mockFetch = async (_url: string) => ({ ok: false, status: 404 }) as Response;
 
     const strategy = new GoogleNewsRSSStrategy(mockFetch as typeof fetch);
     const results = await strategy.scrape('601012', {} as any);

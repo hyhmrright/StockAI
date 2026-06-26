@@ -8,7 +8,7 @@ import { parseGoogleNewsSearch } from '../parsers/html';
  * 通过搜索引擎 News tab 抓取新闻，适用于任何有名称/代码的股票
  */
 export class GoogleNewsSearchStrategy extends PlaywrightStrategy {
-  readonly name = "Google News Search";
+  readonly name = 'Google News Search';
 
   protected getUrl(symbol: string): string {
     const parsed = parseSymbol(symbol);
@@ -41,4 +41,3 @@ export class GoogleNewsSearchStrategy extends PlaywrightStrategy {
     return 'networkidle';
   }
 }
-

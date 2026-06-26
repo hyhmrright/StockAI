@@ -8,7 +8,7 @@ import { tmpdir } from 'os';
  */
 export function getExecutableDir(): string {
   // @ts-ignore - Bun.main 在编译后的二进制中可用；测试环境回退到 process.argv[1]
-  const mainPath = (typeof Bun !== 'undefined' && Bun.main) ? Bun.main : process.argv[1];
+  const mainPath = typeof Bun !== 'undefined' && Bun.main ? Bun.main : process.argv[1];
   return path.dirname(mainPath);
 }
 
@@ -30,11 +30,11 @@ export function logToFile(msg: string) {
   try {
     const time = new Date().toISOString();
     const logMsg = `[${time}] ${msg}\n`;
-    
+
     // 尝试在可执行文件同级写日志 (便于调试)
     const exeDir = getExecutableDir();
     const primaryLogPath = path.join(exeDir, 'sidecar_debug.log');
-    
+
     try {
       fs.appendFileSync(primaryLogPath, logMsg);
       return;
@@ -64,10 +64,10 @@ export const logger = {
   error(msg: string) {
     console.error(`[SIDE-ERROR] ${msg}`);
     logToFile(`ERROR: ${msg}`);
-  }
+  },
 };
 
-import type { SuccessEnvelope, ErrorEnvelope, ServiceErrorPayload } from "../shared/types";
+import type { SuccessEnvelope, ErrorEnvelope, ServiceErrorPayload } from '../shared/types';
 
 /**
  * 构造成功信封（强类型，避免散落各处写错字段名）
@@ -91,7 +91,10 @@ export function errorEnvelopeFromUnknown(code: string, error: unknown): ErrorEnv
 }
 
 /** 类型守卫：判断信封是否为成功响应（编译期 + 运行期双重校验） */
-export function isSuccess<T>(env: { data?: T; error?: ServiceErrorPayload }): env is SuccessEnvelope<T> {
+export function isSuccess<T>(env: {
+  data?: T;
+  error?: ServiceErrorPayload;
+}): env is SuccessEnvelope<T> {
   return env.error === undefined && env.data !== undefined;
 }
 
@@ -133,7 +136,7 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, message: string)
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       const err = new Error(message);
-      err.name = "TimeoutError";
+      err.name = 'TimeoutError';
       reject(err);
     }, ms);
   });
@@ -150,12 +153,12 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, message: string)
  * - UNKNOWN：兜底
  */
 export type ListModelsErrorCode =
-  | "ERR_LIST_MODELS_TIMEOUT"
-  | "ERR_LIST_MODELS_AUTH"
-  | "ERR_LIST_MODELS_NETWORK"
-  | "ERR_LIST_MODELS_SERVER"
-  | "ERR_LIST_MODELS_BAD_REQUEST"
-  | "ERR_LIST_MODELS";
+  | 'ERR_LIST_MODELS_TIMEOUT'
+  | 'ERR_LIST_MODELS_AUTH'
+  | 'ERR_LIST_MODELS_NETWORK'
+  | 'ERR_LIST_MODELS_SERVER'
+  | 'ERR_LIST_MODELS_BAD_REQUEST'
+  | 'ERR_LIST_MODELS';
 
 /**
  * 把列模型链路抛出的各种错误（fetch / Ollama / OpenAI SDK）映射到稳定错误码。
@@ -168,46 +171,50 @@ export function classifyListModelsError(error: unknown): {
   const message = toErrorMessage(error);
 
   // 超时（withTimeout 抛出，name 已标记）
-  if (error instanceof Error && error.name === "TimeoutError") {
-    return { code: "ERR_LIST_MODELS_TIMEOUT", message };
+  if (error instanceof Error && error.name === 'TimeoutError') {
+    return { code: 'ERR_LIST_MODELS_TIMEOUT', message };
   }
 
   // 优先匹配 HTTP 状态码（OpenAI SDK 错误带 status，fetch Response 也带）
   const status =
-    typeof (error as { status?: unknown })?.status === "number"
+    typeof (error as { status?: unknown })?.status === 'number'
       ? (error as { status: number }).status
       : undefined;
   if (status !== undefined) {
     if (status === 401 || status === 403) {
-      return { code: "ERR_LIST_MODELS_AUTH", message };
+      return { code: 'ERR_LIST_MODELS_AUTH', message };
     }
     if (status >= 500) {
-      return { code: "ERR_LIST_MODELS_SERVER", message };
+      return { code: 'ERR_LIST_MODELS_SERVER', message };
     }
     if (status >= 400) {
-      return { code: "ERR_LIST_MODELS_BAD_REQUEST", message };
+      return { code: 'ERR_LIST_MODELS_BAD_REQUEST', message };
     }
   }
 
   // 网络层关键词：connection refused / ECONNREFUSED / fetch failed / ENOTFOUND
   const lowered = message.toLowerCase();
   if (
-    lowered.includes("econnrefused") ||
-    lowered.includes("connection refused") ||
-    lowered.includes("fetch failed") ||
-    lowered.includes("enotfound") ||
-    lowered.includes("network") ||
-    lowered.includes("getaddrinfo")
+    lowered.includes('econnrefused') ||
+    lowered.includes('connection refused') ||
+    lowered.includes('fetch failed') ||
+    lowered.includes('enotfound') ||
+    lowered.includes('network') ||
+    lowered.includes('getaddrinfo')
   ) {
-    return { code: "ERR_LIST_MODELS_NETWORK", message };
+    return { code: 'ERR_LIST_MODELS_NETWORK', message };
   }
 
   // 文本兜底：消息里含 unauthorized / invalid api key
-  if (lowered.includes("unauthorized") || lowered.includes("invalid api key") || lowered.includes("invalid_api_key")) {
-    return { code: "ERR_LIST_MODELS_AUTH", message };
+  if (
+    lowered.includes('unauthorized') ||
+    lowered.includes('invalid api key') ||
+    lowered.includes('invalid_api_key')
+  ) {
+    return { code: 'ERR_LIST_MODELS_AUTH', message };
   }
 
-  return { code: "ERR_LIST_MODELS", message };
+  return { code: 'ERR_LIST_MODELS', message };
 }
 
 /** 返回当前日期的 ISO 字符串 */

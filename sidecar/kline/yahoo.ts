@@ -1,20 +1,29 @@
-import type { KlinePoint, RealtimeQuote, KlineRange, NormalizedRequest } from "./types";
-import { KLINE_FETCH_TIMEOUT_MS } from "./types";
+import type { KlinePoint, RealtimeQuote, KlineRange, NormalizedRequest } from './types';
+import { KLINE_FETCH_TIMEOUT_MS } from './types';
 
 /**
  * 把 UI 选择的范围映射为 Yahoo Chart API 的 (range, interval)
  */
 export function mapRangeToYahoo(range: KlineRange): { range: string; interval: string } {
   switch (range) {
-    case "1d":  return { range: "1d",  interval: "1m"  };
-    case "5d":  return { range: "5d",  interval: "5m"  };
-    case "1m":  return { range: "1mo", interval: "1d"  };
-    case "3m":  return { range: "3mo", interval: "1d"  };
-    case "6m":  return { range: "6mo", interval: "1d"  };
-    case "ytd": return { range: "ytd", interval: "1d"  };
-    case "1y":  return { range: "1y",  interval: "1d"  };
-    case "5y":  return { range: "5y",  interval: "1wk" };
-    case "all": return { range: "max", interval: "1mo" };
+    case '1d':
+      return { range: '1d', interval: '1m' };
+    case '5d':
+      return { range: '5d', interval: '5m' };
+    case '1m':
+      return { range: '1mo', interval: '1d' };
+    case '3m':
+      return { range: '3mo', interval: '1d' };
+    case '6m':
+      return { range: '6mo', interval: '1d' };
+    case 'ytd':
+      return { range: 'ytd', interval: '1d' };
+    case '1y':
+      return { range: '1y', interval: '1d' };
+    case '5y':
+      return { range: '5y', interval: '1wk' };
+    case 'all':
+      return { range: 'max', interval: '1mo' };
     default: {
       // 编译期穷尽性检查：若 KlineRange 新增值未在此分支，TypeScript 会报错
       const _exhaustive: never = range;
@@ -28,10 +37,13 @@ export function mapRangeToYahoo(range: KlineRange): { range: string; interval: s
  */
 export async function fetchYahooKline(req: NormalizedRequest): Promise<KlinePoint[]> {
   const { range, interval } = mapRangeToYahoo(req.range);
-  const symbol = req.rawSymbol.replace(/^gb_/i, "").toUpperCase();
+  const symbol = req.rawSymbol.replace(/^gb_/i, '').toUpperCase();
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=true`;
 
-  const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS) });
+  const resp = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+    signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS),
+  });
   if (!resp.ok) throw new Error(`Yahoo K 线响应 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseYahooChart(json);
@@ -88,14 +100,18 @@ export function parseYahooChart(json: YahooChartResponse): KlinePoint[] {
     throw new Error(`Yahoo 错误：${json.chart.error.description || json.chart.error.code}`);
   }
   const result = json?.chart?.result?.[0];
-  if (!result) throw new Error("Yahoo 响应缺少 result");
+  if (!result) throw new Error('Yahoo 响应缺少 result');
 
   const ts: number[] = result.timestamp ?? [];
   const q = result.indicators?.quote?.[0] ?? {};
   const points: KlinePoint[] = [];
 
   for (let i = 0; i < ts.length; i++) {
-    const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i], v = q.volume?.[i];
+    const o = q.open?.[i],
+      h = q.high?.[i],
+      l = q.low?.[i],
+      c = q.close?.[i],
+      v = q.volume?.[i];
     // 任一字段缺失 → 丢弃这根（Yahoo 在非交易日会塞 null）
     if (o == null || h == null || l == null || c == null) continue;
     points.push({ time: ts[i], open: o, high: h, low: l, close: c, volume: v ?? 0 });
@@ -107,9 +123,12 @@ export function parseYahooChart(json: YahooChartResponse): KlinePoint[] {
  * 拉取美股实时报价 — 复用 Chart API meta 字段（无需额外接口）
  */
 export async function fetchYahooQuote(symbol: string): Promise<RealtimeQuote> {
-  const upper = symbol.replace(/^gb_/i, "").toUpperCase();
+  const upper = symbol.replace(/^gb_/i, '').toUpperCase();
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(upper)}?range=1d&interval=1m&includePrePost=true`;
-  const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS) });
+  const resp = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+    signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS),
+  });
   if (!resp.ok) throw new Error(`Yahoo Quote 响应 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseYahooQuote(json, upper);
@@ -124,7 +143,7 @@ type YahooQuoteResponse = YahooChartResponse;
 export function parseYahooQuote(json: YahooQuoteResponse, symbol: string): RealtimeQuote {
   if (json?.chart?.error) throw new Error(`Yahoo Quote 错误：${json.chart.error.code}`);
   const meta = json?.chart?.result?.[0]?.meta;
-  if (!meta) throw new Error("Yahoo Quote 缺少 meta");
+  if (!meta) throw new Error('Yahoo Quote 缺少 meta');
 
   const price = meta.regularMarketPrice ?? 0;
   const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? 0;
@@ -142,12 +161,12 @@ export function parseYahooQuote(json: YahooQuoteResponse, symbol: string): Realt
     low: meta.regularMarketDayLow ?? 0,
     prevClose,
     volume: meta.regularMarketVolume ?? 0,
-    amount: 0,  // Yahoo Chart API 不返回成交额，填 0
+    amount: 0, // Yahoo Chart API 不返回成交额，填 0
     high52w: meta.fiftyTwoWeekHigh,
     low52w: meta.fiftyTwoWeekLow,
     timestamp: meta.regularMarketTime ?? Math.floor(Date.now() / 1000),
-    currency: meta.currency === "CNY" ? "CNY" : "USD",  // 仅接受 CNY/USD，其它一律回退到 USD
-    market: "美股",
+    currency: meta.currency === 'CNY' ? 'CNY' : 'USD', // 仅接受 CNY/USD，其它一律回退到 USD
+    market: '美股',
   };
 
   if (meta.preMarketPrice != null) {

@@ -54,7 +54,14 @@ describe('db', () => {
   describe('getAnalysisHistory', () => {
     it('queries with symbol and default pagination', async () => {
       mockSelect.mockResolvedValueOnce([
-        { id: 1, symbol: 'AAPL', analyzed_at: 1000, type: 'ai', result_json: '{}', stock_info_json: null },
+        {
+          id: 1,
+          symbol: 'AAPL',
+          analyzed_at: 1000,
+          type: 'ai',
+          result_json: '{}',
+          stock_info_json: null,
+        },
       ]);
       const rows = await getAnalysisHistory({ symbol: 'AAPL' });
       expect(rows).toHaveLength(1);
@@ -76,7 +83,15 @@ describe('db', () => {
   describe('getAnalysisDetail', () => {
     it('returns full record including news_json', async () => {
       mockSelect.mockResolvedValueOnce([
-        { id: 1, symbol: 'AAPL', analyzed_at: 1000, type: 'ai', result_json: '{}', stock_info_json: null, news_json: '[{"title":"x"}]' },
+        {
+          id: 1,
+          symbol: 'AAPL',
+          analyzed_at: 1000,
+          type: 'ai',
+          result_json: '{}',
+          stock_info_json: null,
+          news_json: '[{"title":"x"}]',
+        },
       ]);
       const record = await getAnalysisDetail(1);
       expect(record).not.toBeNull();

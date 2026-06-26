@@ -25,7 +25,10 @@ const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({ symbol }) => {
   return (
     <>
       <button
-        onClick={() => { setOpen(o => !o); if (!open) refresh(); }}
+        onClick={() => {
+          setOpen((o) => !o);
+          if (!open) refresh();
+        }}
         className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
         title="分析历史"
       >
@@ -37,7 +40,10 @@ const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({ symbol }) => {
         <div className="mt-4 mb-6 p-4 bg-white/5 rounded-2xl border border-white/5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">分析历史</h3>
-            <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300 transition-colors">
+            <button
+              onClick={() => setOpen(false)}
+              className="text-gray-500 hover:text-gray-300 transition-colors"
+            >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -52,10 +58,7 @@ const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({ symbol }) => {
         </div>
       )}
 
-      <HistoryDetailModal
-        recordId={detailId}
-        onClose={() => setDetailId(null)}
-      />
+      <HistoryDetailModal recordId={detailId} onClose={() => setDetailId(null)} />
     </>
   );
 };

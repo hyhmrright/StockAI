@@ -1,4 +1,9 @@
-import type { AnalystSignal, ValuationSnapshot, RiskSnapshot, CompositeBreakdown } from '../../shared/types';
+import type {
+  AnalystSignal,
+  ValuationSnapshot,
+  RiskSnapshot,
+  CompositeBreakdown,
+} from '../../shared/types';
 
 const WEIGHTS = { technical: 0.55, fundamental: 0.45 };
 // 估值维以 blend 叠加到「技术+基本面」基准分上：缺估值时复合分 == 原 2 维基准，对筛选排序零扰动。
@@ -56,16 +61,22 @@ export function computeComposite(
   }
 
   const score = Math.round(Math.max(1, Math.min(100, blended)));
-  const signal = score >= SIGNAL_BOUNDARY.bullish ? 'bullish' : score <= SIGNAL_BOUNDARY.bearish ? 'bearish' : 'neutral';
+  const signal =
+    score >= SIGNAL_BOUNDARY.bullish
+      ? 'bullish'
+      : score <= SIGNAL_BOUNDARY.bearish
+        ? 'bearish'
+        : 'neutral';
 
-  const breakdown: CompositeBreakdown | undefined = (valuation || risk)
-    ? {
-        technical: Math.round(techScore),
-        fundamental: Math.round(fundScore),
-        valuation: valScore != null ? Math.round(valScore) : undefined,
-        riskPull,
-      }
-    : undefined;
+  const breakdown: CompositeBreakdown | undefined =
+    valuation || risk
+      ? {
+          technical: Math.round(techScore),
+          fundamental: Math.round(fundScore),
+          valuation: valScore != null ? Math.round(valScore) : undefined,
+          riskPull,
+        }
+      : undefined;
 
   return { signal, score, breakdown };
 }

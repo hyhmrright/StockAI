@@ -14,11 +14,11 @@ interface SearchHeaderProps {
 /**
  * SearchHeader 组件包含顶部的搜索表单和系统设置入口
  */
-const SearchHeader: React.FC<SearchHeaderProps> = ({ 
-  onSearch, 
-  loading, 
-  onOpenSettings, 
-  stepLabel 
+const SearchHeader: React.FC<SearchHeaderProps> = ({
+  onSearch,
+  loading,
+  onOpenSettings,
+  stepLabel,
 }) => {
   const { t } = useLanguage();
   const [searchSymbol, setSearchSymbol] = useState('');
@@ -106,7 +106,9 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col">
-                        <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">{item.name}</span>
+                        <span className="text-white font-medium group-hover:text-emerald-400 transition-colors">
+                          {item.name}
+                        </span>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 text-gray-500 bg-white/5">
                             {item.type}
@@ -121,9 +123,11 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
                         <span className="text-sm font-mono font-bold text-white">
                           {item.price.toFixed(2)}
                         </span>
-                        <span className={`text-[10px] font-mono ${
-                          (item.changePercent ?? 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'
-                        }`}>
+                        <span
+                          className={`text-[10px] font-mono ${
+                            (item.changePercent ?? 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'
+                          }`}
+                        >
                           {(item.changePercent ?? 0) >= 0 ? '+' : ''}
                           {(item.changePercent ?? 0).toFixed(2)}%
                         </span>
@@ -135,7 +139,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
             </div>
           )}
         </div>
-        <button 
+        <button
           type="submit"
           disabled={loading}
           className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white font-medium rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
@@ -145,14 +149,14 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
         </button>
         {/* 在搜索栏显示当前分析进度 */}
         {loading && (
-           <span className="text-xs text-emerald-500 animate-pulse hidden xl:inline truncate max-w-[200px]">
-             {stepLabel}
-           </span>
+          <span className="text-xs text-emerald-500 animate-pulse hidden xl:inline truncate max-w-[200px]">
+            {stepLabel}
+          </span>
         )}
       </form>
-      
+
       {/* 系统设置入口 */}
-      <button 
+      <button
         onClick={onOpenSettings}
         className="p-2 hover:bg-white/5 rounded-full transition-colors group"
         title={t('system_settings')}

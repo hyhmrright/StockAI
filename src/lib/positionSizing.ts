@@ -1,4 +1,4 @@
-import type { RiskSnapshot, PositionGuidance, VolatilityRange } from "../../shared/types";
+import type { RiskSnapshot, PositionGuidance, VolatilityRange } from '../../shared/types';
 
 /**
  * 波动率目标法（volatility targeting）参数：
@@ -37,7 +37,9 @@ const HORIZON_YEARS = 0.5;
  * 把年化波动率翻译成「未来半年约 95% 概率落在 -X%~+Y%」（对标 Nitrogen Risk Number）。
  * 用 ±1.96σ√t 的正态近似；下行按最大亏损 -100% 夹紧。仅统计估算，非保证区间。
  */
-export function computeVolatilityRange(risk: RiskSnapshot | null | undefined): VolatilityRange | null {
+export function computeVolatilityRange(
+  risk: RiskSnapshot | null | undefined,
+): VolatilityRange | null {
   if (!risk || !(risk.annualizedVolatility > 0)) return null;
   const halfWidthPct = Z_95 * risk.annualizedVolatility * Math.sqrt(HORIZON_YEARS) * 100;
   const rounded = Math.round(halfWidthPct * 10) / 10;

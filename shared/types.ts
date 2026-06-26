@@ -3,7 +3,7 @@
  * 服务端错误对象
  */
 export interface ServiceErrorPayload {
-  code: string;    // 错误码，如 'ERR_SCRAPE_EMPTY', 'ERR_AI_AUTH'
+  code: string; // 错误码，如 'ERR_SCRAPE_EMPTY', 'ERR_AI_AUTH'
   message: string; // 人类可读的消息
 }
 
@@ -29,7 +29,7 @@ export interface ErrorEnvelope {
 export type ServiceResponse<T> = SuccessEnvelope<T> | ErrorEnvelope;
 
 /** AI 服务提供商类型 */
-export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek" | "glm";
+export type ProviderType = 'openai' | 'ollama' | 'anthropic' | 'deepseek' | 'glm';
 
 /**
  * LLM 角色：不同任务可指定不同模型，让核心研判用聪明模型、廉价批量活用便宜模型。
@@ -37,7 +37,7 @@ export type ProviderType = "openai" | "ollama" | "anthropic" | "deepseek" | "glm
  * - quick：快速标注（新闻情绪逐条分类）
  * - summarize：对话追问（基于已有上下文的多轮问答）
  */
-export type Role = "brain" | "quick" | "summarize";
+export type Role = 'brain' | 'quick' | 'summarize';
 
 /**
  * 单个角色的模型选择：只决定「用哪个 provider 的哪个 model」；
@@ -55,17 +55,17 @@ export interface ModelChoice {
 export type RoleModels = Partial<Record<Role, ModelChoice>>;
 
 /** 界面与 AI 回答语言 */
-export type Language = "zh" | "en" | "ja";
+export type Language = 'zh' | 'en' | 'ja';
 
 /**
  * 股票新闻数据接口
  */
 export interface StockNews {
-  title: string;   // 新闻标题
-  source: string;  // 新闻来源（域名或媒体名称）
-  date: string;    // 发布日期，格式为 YYYY-MM-DD（无法解析时为原始字符串）
+  title: string; // 新闻标题
+  source: string; // 新闻来源（域名或媒体名称）
+  date: string; // 发布日期，格式为 YYYY-MM-DD（无法解析时为原始字符串）
   content: string; // 新闻内容（Markdown 格式；深度模式下为完整正文，否则为摘要或空字符串）
-  url: string;     // 新闻原文链接
+  url: string; // 新闻原文链接
 }
 
 /** 对话式追问的单条历史消息（不含 system，system 由 sidecar 按上下文构建） */
@@ -76,16 +76,16 @@ export interface ChatMessage {
 
 /** 对话式追问上下文：精简自当前股票的新闻/量化/已有分析，避免重复抓取与超长 payload */
 export interface ChatContext {
-  newsTitles?: string[];      // 近期新闻标题
-  quantSummary?: string;      // 量化评分摘要（如「综合 72/100，技术面看涨」）
-  analysisSummary?: string;   // 已有 AI 分析的结论摘要
+  newsTitles?: string[]; // 近期新闻标题
+  quantSummary?: string; // 量化评分摘要（如「综合 72/100，技术面看涨」）
+  analysisSummary?: string; // 已有 AI 分析的结论摘要
 }
 
 /** 对话式追问请求（前端 → Rust → Sidecar） */
 export interface ChatPayload {
   symbol: string;
   question: string;
-  history: ChatMessage[];     // 之前的多轮对话
+  history: ChatMessage[]; // 之前的多轮对话
   context: ChatContext;
 }
 
@@ -103,25 +103,25 @@ export interface AIAnalysisResult {
   summary: string; // 简要总结
   pros: string[]; // 利多理由
   cons: string[]; // 利空/风险因素
-  sector?: string;      // 所属板块
-  industry?: string;    // 所属行业
+  sector?: string; // 所属板块
+  industry?: string; // 所属行业
   description?: string; // 公司业务描述
-  technicalView?: string;    // LLM 对技术面的文字解读
-  fundamentalView?: string;  // LLM 对基本面的文字解读
+  technicalView?: string; // LLM 对技术面的文字解读
+  fundamentalView?: string; // LLM 对基本面的文字解读
 }
 
 /**
  * 股票基本信息（来自 Sina Finance / Yahoo Finance）
  */
 export interface StockInfo {
-  name: string;            // 股票全称
-  code: string;            // 标准化代码（如 688693）
-  exchange: string;        // 交易所名称（科创板 / 上交所 / 深交所 / 北交所 / NASDAQ / NYSE）
-  market: string;          // 市场（A股 / 美股）
-  price?: number;          // 最新价
-  change?: number;         // 涨跌额
-  changePercent?: number;  // 涨跌幅 %
-  currency: string;        // 货币（CNY / USD）
+  name: string; // 股票全称
+  code: string; // 标准化代码（如 688693）
+  exchange: string; // 交易所名称（科创板 / 上交所 / 深交所 / 北交所 / NASDAQ / NYSE）
+  market: string; // 市场（A股 / 美股）
+  price?: number; // 最新价
+  change?: number; // 涨跌额
+  changePercent?: number; // 涨跌幅 %
+  currency: string; // 货币（CNY / USD）
 }
 
 /**
@@ -130,11 +130,11 @@ export interface StockInfo {
 export interface StockSearchResult {
   name: string;
   code: string;
-  type: string;     // 股票类型：A股、美股、港股等
+  type: string; // 股票类型：A股、美股、港股等
   fullCode: string; // 完整带市场前缀的代码（用于新浪接口，如 sh601012, gb_aapl）
-  price?: number;          // 最新价
-  change?: number;         // 涨跌额
-  changePercent?: number;  // 涨跌幅 %
+  price?: number; // 最新价
+  change?: number; // 涨跌额
+  changePercent?: number; // 涨跌幅 %
 }
 
 /**
@@ -159,45 +159,45 @@ export interface MarketBundle {
 /**
  * K 线粒度
  */
-export type KlinePeriod = "1m" | "5m" | "15m" | "30m" | "60m" | "1d" | "1w" | "1mo";
+export type KlinePeriod = '1m' | '5m' | '15m' | '30m' | '60m' | '1d' | '1w' | '1mo';
 
 /**
  * 时间范围（UI 选择器）
  * 注意：此处的 "1m" 表示 1 个月，与 KlinePeriod 的 "1m"（1 分钟）含义不同。
  */
-export type KlineRange = "1d" | "5d" | "1m" | "3m" | "6m" | "ytd" | "1y" | "5y" | "all";
+export type KlineRange = '1d' | '5d' | '1m' | '3m' | '6m' | 'ytd' | '1y' | '5y' | 'all';
 
 /**
  * 市场归属（按 symbol 自动识别）
  */
-export type Market = "A股" | "美股";
+export type Market = 'A股' | '美股';
 
 /**
  * 复权方式
  */
-export type AdjustMode = "qfq" | "hfq" | "none";
+export type AdjustMode = 'qfq' | 'hfq' | 'none';
 
 /**
  * 一根 K 线
  */
 export interface KlinePoint {
-  time: number;        // Unix 秒 (UTC)，对齐到周期起点
+  time: number; // Unix 秒 (UTC)，对齐到周期起点
   open: number;
   high: number;
   low: number;
   close: number;
-  volume: number;      // 股数；A 股原始是手数，已 × 100
-  amount?: number;     // 成交额（人民币 / 美元）
+  volume: number; // 股数；A 股原始是手数，已 × 100
+  amount?: number; // 成交额（人民币 / 美元）
 }
 
 /**
  * 一次 K 线拉取请求
  */
 export interface KlineRequest {
-  symbol: string;            // 原始用户输入（"600519" / "AAPL" / "sh600519"）
+  symbol: string; // 原始用户输入（"600519" / "AAPL" / "sh600519"）
   period: KlinePeriod;
   range: KlineRange;
-  adjust?: AdjustMode;       // 默认 "qfq"
+  adjust?: AdjustMode; // 默认 "qfq"
 }
 
 /**
@@ -205,7 +205,7 @@ export interface KlineRequest {
  */
 export interface RealtimeQuote {
   symbol: string;
-  name: string;              // 显示名（A 股中文名 / 美股英文短名）
+  name: string; // 显示名（A 股中文名 / 美股英文短名）
   price: number;
   change: number;
   changePercent: number;
@@ -213,18 +213,18 @@ export interface RealtimeQuote {
   high: number;
   low: number;
   prevClose: number;
-  volume: number;            // 股数
-  amount: number;            // 成交额
-  turnoverRate?: number;     // 换手率 %（A 股）
-  marketCap?: number;        // 总市值
+  volume: number; // 股数
+  amount: number; // 成交额
+  turnoverRate?: number; // 换手率 %（A 股）
+  marketCap?: number; // 总市值
   pe?: number;
   pb?: number;
   high52w?: number;
   low52w?: number;
   preMarket?: { price: number; change: number; changePercent: number };
   postMarket?: { price: number; change: number; changePercent: number };
-  timestamp: number;         // 报价时间 Unix 秒
-  currency: "CNY" | "USD";   // 货币
+  timestamp: number; // 报价时间 Unix 秒
+  currency: 'CNY' | 'USD'; // 货币
   market: Market;
 }
 
@@ -393,36 +393,36 @@ export interface MasterSignalRecord {
   symbol: string;
   signal: 'bullish' | 'bearish' | 'neutral';
   confidence: number;
-  priceAt: number | null;   // 落账当时价；null 表示未捕获到入场价，无法纳入命中率/净值
-  recordedAt: number;       // Unix 毫秒
+  priceAt: number | null; // 落账当时价；null 表示未捕获到入场价，无法纳入命中率/净值
+  recordedAt: number; // Unix 毫秒
 }
 
 /** 大师战绩榜单一行（命中率 + 平均收益，自记录至今 mark-to-current 口径） */
 export interface MasterLeaderboardEntry {
   masterId: string;
-  total: number;        // 该大师落账的全部 signal 数（含中性/未定价）
-  resolved: number;     // 已可裁决的方向 signal 数（有入场价 + 有现价 + 非中性）
-  pending: number;      // 待定 signal 数（中性 / 缺价，未纳入统计）
-  hits: number;         // 方向兑现次数
-  hitRate: number | null;   // hits / resolved；resolved 为 0 时为 null
+  total: number; // 该大师落账的全部 signal 数（含中性/未定价）
+  resolved: number; // 已可裁决的方向 signal 数（有入场价 + 有现价 + 非中性）
+  pending: number; // 待定 signal 数（中性 / 缺价，未纳入统计）
+  hits: number; // 方向兑现次数
+  hitRate: number | null; // hits / resolved；resolved 为 0 时为 null
   avgReturn: number | null; // 已裁决 signal 的方向调整收益均值；resolved 为 0 时为 null
-  lastSignalAt: number;     // 最近一次落账时间（Unix 毫秒）
+  lastSignalAt: number; // 最近一次落账时间（Unix 毫秒）
 }
 
 /** 净值曲线一个点（按时间顺序等额全仓复利，含未平仓浮盈） */
 export interface MasterNavPoint {
-  time: number;   // 对应 signal 的 recordedAt（Unix 毫秒）
-  value: number;  // 归一化净值，起点 1.0
+  time: number; // 对应 signal 的 recordedAt（Unix 毫秒）
+  value: number; // 归一化净值，起点 1.0
 }
 
 /** 虚拟大师组合展示层聚合结果 */
 export interface MasterPortfolioData {
-  leaderboard: MasterLeaderboardEntry[];      // 已按命中率降序排好
+  leaderboard: MasterLeaderboardEntry[]; // 已按命中率降序排好
   navCurves: Record<string, MasterNavPoint[]>; // masterId → 净值曲线
   totalSignals: number;
   resolvedSignals: number;
-  firstSignalAt: number | null;   // 样本起始（Unix 毫秒），披露时间窗用
-  asOf: number;                   // 计算时刻（Unix 毫秒）
+  firstSignalAt: number | null; // 样本起始（Unix 毫秒），披露时间窗用
+  asOf: number; // 计算时刻（Unix 毫秒）
 }
 
 /** 回测交易记录 */
@@ -490,4 +490,3 @@ export interface HistoryQuery {
   limit?: number;
   offset?: number;
 }
-

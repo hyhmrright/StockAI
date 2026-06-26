@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import type { QuantBundle } from "../../shared/types";
-import { fetchQuantBundle } from "../lib/ipc";
+import { useEffect, useRef, useState } from 'react';
+import type { QuantBundle } from '../../shared/types';
+import { fetchQuantBundle } from '../lib/ipc';
 
-export type QuantDataStep = "idle" | "fetching" | "ready" | "error";
+export type QuantDataStep = 'idle' | 'fetching' | 'ready' | 'error';
 
 export interface UseQuantDataResult {
   step: QuantDataStep;
@@ -13,8 +13,11 @@ export interface UseQuantDataResult {
 
 type FetchFn = (symbol: string) => Promise<QuantBundle>;
 
-export function useQuantData(symbol: string, fetcher: FetchFn = fetchQuantBundle): UseQuantDataResult {
-  const [step, setStep] = useState<QuantDataStep>("idle");
+export function useQuantData(
+  symbol: string,
+  fetcher: FetchFn = fetchQuantBundle,
+): UseQuantDataResult {
+  const [step, setStep] = useState<QuantDataStep>('idle');
   const [quant, setQuant] = useState<QuantBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const latestRequestId = useRef(0);
@@ -26,26 +29,27 @@ export function useQuantData(symbol: string, fetcher: FetchFn = fetchQuantBundle
     if (!symbol) return;
 
     const requestId = ++latestRequestId.current;
-    setStep("fetching");
+    setStep('fetching');
     setError(null);
 
-    fetcherRef.current(symbol)
-      .then(bundle => {
+    fetcherRef
+      .current(symbol)
+      .then((bundle) => {
         if (requestId !== latestRequestId.current) return;
         setQuant(bundle);
-        setStep("ready");
+        setStep('ready');
       })
-      .catch(err => {
+      .catch((err) => {
         if (requestId !== latestRequestId.current) return;
-        const msg = err instanceof Error ? err.message : "量化分析失败";
+        const msg = err instanceof Error ? err.message : '量化分析失败';
         setError(msg);
-        setStep("error");
+        setStep('error');
         setQuant(null);
       });
   }, [symbol, trigger]);
 
   function refetch() {
-    setTrigger(t => t + 1);
+    setTrigger((t) => t + 1);
   }
 
   return { step, quant, error, refetch };

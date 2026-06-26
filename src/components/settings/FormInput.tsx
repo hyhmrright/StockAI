@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 interface FormInputProps {
   label: string;
@@ -6,7 +6,7 @@ interface FormInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  type?: "text" | "password";
+  type?: 'text' | 'password';
   mono?: boolean;
   hint?: string;
   suffix?: React.ReactNode;
@@ -16,7 +16,15 @@ interface FormInputProps {
  * 设置表单通用输入框
  */
 export function FormInput({
-  label, icon, value, onChange, placeholder, type = "text", mono, hint, suffix,
+  label,
+  icon,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+  mono,
+  hint,
+  suffix,
 }: FormInputProps): React.ReactElement {
   return (
     <div className="space-y-2">
@@ -32,7 +40,7 @@ export function FormInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${mono ? "font-mono" : ""}`}
+          className={`w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${mono ? 'font-mono' : ''}`}
         />
         {suffix}
       </div>

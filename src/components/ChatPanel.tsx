@@ -8,13 +8,20 @@ interface ChatPanelProps {
   messages: ChatMessage[];
   sending: boolean;
   error: string | null;
-  disabled?: boolean;          // 无新闻上下文时不可用
+  disabled?: boolean; // 无新闻上下文时不可用
   onAsk: (question: string) => void;
   onReset: () => void;
 }
 
 /** 对话式追问面板：基于当前股票已抓上下文做多轮问答 */
-const ChatPanel: React.FC<ChatPanelProps> = ({ messages, sending, error, disabled, onAsk, onReset }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({
+  messages,
+  sending,
+  error,
+  disabled,
+  onAsk,
+  onReset,
+}) => {
   const { t } = useLanguage();
   const [input, setInput] = useState('');
 
@@ -28,7 +35,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, sending, error, disable
   return (
     <div className="mt-6 border-t border-gray-700/60 pt-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">{t('chat_title')}</h2>
+        <h2 className="text-gray-400 text-xs font-bold uppercase tracking-widest">
+          {t('chat_title')}
+        </h2>
         {messages.length > 0 && (
           <button
             onClick={onReset}
@@ -45,7 +54,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, sending, error, disable
           <p className="text-gray-500 text-xs leading-relaxed">{t('chat_empty')}</p>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={clsx('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+          <div
+            key={i}
+            className={clsx('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}
+          >
             <div
               className={clsx(
                 'max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words',
@@ -71,7 +83,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, sending, error, disable
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit();
+          }}
           placeholder={disabled ? t('chat_need_data') : t('chat_placeholder')}
           disabled={disabled || sending}
           className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"

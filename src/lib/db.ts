@@ -1,5 +1,5 @@
-import Database from "@tauri-apps/plugin-sql";
-import { isTauri } from "@tauri-apps/api/core";
+import Database from '@tauri-apps/plugin-sql';
+import { isTauri } from '@tauri-apps/api/core';
 import type {
   AnalysisRecordSummary,
   AnalysisRecord,
@@ -7,13 +7,13 @@ import type {
   HistoryQuery,
   MasterSignal,
   MasterSignalRecord,
-} from "../../shared/types";
+} from '../../shared/types';
 
 let dbPromise: Promise<Database> | null = null;
 
 function getDb(): Promise<Database> {
   if (!dbPromise) {
-    dbPromise = Database.load("sqlite:history.db").catch((err) => {
+    dbPromise = Database.load('sqlite:history.db').catch((err) => {
       dbPromise = null;
       return Promise.reject(err);
     });
@@ -36,7 +36,7 @@ function rowToSummary(r: RawRow): AnalysisRecordSummary {
     id: r.id,
     symbol: r.symbol,
     analyzedAt: r.analyzed_at,
-    type: r.type as AnalysisRecordSummary["type"],
+    type: r.type as AnalysisRecordSummary['type'],
     resultJson: r.result_json,
     stockInfoJson: r.stock_info_json,
   };
@@ -65,7 +65,7 @@ export async function getAnalysisHistory(query: HistoryQuery): Promise<AnalysisR
   if (!isTauri()) return [];
 
   const db = await getDb();
-  const conditions = ["symbol = $1"];
+  const conditions = ['symbol = $1'];
   const bindValues: unknown[] = [query.symbol];
   let idx = 2;
 
@@ -80,7 +80,7 @@ export async function getAnalysisHistory(query: HistoryQuery): Promise<AnalysisR
 
   const sql = `SELECT id, symbol, analyzed_at, type, result_json, stock_info_json
     FROM analysis_records
-    WHERE ${conditions.join(" AND ")}
+    WHERE ${conditions.join(' AND ')}
     ORDER BY analyzed_at DESC
     LIMIT $${idx} OFFSET $${idx + 1}`;
   bindValues.push(limit, offset);
@@ -107,7 +107,11 @@ export async function getAnalysisDetail(id: number): Promise<AnalysisRecord | nu
  * 落账一次深度分析的各大师 signal（虚拟大师组合前向跟踪的数据基础）。
  * priceAt 可空——缺失时后续命中率/净值统计可用 recorded_at + symbol 回查历史 K 线补价。
  */
-export async function saveMasterSignals(symbol: string, signals: MasterSignal[], priceAt?: number): Promise<void> {
+export async function saveMasterSignals(
+  symbol: string,
+  signals: MasterSignal[],
+  priceAt?: number,
+): Promise<void> {
   if (!isTauri() || signals.length === 0) return;
 
   const db = await getDb();
@@ -140,11 +144,11 @@ export async function getAllMasterSignals(): Promise<MasterSignalRecord[]> {
     `SELECT id, master_id, symbol, signal, confidence, price_at, recorded_at
      FROM master_signals ORDER BY recorded_at ASC`,
   );
-  return rows.map(r => ({
+  return rows.map((r) => ({
     id: r.id,
     masterId: r.master_id,
     symbol: r.symbol,
-    signal: r.signal as MasterSignalRecord["signal"],
+    signal: r.signal as MasterSignalRecord['signal'],
     confidence: r.confidence,
     priceAt: r.price_at,
     recordedAt: r.recorded_at,
@@ -155,7 +159,7 @@ export async function deleteAnalysisRecords(ids: number[]): Promise<number> {
   if (!isTauri() || ids.length === 0) return 0;
 
   const db = await getDb();
-  const placeholders = ids.map((_, i) => `$${i + 1}`).join(", ");
+  const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
   const result = await db.execute(
     `DELETE FROM analysis_records WHERE id IN (${placeholders})`,
     ids,

@@ -1,10 +1,10 @@
-import OpenAI from "openai";
-import type { AIAnalysisResult, StockNews, QuantBundle, Language } from "../../shared/types";
-import type { AIProvider, ProviderKind } from "../ai";
-import { resolveLanguage } from "../ai";
-import { PROVIDER_PROFILES } from "../config";
-import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from "../prompts";
-import { toErrorMessage, logger, parseJsonFromAi } from "../utils";
+import OpenAI from 'openai';
+import type { AIAnalysisResult, StockNews, QuantBundle, Language } from '../../shared/types';
+import type { AIProvider, ProviderKind } from '../ai';
+import { resolveLanguage } from '../ai';
+import { PROVIDER_PROFILES } from '../config';
+import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from '../prompts';
+import { toErrorMessage, logger, parseJsonFromAi } from '../utils';
 
 /**
  * OpenAI 提供者实现
@@ -23,26 +23,34 @@ export class OpenAIProvider implements AIProvider {
     this.model = model;
   }
 
-  async analyze(symbol: string, news: StockNews[], quant?: QuantBundle, language?: Language): Promise<AIAnalysisResult> {
+  async analyze(
+    symbol: string,
+    news: StockNews[],
+    quant?: QuantBundle,
+    language?: Language,
+  ): Promise<AIAnalysisResult> {
     const lang = resolveLanguage(language);
     const prompt = quant
       ? buildEnhancedPrompt(symbol, news, quant, lang, PROVIDER_PROFILES.openai.contentLimit)
       : buildAnalysisPrompt(symbol, news, lang, PROVIDER_PROFILES.openai.contentLimit);
 
     try {
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          { role: "system", content: getSystemPrompt(lang) },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" }
-      }, { timeout: PROVIDER_PROFILES.openai.timeout });
+      const response = await this.client.chat.completions.create(
+        {
+          model: this.model,
+          messages: [
+            { role: 'system', content: getSystemPrompt(lang) },
+            { role: 'user', content: prompt },
+          ],
+          response_format: { type: 'json_object' },
+        },
+        { timeout: PROVIDER_PROFILES.openai.timeout },
+      );
 
       if (!response.choices?.length) {
         throw new Error('OpenAI 返回了空的 choices 列表，无法提取分析结果');
       }
-      const content = response.choices[0].message.content || "{}";
+      const content = response.choices[0].message.content || '{}';
       return parseJsonFromAi<AIAnalysisResult>(content);
     } catch (error) {
       logger.error(`OpenAI 分析出错: ${toErrorMessage(error)}`);
