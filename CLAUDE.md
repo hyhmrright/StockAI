@@ -44,6 +44,10 @@ bun scripts/verify-bundle.ts src-tauri/bin/stockai-backend-aarch64-apple-darwin
 
 # Integration smoke test
 bun scripts/smoke-test.ts
+
+# 代码格式化（biome，仅源码 ts/tsx）；--check 版只校验不写盘（pre-push 门禁用）
+bun run format
+bun run format:check
 ```
 
 ## Architecture
@@ -63,11 +67,12 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 - **Adding an AI provider**: 兼容 OpenAI 协议时，在 `shared/constants.ts` 的 `PROVIDER_PROFILES` 加默认值（`sidecar/config.ts` 仅 re-export，勿在此加）+ `providers/registry.ts` 的 `PROVIDER_FACTORIES` 追加一行；协议不兼容时在 `sidecar/providers/` 实现 `AIProvider` 接口（`sidecar/ai.ts`）。最后同步 `shared/types.ts` 的 `ProviderType`。
 - **i18n**: 多语言通过 `Language` 类型（`shared/types.ts`）传递；前端用 `useLanguage()` hook 获取翻译函数；`src/i18n/zh.json` 是翻译 key 的 TypeScript 类型来源（编译期校验），新增 UI 文字须先在此文件加 key。
 - Sidecar stderr is for debug logging; stdout must only contain the final JSON output.
+- **Formatting**: biome 统一格式（单引号 / 2 空格 / lineWidth 100，配置见 `biome.json`，仅 formatter 不开 linter）。改完跑 `bun run format`；用 Claude Code 时 `.claude/hooks/` 会在编辑时自动 format + 跑相关测试 + 拦截硬编码 API key。
 
 ## Workflow
 
 - **Claude Skills**：`/new-master-agent`（引导新增投资大师 Agent）、`/add-provider`（引导新增 AI Provider）、`/new-strategy`（引导新增抓取策略）。`.mcp.json` 已提交，重启 Claude Code 后 context7 MCP 生效（对话中说 `use context7` 查实时库文档）；`sqlite-history` MCP 的 db 路径写死为 macOS 的 `~/Library/Application Support/com.hyh.stockai/`，**仅 macOS 可用**，Linux/Windows 贡献者可忽略该 server。
-- Pre-push 钩子 (`lefthook.yml`) 跑 `tsc --noEmit` 与 `cargo check`。
+- Pre-push 钩子 (`lefthook.yml`) 并行跑 `tsc --noEmit`、`cargo check`、`bun run format:check`（biome 格式门禁）。
 - 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun scripts/sidecar-bridge.ts`（:3001 HTTP 端点）。浏览器 dev 模式下 `src/lib/ipc.ts` 自动走该桥接器，bridge 未启动时退回 mock 数据并 `console.warn` 一次。
 
 ## Release Checklist
