@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "content=$(python3 -c \"import sys,json; d=json.load(sys.stdin).get('tool_input',{}); p=[d.get('content') or '', d.get('new_string') or '']; p+=[(e.get('new_string') or '') for e in (d.get('edits') or [])]; print(chr(10).join(p))\" 2>/dev/null); hits=$(printf '%s' \"$content\" | grep -nE 'sk-(ant-)?[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{30,}' 2>/dev/null); if [ -n \"$hits\" ]; then echo \"⚠️  检测到疑似硬编码 API Key，禁止写入源码（key 只应存于 Tauri store，运行时经 Rust→Sidecar CLI 注入）。命中：\" >&2; echo \"$hits\" >&2; exit 2; fi"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}/.claude/hooks/pre-edit.sh\""
           }
         ]
       }
@@ -17,19 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "file=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null); case \"$file\" in */sidecar/build-script.ts) ;; */sidecar/*.test.ts) ;; */sidecar/*.ts) hits=$(grep -nE 'console\\.log' \"$file\" 2>/dev/null); if [ -n \"$hits\" ]; then echo \"⚠️  Sidecar stdout 只能输出最终 JSON，以下 console.log 会污染输出，请改用 console.error / logger（最终结果用 utils.ts 的 outputJson）：\" >&2; echo \"$hits\" >&2; exit 2; fi ;; esac"
-          },
-          {
-            "type": "command",
-            "command": "file=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null); case \"$file\" in *.rs) command -v rustfmt >/dev/null 2>&1 || exit 0; if ! out=$(rustfmt --edition 2021 --check \"$file\" 2>&1); then echo \"⚠️  rustfmt: $file 格式不符（lefthook pre-push 会拦 tsc/cargo check），运行 rustfmt --edition 2021 修复：\" >&2; echo \"$out\" | head -40 >&2; exit 2; fi ;; esac"
-          },
-          {
-            "type": "command",
-            "command": "file=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null); case \"$file\" in */src/*|*/sidecar/*|*/shared/*|*/scripts/*) case \"$file\" in *.ts|*.tsx) root=$(git -C \"$(dirname \"$file\")\" rev-parse --show-toplevel 2>/dev/null) && \"$root/node_modules/.bin/biome\" format --write \"$file\" >/dev/null 2>&1 ;; esac ;; esac; exit 0"
-          },
-          {
-            "type": "command",
-            "command": "file=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('file_path',''))\" 2>/dev/null); case \"$file\" in *.test.ts|*.test.tsx) tf=\"$file\" ;; *.ts) tf=\"${file%.ts}.test.ts\" ;; *.tsx) base=\"${file%.tsx}\"; if [ -f \"$base.test.tsx\" ]; then tf=\"$base.test.tsx\"; else tf=\"$base.test.ts\"; fi ;; *) exit 0 ;; esac; [ -f \"$tf\" ] || exit 0; root=$(git -C \"$(dirname \"$tf\")\" rev-parse --show-toplevel 2>/dev/null) || exit 0; case \"$tf\" in */sidecar/*) out=$(cd \"$root/sidecar\" && bun test \"$tf\" 2>&1); rc=$? ;; *) out=$(cd \"$root\" && bunx vitest run \"$tf\" 2>&1); rc=$? ;; esac; if [ $rc -ne 0 ]; then echo \"❌ 相关测试未通过（$tf），编辑已写入但回归失败，请修复：\" >&2; echo \"$out\" | tail -20 >&2; exit 2; fi"
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}/.claude/hooks/post-edit.sh\""
           }
         ]
       }
