@@ -2,6 +2,16 @@
 
 All notable changes to StockAI will be documented in this file.
 
+## [0.14.1] - 2026-06-27
+
+### Added
+
+- **GLM 模型列表改为实时拉取** — 配好智谱（GLM）API Key 后，模型下拉会实时从智谱 `/api/paas/v4/models` 接口拉取你账号下真正可用的模型（此前 GLM 是构建期写死的静态列表，与 OpenAI / DeepSeek 不一致）；接口为空或请求失败时仍回退精选目录兜底，并始终支持手动输入任意模型名。
+
+### Changed
+
+- 工程化改进（不影响使用）：提交前 simplify→review 由自觉流程改为机制门禁、引入 biome 统一格式化与 format-on-edit / pre-push 格式校验、API Key 硬编码守卫钩子。
+
 ## [0.14.0] - 2026-06-14
 
 ### Added

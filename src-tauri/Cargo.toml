@@ -1,6 +1,6 @@
 [package]
 name = "stockai"
-version = "0.14.0"
+version = "0.14.1"
 description = "AI-powered stock news sentiment analysis"
 authors = ["you"]
 edition = "2021"
