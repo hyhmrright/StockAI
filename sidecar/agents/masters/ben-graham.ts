@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是本杰明·格雷厄姆。根据提供的量化数�
 - 负债保守：资产负债率是否低，财务结构是否稳健？
 - Graham 数字：基于 EPS 和 BPS 计算的理论安全价格是否大幅高于当前市价？
 - 防御性选股：只在极度低估、数据充分时才出手，不确定时宁可旁观
+
+若提供[预计算因子]，以增长稳定性、负债趋势与简化每股内在价值判断盈利稳定性与安全边际，而非仅看单期估值；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：PE<15 且 PB<1.5，负债率低，盈利稳定，有显著安全边际
@@ -73,6 +75,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
         ]
       : []),
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条)]`,
     ...formatNewsForPrompt(news),
   ]

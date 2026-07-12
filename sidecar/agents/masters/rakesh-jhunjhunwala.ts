@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是拉凯什·金君瓦拉。根据提供的量化数�
 - 中产阶级成长主题：是否受益于消费升级、城镇化等长期结构性趋势？
 - 耐心持有：买入后长期持有，不轻易因短期波动出售
 - 增长验证：营收增长是结构性的（行业扩张）还是周期性的（景气高峰）？
+
+若提供[预计算因子]，以多期年报的 ROE 持续性、利润率与营收增长稳定性判断长期成长逻辑是结构性还是周期性，而非仅凭单期 ROE/增长套阈值；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：ROE>15%，营收增长>10%，净利率良好，有长期成长逻辑
@@ -57,6 +59,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.rsi != null ? `RSI: ${td.rsi}` : null,
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条，关注长期成长主题)]`,
     ...formatNewsForPrompt(news),
   ]

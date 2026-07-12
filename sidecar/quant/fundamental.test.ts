@@ -38,6 +38,14 @@ describe('parseEastmoneyFinancials', () => {
     expect(metrics.operatingCashFlow).toBeCloseTo(3.5, 1);
   });
 
+  test('REPORT_TYPE 为一季报时 roe 按 ×4 年化（避免季度口径与年化阈值错位）', () => {
+    const metrics = parseEastmoneyFinancials({
+      result: { data: [{ REPORT_TYPE: '一季报', ROEJQ: 10.57 }] },
+      success: true,
+    });
+    expect(metrics.roe).toBeCloseTo(42.28, 2);
+  });
+
   test('数据为空时返回空对象', () => {
     const metrics = parseEastmoneyFinancials({ result: { data: [] } });
     expect(metrics.roe).toBeUndefined();

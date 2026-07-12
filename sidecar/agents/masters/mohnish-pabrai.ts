@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是莫尼什·帕布莱。根据提供的量化数据�
 - 简单业务：只投资自己完全理解的简单商业模式
 - 硬币投注法：正面赢 2 倍，反面输 0.5 倍，这才是值得参与的游戏
 - 克隆最优秀的：向巴菲特、芒格等大师学习，不做原创
+
+若提供[预计算因子]，下行保护看负债率趋势与护城河持续性，上行看增长稳定性，多期趋势优先于单期快照；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：低负债（<40%）+ 低 PE/PB（廉价）+ 正向增长（上行空间大）
@@ -59,6 +61,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.rsi != null ? `RSI: ${td.rsi}` : null,
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条)]`,
     ...formatNewsForPrompt(news),
   ]

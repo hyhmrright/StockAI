@@ -14,6 +14,7 @@ import { usePersistAnalysisResults } from '../hooks/usePersistAnalysisResults';
 import { useLanguage } from '../hooks/useLanguage';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
+import NlScreenerModal from './Screener/NlScreenerModal';
 import AnalysisPanel from './AnalysisPanel';
 import ChatPanel from './ChatPanel';
 import type { ChatContext, BacktestResult } from '../../shared/types';
@@ -28,6 +29,7 @@ import type { ChatContext, BacktestResult } from '../../shared/types';
  */
 const Dashboard: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isScreenerOpen, setIsScreenerOpen] = useState(false);
   const [currentSymbol, setCurrentSymbol] = useState(DEFAULT_WATCHLIST[0].sym);
   const [autoFlowSymbol, setAutoFlowSymbol] = useState<string | null>(null);
   // 回测结果提升到此：BacktestPanel（右列）跑出，PriceChart（中列）叠加买卖点/净值曲线共用
@@ -125,6 +127,7 @@ const Dashboard: React.FC = () => {
         onSearch={handleSearch}
         loading={busy}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenScreener={() => setIsScreenerOpen(true)}
         stepLabel={stepLabel}
       />
 
@@ -248,6 +251,13 @@ const Dashboard: React.FC = () => {
       </main>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {/* 智能选股模态：选中结果行 → 切到该股票的常规分析流（模态内部自行关闭） */}
+      <NlScreenerModal
+        isOpen={isScreenerOpen}
+        onClose={() => setIsScreenerOpen(false)}
+        onSelect={(sym) => setCurrentSymbol(sym)}
+      />
     </div>
   );
 };

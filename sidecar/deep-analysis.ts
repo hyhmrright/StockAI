@@ -6,12 +6,15 @@ import type {
   Language,
   MasterWeightInput,
 } from '../shared/types';
+import type { MasterFactors } from '../shared/types';
 import type { ChatProvider, MasterAgent, MasterAnalysisContext } from './agents/types';
 import { getSelectedMasters, DEFAULT_MASTER_IDS } from './agents/registry';
 import { analyzeSentiment } from './agents/sentiment';
 import { synthesize } from './agents/synthesizer';
 import { cacheKey, readCache, writeCache, type CacheOptions } from './cache';
-import { logger } from './utils';
+import { computeFactors, FACTOR_HISTORY_PERIODS, VALUE_FACTOR_CONSUMER_IDS } from './quant/factors';
+import { fetchFinancialHistory } from './quant/fundamental-history';
+import { logger, toErrorMessage } from './utils';
 
 const DEFAULT_CONCURRENCY = 4;
 
@@ -127,7 +130,20 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
     }
   }
 
-  const ctx: MasterAnalysisContext = { symbol, quant, news, chat, language };
+  // 因子门控：仅当选中的大师里有价值派消费者时才发起 F10 请求（用户只选趋势/宏观派 → 零浪费）
+  let factors: MasterFactors | undefined;
+  if (masters.some((m) => VALUE_FACTOR_CONSUMER_IDS.has(m.meta.id))) {
+    try {
+      const history = await fetchFinancialHistory(symbol, FACTOR_HISTORY_PERIODS);
+      factors = computeFactors(history);
+    } catch (e) {
+      // 因子是增强项而非必要输入：拉取/计算失败绝不拖垮深度分析，降级为单期快照
+      logger.warn(`因子预计算失败（大师回退单期快照）: ${toErrorMessage(e)}`);
+      factors = undefined;
+    }
+  }
+
+  const ctx: MasterAnalysisContext = { symbol, quant, news, chat, language, factors };
 
   const masterTasks = masters.map((m: MasterAgent) => () => m.analyze(ctx));
   const [masterResults, sentimentResult] = await Promise.all([

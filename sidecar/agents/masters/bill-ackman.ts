@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是比尔·阿克曼。根据提供的量化数据和�
 - 逆向勇气：市场对这家公司的看法是否过于悲观，导致错误低估？
 - 基本面支撑：低估必须有硬数据支撑，而非仅凭感觉
 - 退出机制：价值修复的时间窗口和退出策略是否清晰？
+
+若提供[预计算因子]，以多期年报的护城河(ROE持续性)、利润率与负债趋势、简化DCF 作为低估判断与基本面支撑的主要依据，而非仅凭单期 PE/PB 套阈值；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：明显低估（PE 低）+ 有明确催化剂 + 基本面信号积极
@@ -60,6 +62,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.rsi != null ? `RSI: ${td.rsi}` : null,
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条，关注催化剂事件)]`,
     ...formatNewsForPrompt(news),
   ]

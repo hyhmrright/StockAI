@@ -10,6 +10,7 @@ import type {
   DeepAnalysisResult,
   BacktestResult,
   ChatResponse,
+  ScreenResponse,
 } from '../../shared/types';
 
 /**
@@ -168,10 +169,73 @@ export const MOCK_BACKTEST: BacktestResult = {
   equityCurve: [],
 };
 
+/**
+ * #14 NL 选股 mock：模拟「ROE≥15 且 PE<20 的沪深主板股票」的两阶段筛选结果。
+ * 含 fine 条件（roe）故 refinedCount>0；每只带 quant.composite.score 供表格展示综合分。
+ */
+export const MOCK_SCREEN: ScreenResponse = {
+  query: {
+    conditions: [
+      { field: 'roe', op: 'gte', value: 15 },
+      { field: 'pe', op: 'lt', value: 20 },
+    ],
+    board: 'main',
+    limit: 30,
+    sortBy: { field: 'compositeScore', order: 'desc' },
+  },
+  matches: [
+    {
+      symbol: '600519',
+      name: '贵州茅台',
+      snapshot: {
+        symbol: '600519',
+        name: '贵州茅台',
+        price: 1685.5,
+        changePercent: 0.82,
+        pe: 18.4,
+        pb: 6.9,
+        marketCap: 2_117_000_000_000,
+        turnoverRate: 0.21,
+      },
+      quant: {
+        symbol: '600519',
+        technical: { signal: 'bullish', confidence: 70, details: {} },
+        fundamental: { signal: 'bullish', confidence: 82, details: { roe: 31.2 } },
+        composite: { signal: 'bullish', score: 78 },
+        fetchedAt: Date.now(),
+      },
+    },
+    {
+      symbol: '601166',
+      name: '兴业银行',
+      snapshot: {
+        symbol: '601166',
+        name: '兴业银行',
+        price: 18.32,
+        changePercent: -0.43,
+        pe: 5.6,
+        pb: 0.55,
+        marketCap: 380_500_000_000,
+        turnoverRate: 0.38,
+      },
+      quant: {
+        symbol: '601166',
+        technical: { signal: 'neutral', confidence: 55, details: {} },
+        fundamental: { signal: 'bullish', confidence: 68, details: { roe: 15.8 } },
+        composite: { signal: 'neutral', score: 62 },
+        fetchedAt: Date.now(),
+      },
+    },
+  ],
+  scannedCoarse: 47,
+  refinedCount: 30,
+  fetchedAt: Date.now(),
+};
+
 export const MOCK_CHAT: ChatResponse = {
-  // 内含 [[cite:0]]/[[cite:1]] token，便于浏览器 dev 模式自测角标渲染
+  // 内含 [[cite:0]]/[[cite:1]]/[[cite:2]] token，便于浏览器 dev 模式自测角标渲染（含 report 类型）
   reply:
-    '（开发模式 mock 回复）近期基本面稳健[[cite:0]]，量化模型也给出偏多信号[[cite:1]]。启动 sidecar bridge 可获得真实 AI 回复。',
+    '（开发模式 mock 回复）近期基本面稳健[[cite:0]]，量化模型也给出偏多信号[[cite:1]]，业绩说明会亦提到营收增长来自高端产品放量[[cite:2]]。启动 sidecar bridge 可获得真实 AI 回复。',
   citations: [
     {
       index: 0,
@@ -184,6 +248,14 @@ export const MOCK_CHAT: ChatResponse = {
       sourceType: 'quant',
       sourceRef: 'summary',
       snippet: '综合 72/100（看涨）',
+    },
+    {
+      index: 2,
+      sourceType: 'report',
+      sourceRef: 1,
+      snippet: '问：营收增长的主要驱动是什么？答：主要来自高端产品结构优化与渠道扩张。',
+      sourceUrl: 'http://static.cninfo.com.cn/finalpage/example.PDF',
+      sourceMeta: { title: '2023 年度业绩说明会记录', date: '2024-04-01', position: '问答 #7' },
     },
   ],
 };

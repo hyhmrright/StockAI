@@ -57,7 +57,8 @@ describe('parseEastmoneyFinancialHistory', () => {
     expect(snaps).toHaveLength(2);
     expect(snaps[0].reportDate).toBe('2026-03-31'); // " 00:00:00" 被裁掉
     expect(snaps[0].reportType).toBe('一季报');
-    expect(snaps[0].roe).toBe(10.57);
+    // 一季报 ROEJQ 为报告期累计值，年化 ×4（10.57 → 42.28）
+    expect(snaps[0].roe).toBeCloseTo(42.28, 2);
     expect(snaps[0].grossMargin).toBe(91.2);
     expect(snaps[0].netMargin).toBe(52.3);
     expect(snaps[0].debtToAsset).toBe(18.5);
@@ -71,6 +72,12 @@ describe('parseEastmoneyFinancialHistory', () => {
     expect(snaps[0].operatingCashFlowPerShare).toBe(15.2);
     // 降序：最新报告期在前
     expect(snaps[1].reportDate).toBe('2025-12-31');
+  });
+
+  test('年报 ROE 已是全年累计值，年化不改变（乘数 1）', () => {
+    const snaps = parseEastmoneyFinancialHistory(F10_FIXTURE);
+    expect(snaps[1].reportType).toBe('年报');
+    expect(snaps[1].roe).toBe(32.53);
   });
 
   test('缺失字段省略为 undefined（不注入 0）', () => {
@@ -146,7 +153,7 @@ describe('fetchFinancialHistory（DI mock fetch，离线）', () => {
     expect(hist.symbol).toBe('600519');
     expect(hist.market).toBe('A股');
     expect(hist.snapshots).toHaveLength(2);
-    expect(hist.snapshots[0].roe).toBe(10.57);
+    expect(hist.snapshots[0].roe).toBeCloseTo(42.28, 2); // 一季报年化 ×4
     expect(typeof hist.fetchedAt).toBe('number');
     expect(urls[0]).toContain('pageSize=12');
     expect(written).toHaveLength(1);

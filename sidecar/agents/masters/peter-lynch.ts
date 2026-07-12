@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是彼得·林奇。根据提供的量化数据和新�
 - 实际增长而非炒作：新闻标题是否反映真实的业务增长而非概念炒作？
 - 避免过度分散：集中在最有把握的机会上
 - 分类管理：快速增长股、稳健增长股、周期股各有不同买卖标准
+
+若提供[预计算因子]，以多期年报的营收增长稳定性判断增长是持续还是昙花一现（影响 PEG 可信度），而非仅凭单期增长率；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：PEG<1（PE/增长率<1），或增长加速，有清晰的十倍股故事
@@ -65,6 +67,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.rsi != null ? `RSI: ${td.rsi}` : null,
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条)]`,
     ...formatNewsForPrompt(news),
   ]

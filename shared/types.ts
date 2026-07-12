@@ -69,7 +69,19 @@ export interface StockNews {
 }
 
 /** 溯源角标的来源类型 */
-export type CitationSourceType = 'news' | 'quant' | 'analysis';
+export type CitationSourceType = 'news' | 'quant' | 'analysis' | 'report';
+
+/**
+ * RAG 检索回的单条投资者互动问答片段（沪市上证e互动 / 深市互动易）。
+ * 由 sidecar 在 handleChat 内注入 ChatContext（前端不填），驱动 report 类型溯源角标。
+ */
+export interface ReportChunk {
+  text: string; // chunk 正文（问答段，「问：…\n答：…」），已截断到长度上限
+  docTitle: string; // 固定为「投资者互动问答」
+  docDate: string; // 回答发布日期 YYYY-MM-DD
+  url?: string; // 来源页面链接（供 badge「查看原文」复用）
+  position?: string; // 片段位置，如「问答 #7」
+}
 
 /**
  * AI 回答里的一条溯源角标（sidecar 校验通过后才产生）。
@@ -80,8 +92,10 @@ export interface ChatCitation {
   index: number; // 与 reply 中 [[cite:index]] token 对应，即 citations 数组下标
   sourceType: CitationSourceType;
   sourceRef: number | string; // news→1-based 序号；quant/analysis→'summary' 哨兵
-  snippet: string; // 被引用的原文片段（新闻标题 / 量化摘要 / 分析结论），取自本次 context
+  snippet: string; // 被引用的原文片段（新闻标题 / 量化摘要 / 分析结论 / 财报问答段），取自本次 context
   label?: string; // 可选：角标本地化标题；实际由前端按 useLanguage() 派生，sidecar 不生成
+  sourceUrl?: string; // 仅 report 用：来源页面链接；report 无前端 ref 数组，链接必须自带
+  sourceMeta?: { title: string; date: string; position?: string }; // 仅 report 用：来源行渲染（标题/日期/片段位置）
 }
 
 /** 对话式追问的单条历史消息（不含 system，system 由 sidecar 按上下文构建） */
@@ -96,6 +110,7 @@ export interface ChatContext {
   newsTitles?: string[]; // 近期新闻标题
   quantSummary?: string; // 量化评分摘要（如「综合 72/100，技术面看涨」）
   analysisSummary?: string; // 已有 AI 分析的结论摘要
+  reportChunks?: ReportChunk[]; // 财报/说明会 RAG 检索片段；前端不填，sidecar 在 handleChat 内注入
 }
 
 /** 对话式追问请求（前端 → Rust → Sidecar） */
@@ -406,6 +421,77 @@ export interface FinancialHistory {
 }
 
 /**
+ * 大师专属预计算因子（#12）——多期年报时序 → 结构化因子。
+ * 由 sidecar 的 computeFactors(history) 纯函数产出，注入价值派大师 prompt。
+ * v1 纯 sidecar 内部消费：不进 DeepAnalysisResult、不跨层到 Rust/前端（放此仅为将来前端因子面板铺路）。
+ */
+export interface MasterFactors {
+  available: boolean; // false → 年报<3 期/非A股 → 大师回退单期快照行为
+  asOf?: string; // 最新年报 reportDate（YYYY-MM-DD）
+  annualPeriods: number; // 参与计算的年报期数
+  roeConsistency?: RoeConsistencyFactor;
+  marginTrend?: MarginTrendFactor;
+  debtTrend?: DebtTrendFactor;
+  growthStability?: GrowthStabilityFactor;
+  simpleDcf?: SimpleDcfFactor;
+}
+
+/** 护城河代理指标：ROE 多年持续性（对标 ai-hedge-fund analyze_moat） */
+export interface RoeConsistencyFactor {
+  threshold: number; // 判定阈值(%)，默认 15
+  streak: number; // 从最新年报起连续 roe>threshold 的期数（遇缺失/不达标即中断）
+  periodsAbove: number; // 全部 roe>threshold 的年报数
+  totalPeriods: number; // roe 非空的年报数
+  avgRoe: number; // 年报 roe 均值(%)
+  verdict: 'wide' | 'narrow' | 'none'; // 宽阔护城河 / 中等 / 不明显
+}
+
+/** 单一利润率的趋势（毛利率/净利率共用） */
+export interface MarginDirection {
+  latest: number; // 最新年报值(%)
+  direction: 'up' | 'down' | 'flat'; // 死区 ±1pp 去抖
+  deltaPp: number; // latest - 最早可比点（百分点）
+}
+
+/** 盈利质量趋势（对标 analyze_consistency） */
+export interface MarginTrendFactor {
+  gross?: MarginDirection;
+  net?: MarginDirection;
+}
+
+/** 财务实力趋势：资产负债率走向（对标 analyze_financial_strength） */
+export interface DebtTrendFactor {
+  latest: number; // 最新年报资产负债率(%)
+  avg: number; // 年报均值(%)
+  direction: 'falling' | 'stable' | 'rising'; // 去杠杆 / 平稳 / 加杠杆，死区 ±2pp
+}
+
+/** 单一增长序列的稳定性（营收/净利同比共用） */
+export interface GrowthSeriesStability {
+  avgGrowth: number; // 同比均值(%)
+  positivePeriods: number; // >0 的期数
+  totalPeriods: number; // 非空期数
+  stability: 'stable' | 'volatile'; // 全正且低变异 / 有负增长或高波动
+}
+
+/** 增长稳定性（Graham 盈利稳定性 / Lynch GARP / Fisher 持续成长的核心） */
+export interface GrowthStabilityFactor {
+  revenue?: GrowthSeriesStability;
+  netIncome?: GrowthSeriesStability;
+}
+
+/**
+ * 简化每股内在价值（两阶段 DCF 粗估，作交叉验证，非权威口径）。
+ * 权威安全边际仍归 quant.valuation（对 marketCap 的三情景 DCF）。
+ */
+export interface SimpleDcfFactor {
+  intrinsicValuePerShare: number; // 每股内在价值(元)
+  basis: 'ocfps' | 'eps'; // 计算口径：每股经营现金流 / 每股收益
+  assumedGrowthPct: number; // 假设增速(%)，已钳到 0..15
+  note: string; // 口径说明（明确非权威）
+}
+
+/**
  * 全市场横截面一行（东财 push2 clist 的一条）。
  * clist 仅可靠携带估值+行情字段；ROE/负债率/增速等深层财报字段留空，由候选精拉
  * （--quant / --fundamentals-history）补齐（两阶段筛选，见蓝图 §3）。
@@ -551,6 +637,71 @@ export interface ScreenerResult {
   symbol: string;
   name: string;
   quant: QuantBundle;
+}
+
+// ─── #14 自然语言选股（NL Screener）─────────────────────────────────────────
+// 注意：与上方 `ScreenerResult`（watchlist 自选股批量量化扫描）**语义不同**。
+// 本组类型服务「全市场自然语言筛选」：LLM 把自然语言解析成结构化 ScreenQuery，
+// sidecar 两阶段（粗筛快照 + 候选精拉）执行后返回 ScreenResponse。前后端 re-export，勿各层重复定义。
+
+/** #14 NL 选股：比较符 */
+export type ScreenComparator = 'gt' | 'gte' | 'lt' | 'lte' | 'eq';
+
+/**
+ * 可筛选字段。coarse=MarketSnapshotEntry 直接有（粗筛，无需精拉）；
+ * fine=需对候选逐只 --quant 精拉后才有（见蓝图 §4 映射表）。
+ */
+export type ScreenField =
+  // coarse（快照字段）
+  | 'price'
+  | 'changePercent'
+  | 'pe'
+  | 'pb'
+  | 'marketCap'
+  | 'turnoverRate'
+  // fine（QuantBundle 派生）
+  | 'roe'
+  | 'netMargin'
+  | 'grossMargin'
+  | 'debtToAsset'
+  | 'currentRatio'
+  | 'revenueGrowth'
+  | 'netIncomeGrowth'
+  | 'compositeScore';
+
+/** 单条数值筛选条件（v1 仅数值比较；「看涨」类语义由 LLM 映射为 compositeScore 阈值） */
+export interface ScreenCondition {
+  field: ScreenField;
+  op: ScreenComparator;
+  value: number;
+}
+
+/** 板块过滤（按 symbol 前缀分类；缺省 all） */
+export type ScreenBoard = 'main' | 'star' | 'chinext' | 'bj' | 'all';
+
+/** LLM 把自然语言解析成的结构化查询（sidecar 校验后执行；回显给前端核对） */
+export interface ScreenQuery {
+  conditions: ScreenCondition[];
+  board: ScreenBoard; // 默认 'all'
+  limit: number; // 结果条数上限，默认 30，clamp 1..100
+  sortBy?: { field: ScreenField; order: 'asc' | 'desc' };
+}
+
+/** 单只命中股票。snapshot 恒有；quant 仅当查询含 fine 条件、该股被精拉时才有 */
+export interface ScreenMatch {
+  symbol: string;
+  name: string;
+  snapshot: MarketSnapshotEntry;
+  quant?: QuantBundle;
+}
+
+/** --screen 完整响应（query 回显供「AI 理解为…」透明展示） */
+export interface ScreenResponse {
+  query: ScreenQuery;
+  matches: ScreenMatch[];
+  scannedCoarse: number; // 粗筛通过的候选数
+  refinedCount: number; // 实际精拉的股票数（0=纯粗筛）
+  fetchedAt: number; // Unix 毫秒
 }
 
 /** 分析历史记录摘要（列表查询用，不含 news_json） */

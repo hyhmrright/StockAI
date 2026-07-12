@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是沃伦·巴菲特。根据提供的量化数据和�
 - 财务实力：负债率是否保守？净利率是否优秀？
 - 估值与安全边际：PE/PB 是否合理？是否存在被低估的可能？
 - 长期前景：基于新闻和基本面，10 年后这家公司会更强还是更弱？
+
+若提供[预计算因子]，以多期年报的护城河(ROE持续性)、利润率与负债趋势、简化DCF为主要依据判断护城河宽窄与财务实力，而非仅凭单期 ROE/负债率套阈值；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：优质企业且估值合理或偏低（ROE>15%, 负债率<60%, PE合理）
@@ -73,6 +75,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
         ]
       : []),
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条)]`,
     ...formatNewsForPrompt(news),
   ]

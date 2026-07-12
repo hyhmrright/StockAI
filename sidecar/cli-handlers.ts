@@ -16,6 +16,11 @@ import type {
 } from './analysis';
 import type { fetchFinancialHistory as FinancialHistoryFn } from './quant/fundamental-history';
 import type { fetchMarketSnapshot as MarketSnapshotFn } from './quant/market-snapshot';
+import type {
+  retrieveReportChunks as RetrieveReportChunksFn,
+  ensureReportIndex as EnsureReportIndexFn,
+} from './rag';
+import type { runChat as RunChatFn } from './chat';
 import { ScrapeEmptyError } from './analysis';
 import type { ResolvedConfig } from './configResolver';
 import type {
@@ -108,6 +113,12 @@ interface HandlerDeps {
   /** 测试注入：替换历史财务/全市场快照的真实抓取，避开网络 */
   _fetchFinancialHistory?: typeof FinancialHistoryFn;
   _fetchMarketSnapshot?: typeof MarketSnapshotFn;
+  /** 测试注入：替换财报 RAG 检索，避开网络（保持 handleChat 离线可测） */
+  _retrieveReportChunks?: typeof RetrieveReportChunksFn;
+  /** 测试注入：替换财报索引预热，避开网络（保持 handleIndexReports 离线可测） */
+  _ensureReportIndex?: typeof EnsureReportIndexFn;
+  /** 测试注入：替换对话补全，避开真实 LLM 调用（保持 handleChat 离线可测） */
+  _runChat?: typeof RunChatFn;
 }
 
 export function createHandlers(deps: HandlerDeps = {}) {
@@ -321,6 +332,24 @@ export function createHandlers(deps: HandlerDeps = {}) {
     },
 
     /**
+     * #11 财报 RAG 预热：提前建索引，把交易所互动平台抓取挪出 chat 首答关键路径（前端 fire-and-forget）。
+     * 返回 { indexed, docCount }。ensureReportIndex 已吞掉网络异常返回 null，此处仅兜底信封。
+     */
+    async handleIndexReports(symbol: string) {
+      if (!symbol) {
+        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
+        return;
+      }
+      try {
+        const ensureIndex = deps._ensureReportIndex ?? (await import('./rag')).ensureReportIndex;
+        const index = await ensureIndex(symbol);
+        out(successEnvelope({ indexed: !!index, docCount: index?.chunks.length ?? 0 }));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_INDEX_REPORTS', error));
+      }
+    },
+
+    /**
      * 历史财务时序（按需拉东财 F10，24h 磁盘缓存）— 供 #11 RAG 数值溯源 / #12 因子预计算。
      * periods 为字符串（CLI 传入），非法/缺省时默认 12 期。
      */
@@ -446,6 +475,38 @@ export function createHandlers(deps: HandlerDeps = {}) {
     },
 
     /**
+     * #14 自然语言选股 — LLM 解析 → 全市场两阶段筛选（粗筛快照 + 候选精拉）。
+     * 结构化抽取属轻任务，走 quick 角色。异常按类型映射稳定错误码，任何路径都 outputJson 合法信封。
+     */
+    async handleScreen(nlQuery: string, config: ResolvedConfig) {
+      if (!nlQuery?.trim()) {
+        out(errorEnvelope('ERR_MISSING_PARAM', '未提供筛选描述'));
+        return;
+      }
+      const nlScreen = await import('./quant/nl-screen');
+      try {
+        const { createChatProvider } = await import('./agents/chat-adapter');
+        const { quick } = config.roles;
+        const chat = createChatProvider({
+          provider: quick.provider,
+          apiKey: quick.apiKey,
+          baseUrl: quick.baseUrl,
+          modelName: quick.model,
+        });
+        const result = await nlScreen.runScreen({ nlQuery, chat, language: config.language });
+        out(successEnvelope(result));
+      } catch (error) {
+        if (error instanceof nlScreen.ScreenParseError) {
+          out(errorEnvelope('ERR_SCREEN_PARSE', toErrorMessage(error)));
+        } else if (error instanceof nlScreen.ScreenNoConditionsError) {
+          out(errorEnvelope('ERR_SCREEN_NO_CONDITIONS', toErrorMessage(error)));
+        } else {
+          out(errorEnvelopeFromUnknown('ERR_SCREEN', error));
+        }
+      }
+    },
+
+    /**
      * 对话式追问 — 基于已抓上下文做多轮自然语言问答，复用 provider 配置
      */
     async handleChat(payload: ChatPayload, config: ResolvedConfig) {
@@ -455,10 +516,23 @@ export function createHandlers(deps: HandlerDeps = {}) {
           return;
         }
         const { runChat, buildChatMessages, extractCitations } = await import('./chat');
+        const runChatFn = deps._runChat ?? runChat;
+        // 财报 RAG：best-effort 检索交易所官方互动平台的投资者问答原文，非空则注入 context.reportChunks。
+        // 异常/无命中一律吞掉退化为 []，绝不让 RAG 失败阻断 chat（永不阻断主流程）。
+        try {
+          const retrieve =
+            deps._retrieveReportChunks ?? (await import('./rag')).retrieveReportChunks;
+          const chunks = await retrieve(payload.symbol, payload.question);
+          if (chunks.length) {
+            payload.context = { ...payload.context, reportChunks: chunks };
+          }
+        } catch (err) {
+          logger.warn(`财报 RAG 检索失败，退化为无 report 上下文: ${toErrorMessage(err)}`);
+        }
         const messages = buildChatMessages(payload, config.language);
         // 对话追问走 summarize 角色（基于已抓上下文的信息提炼，可用更便宜的模型）
         const { summarize } = config.roles;
-        const rawReply = await runChat(
+        const rawReply = await runChatFn(
           {
             provider: summarize.provider,
             apiKey: summarize.apiKey,

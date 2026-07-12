@@ -96,6 +96,11 @@ const COMMAND_TABLE: CommandDef[] = [
     extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
   },
   {
+    // --index-reports symbol（#11 财报 RAG 预热，symbol-only，无 config，镜像 --quant）
+    flag: '--index-reports',
+    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
+  },
+  {
     // --backtest symbol
     flag: '--backtest',
     extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
@@ -129,6 +134,14 @@ const COMMAND_TABLE: CommandDef[] = [
   {
     // --chat config_json payload_path（payload 经临时文件传递，含上下文+历史，避免 ARG_MAX）
     flag: '--chat',
+    extract: (args, idx) => ({
+      configStr: args[idx + 1] || '{}',
+      actionParam: args[idx + 2],
+    }),
+  },
+  {
+    // --screen config_json nl_query（config 含 apiKey 走 @临时文件；query 明文走 argv）
+    flag: '--screen',
     extract: (args, idx) => ({
       configStr: args[idx + 1] || '{}',
       actionParam: args[idx + 2],
@@ -267,6 +280,9 @@ async function run() {
     case '--quant':
       await Handlers.handleQuant(actionParam || '');
       break;
+    case '--index-reports':
+      await Handlers.handleIndexReports(actionParam || '');
+      break;
     case '--backtest':
       await Handlers.handleBacktest(actionParam || '');
       break;
@@ -316,6 +332,14 @@ async function run() {
           return;
         }
         await Handlers.handleChat(payload, config);
+      } catch (error) {
+        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
+      }
+      break;
+    case '--screen':
+      try {
+        const config = resolveConfig(rawConfig);
+        await Handlers.handleScreen(actionParam || '', config);
       } catch (error) {
         outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
       }

@@ -15,9 +15,19 @@ function citationLabel(c: ChatCitation, t: TFn): string {
       return t('chat_citation_quant');
     case 'analysis':
       return t('chat_citation_analysis');
+    case 'report':
+      return t('chat_citation_report');
     default:
       return t('chat_citation_open_source');
   }
+}
+
+// report 的 position 是 sidecar 写死的中文「问答 #N」（喂给 LLM prompt 用，中文数据本就该中文）；
+// 前端展示需本地化，故只取序号重新拼本地化文案，不直接渲染原字符串
+export function reportPositionLabel(position: string | undefined, t: TFn): string | null {
+  if (!position) return null;
+  const m = /(\d+)/.exec(position);
+  return m ? t('chat_citation_report_position', { n: m[1] }) : null;
 }
 
 // 仅放行 http/https，挡掉 javascript: 等注入协议
@@ -58,7 +68,10 @@ const CitationBadge: React.FC<CitationBadgeProps> = ({ citation, newsRef }) => {
     citation.sourceType === 'news' && typeof citation.sourceRef === 'number'
       ? newsRef?.[citation.sourceRef - 1]
       : undefined;
-  const href = safeHref(news?.url);
+  // report 无前端 ref 数组，来源行与链接自带在 citation.sourceMeta / sourceUrl
+  const report = citation.sourceType === 'report' ? citation.sourceMeta : undefined;
+  // 链接：report 用自带 sourceUrl，news 从本地 newsRef 补；均过 safeHref 挡注入协议
+  const href = safeHref(report ? citation.sourceUrl : news?.url);
 
   return (
     <span className="relative inline-block" ref={ref}>
@@ -79,6 +92,14 @@ const CitationBadge: React.FC<CitationBadgeProps> = ({ citation, newsRef }) => {
             <span className="mt-2 flex items-center justify-between text-[10px] text-gray-500">
               <span>{news.source}</span>
               <span>{news.date}</span>
+            </span>
+          )}
+          {report && (
+            <span className="mt-2 flex items-center justify-between text-[10px] text-gray-500">
+              <span>{report.date}</span>
+              {reportPositionLabel(report.position, t) && (
+                <span>{reportPositionLabel(report.position, t)}</span>
+              )}
             </span>
           )}
           {href && (

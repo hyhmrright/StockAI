@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是迈克尔·伯里。根据提供的量化数据和�
 - 泡沫识别：估值极高 + 新闻炒作 + 技术超买 = 潜在做空机会
 - 数据驱动：忽略市场噪音，只看硬数据（PE/PB/负债率/现金流）
 - 尾部风险：识别市场忽视的系统性风险
+
+若提供[预计算因子]，以多期年报的负债趋势、简化DCF 与利润率持续性判断被抛售资产的真实基本面强健度，而非仅凭单期 PE/PB；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：RSI<35（超卖）且 PE/PB 低（被错误抛售的价值股）
@@ -58,6 +60,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     fd.net_margin != null ? `净利率: ${fd.net_margin}%` : null,
     fd.revenue_growth != null ? `营收增长: ${fd.revenue_growth}%` : null,
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条，注意炒作信号)]`,
     ...formatNewsForPrompt(news),
   ]

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Settings as SettingsIcon } from 'lucide-react';
+import { Search, Loader2, Settings as SettingsIcon, SlidersHorizontal } from 'lucide-react';
 import { searchStocks } from '../lib/ipc';
 import { useLanguage } from '../hooks/useLanguage';
 import { StockSearchResult } from '../../shared/types';
@@ -8,16 +8,18 @@ interface SearchHeaderProps {
   onSearch: (symbol: string) => void;
   loading: boolean;
   onOpenSettings: () => void;
+  onOpenScreener: () => void;
   stepLabel: string;
 }
 
 /**
- * SearchHeader 组件包含顶部的搜索表单和系统设置入口
+ * SearchHeader 组件包含顶部的搜索表单、智能选股入口和系统设置入口
  */
 const SearchHeader: React.FC<SearchHeaderProps> = ({
   onSearch,
   loading,
   onOpenSettings,
+  onOpenScreener,
   stepLabel,
 }) => {
   const { t } = useLanguage();
@@ -155,14 +157,25 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
         )}
       </form>
 
-      {/* 系统设置入口 */}
-      <button
-        onClick={onOpenSettings}
-        className="p-2 hover:bg-white/5 rounded-full transition-colors group"
-        title={t('system_settings')}
-      >
-        <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white group-hover:rotate-45 transition-all duration-300" />
-      </button>
+      {/* 右侧入口：智能选股 + 系统设置 */}
+      <div className="flex items-center gap-1">
+        {/* 智能选股入口 */}
+        <button
+          onClick={onOpenScreener}
+          className="p-2 hover:bg-white/5 rounded-full transition-colors group"
+          title={t('screener_open')}
+        >
+          <SlidersHorizontal className="w-5 h-5 text-gray-400 group-hover:text-emerald-400 transition-colors" />
+        </button>
+        {/* 系统设置入口 */}
+        <button
+          onClick={onOpenSettings}
+          className="p-2 hover:bg-white/5 rounded-full transition-colors group"
+          title={t('system_settings')}
+        >
+          <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white group-hover:rotate-45 transition-all duration-300" />
+        </button>
+      </div>
     </header>
   );
 };

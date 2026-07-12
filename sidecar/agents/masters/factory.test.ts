@@ -1,13 +1,16 @@
 import { describe, test, expect } from 'bun:test';
 import {
   createMasterAgent,
+  formatFactorsForPrompt,
   formatNewsForPrompt,
   PARSE_FAIL_MSG,
   SERVICE_UNAVAIL_MSG,
 } from './factory';
+import { agent as buffettAgent } from './warren-buffett';
+import { agent as cathieAgent } from './cathie-wood';
 import { createMockQuantBundle, createMockNews } from '../../../shared/test-utils';
-import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta, StockNews } from '../../../shared/types';
+import type { MasterAgent, MasterAnalysisContext } from '../types';
+import type { MasterFactors, MasterMeta, StockNews } from '../../../shared/types';
 
 function makeNews(title: string, content: string): StockNews {
   return { title, content, source: 'test', date: '2026-05-31', url: 'https://example.com' };
@@ -131,5 +134,81 @@ describe('formatNewsForPrompt', () => {
   test('仅空白的正文视为无正文', () => {
     const lines = formatNewsForPrompt([makeNews('标题', '   \n  ')]);
     expect(lines[0]).toBe('1. 标题');
+  });
+});
+
+const FACTORS_AVAILABLE: MasterFactors = {
+  available: true,
+  asOf: '2024-12-31',
+  annualPeriods: 6,
+  roeConsistency: {
+    threshold: 15,
+    streak: 6,
+    periodsAbove: 6,
+    totalPeriods: 6,
+    avgRoe: 25,
+    verdict: 'wide',
+  },
+  marginTrend: { gross: { latest: 91.5, direction: 'up', deltaPp: 2.5 } },
+  debtTrend: { latest: 18, avg: 23, direction: 'falling' },
+  growthStability: {
+    revenue: { avgGrowth: 12.5, positivePeriods: 6, totalPeriods: 6, stability: 'stable' },
+  },
+  simpleDcf: { intrinsicValuePerShare: 1234.5, basis: 'ocfps', assumedGrowthPct: 12, note: 'x' },
+};
+
+describe('formatFactorsForPrompt', () => {
+  test('available:false → 返回空数组（大师回退单期）', () => {
+    expect(formatFactorsForPrompt({ available: false, annualPeriods: 2 })).toEqual([]);
+  });
+
+  test('undefined → 返回空数组', () => {
+    expect(formatFactorsForPrompt(undefined)).toEqual([]);
+  });
+
+  test('available:true → 首行含 [预计算因子] 且带各因子标签', () => {
+    const lines = formatFactorsForPrompt(FACTORS_AVAILABLE);
+    expect(lines[0]).toContain('[预计算因子]');
+    expect(lines[0]).toContain('6 期年报');
+    const joined = lines.join('\n');
+    expect(joined).toContain('护城河');
+    expect(joined).toContain('毛利率趋势');
+    expect(joined).toContain('负债率趋势');
+    expect(joined).toContain('简化DCF');
+  });
+});
+
+async function captureUserPrompt(agent: MasterAgent, factors?: MasterFactors): Promise<string> {
+  let captured = '';
+  const ctx: MasterAnalysisContext = {
+    symbol: 'TEST',
+    quant: createMockQuantBundle(),
+    news: [createMockNews()],
+    chat: {
+      chat: async (_s, u) => {
+        captured = u;
+        return JSON.stringify({ signal: 'neutral', confidence: 50, reasoning: 'ok' });
+      },
+    },
+    factors,
+  };
+  await agent.analyze(ctx);
+  return captured;
+}
+
+describe('因子接线（消费者 vs 非消费者）', () => {
+  test('消费者（warren-buffett）：available:true 时 prompt 含因子段', async () => {
+    const prompt = await captureUserPrompt(buffettAgent, FACTORS_AVAILABLE);
+    expect(prompt).toContain('[预计算因子]');
+  });
+
+  test('消费者（warren-buffett）：无因子时 prompt 不含因子段', async () => {
+    const prompt = await captureUserPrompt(buffettAgent, undefined);
+    expect(prompt).not.toContain('[预计算因子]');
+  });
+
+  test('非消费者（cathie-wood）：即便传入因子也不注入 prompt', async () => {
+    const prompt = await captureUserPrompt(cathieAgent, FACTORS_AVAILABLE);
+    expect(prompt).not.toContain('[预计算因子]');
   });
 });

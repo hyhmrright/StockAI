@@ -177,6 +177,14 @@ impl SidecarManager {
         Self::run(app_handle, vec!["--quant".to_string(), symbol]).await
     }
 
+    // #11 财报 RAG 预热：提前建索引（symbol-only，无 config），把交易所互动平台抓取挪出 chat 首答关键路径
+    async fn index_reports(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+    ) -> Result<String, String> {
+        Self::run(app_handle, vec!["--index-reports".to_string(), symbol]).await
+    }
+
     // 历史财务时序：payload 小，走 argv 即可（无 config、无临时文件）。periods 缺省时不传，Sidecar 默认 12 期。
     async fn fetch_financial_history(
         app_handle: &tauri::AppHandle,
@@ -308,6 +316,17 @@ impl SidecarManager {
             vec!["--chat".to_string(), config_arg, payload_arg],
         )
         .await
+    }
+
+    // #14 自然语言选股：config（含 apiKey）走 0o600 临时文件；query 明文无敏感数据，走 argv 即可。
+    async fn screen(
+        app_handle: &tauri::AppHandle,
+        query: String,
+        config: serde_json::Value,
+    ) -> Result<String, String> {
+        let guard = Self::write_temp_config(&config)?;
+        let config_arg = format!("@{}", guard.path().to_string_lossy());
+        Self::run(app_handle, vec!["--screen".to_string(), config_arg, query]).await
     }
 }
 
@@ -487,6 +506,14 @@ async fn fetch_quant_bundle(
 }
 
 /**
+ * #11 财报 RAG 预热：fire-and-forget 提前建索引（前端在打开股票后调用）
+ */
+#[tauri::command]
+async fn index_reports(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
+    SidecarManager::index_reports(&app_handle, symbol).await
+}
+
+/**
  * 运行量化回测
  */
 #[tauri::command]
@@ -512,6 +539,23 @@ async fn fetch_financial_history(
 #[tauri::command]
 async fn fetch_market_snapshot(app_handle: tauri::AppHandle) -> Result<String, String> {
     SidecarManager::fetch_market_snapshot(&app_handle).await
+}
+
+/**
+ * #14 自然语言选股 — 调用 Sidecar --screen 流程
+ */
+#[tauri::command]
+async fn screen_stocks(app_handle: tauri::AppHandle, query: String) -> Result<String, String> {
+    let store = app_handle
+        .store("settings.json")
+        .map_err(|e| format!("无法打开配置存储: {}", e))?;
+
+    let settings_val = store
+        .get("app_settings")
+        .filter(|v| !v.is_null())
+        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
+
+    SidecarManager::screen(&app_handle, query, settings_val).await
 }
 
 #[cfg(test)]
@@ -653,9 +697,11 @@ pub fn run() {
             fetch_kline,
             fetch_realtime_quote,
             fetch_quant_bundle,
+            index_reports,
             run_backtest,
             fetch_financial_history,
-            fetch_market_snapshot
+            fetch_market_snapshot,
+            screen_stocks
         ])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");

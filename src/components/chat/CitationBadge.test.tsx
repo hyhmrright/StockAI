@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import ChatPanel from '../ChatPanel';
+import { reportPositionLabel } from './CitationBadge';
 import type { ChatMessage, StockNews } from '../../../shared/types';
 
 const noop = () => {};
@@ -92,6 +93,41 @@ describe('ChatPanel 溯源角标渲染', () => {
     expect(link).toHaveAttribute('href', 'https://example.com/a');
   });
 
+  it('report 角标 → popover 用 citation 自带 sourceMeta/sourceUrl 渲染来源行与原文链接', () => {
+    const messages: ChatMessage[] = [
+      {
+        role: 'assistant',
+        content: '营收增长主要来自高端产品放量[[cite:0]]。',
+        citations: [
+          {
+            index: 0,
+            sourceType: 'report',
+            sourceRef: 1,
+            snippet: '问：营收增长的主要驱动是什么？答：主要来自高端产品结构优化与渠道扩张。',
+            sourceUrl: 'https://sns.sseinfo.com/company.do?stockcode=600519',
+            sourceMeta: {
+              title: '投资者互动问答',
+              date: '2024-04-01',
+              position: '问答 #7',
+            },
+          },
+        ],
+      },
+    ];
+    renderPanel(messages);
+
+    fireEvent.click(screen.getByRole('button', { name: '查看引用来源' }));
+    // label 派生为「投资者问答」（本地化的唯一来源；docTitle 是喂给 LLM 的中文 meta，不重复渲染）
+    expect(screen.getByText('投资者问答')).toBeInTheDocument();
+    expect(screen.queryByText('投资者互动问答')).not.toBeInTheDocument();
+    // 来源行：日期直取 meta；position「问答 #7」转译为本地化「问答 #7」（zh 同形，验证走了 i18n key 而非原样透传）
+    expect(screen.getByText('2024-04-01')).toBeInTheDocument();
+    expect(screen.getByText('问答 #7')).toBeInTheDocument();
+    // 「查看原文」链接取自 sourceUrl（交易所官方互动平台链接放行）
+    const link = screen.getByText('查看原文').closest('a');
+    expect(link).toHaveAttribute('href', 'https://sns.sseinfo.com/company.do?stockcode=600519');
+  });
+
   it('javascript: 协议链接被拦截，不渲染查看原文', () => {
     const news: StockNews[] = [
       // 恶意协议，safeHref 应拦截
@@ -112,5 +148,32 @@ describe('ChatPanel 溯源角标渲染', () => {
   it('user 消息不做角标切分（即便含 token 字面量也原样显示）', () => {
     renderPanel([{ role: 'user', content: '我问一个 [[cite:0]] 的问题' }]);
     expect(screen.getByText('我问一个 [[cite:0]] 的问题')).toBeInTheDocument();
+  });
+});
+
+describe('reportPositionLabel', () => {
+  it('从 sidecar 写死的中文「问答 #N」提取序号，走 i18n key 而非原样透传', () => {
+    const calls: Array<[string, unknown]> = [];
+    const t = ((key: string, vars?: unknown) => {
+      calls.push([key, vars]);
+      return `translated:${key}:${JSON.stringify(vars)}`;
+    }) as Parameters<typeof reportPositionLabel>[1];
+
+    const result = reportPositionLabel('问答 #7', t);
+
+    expect(calls).toEqual([['chat_citation_report_position', { n: '7' }]]);
+    expect(result).toBe('translated:chat_citation_report_position:{"n":"7"}');
+    expect(result).not.toBe('问答 #7'); // 不是原字符串透传
+  });
+
+  it('无序号（无 position）→ null，不调用 t', () => {
+    const t = vi.fn() as unknown as Parameters<typeof reportPositionLabel>[1];
+    expect(reportPositionLabel(undefined, t)).toBeNull();
+    expect(t).not.toHaveBeenCalled();
+  });
+
+  it('position 不含数字 → null', () => {
+    const t = vi.fn() as unknown as Parameters<typeof reportPositionLabel>[1];
+    expect(reportPositionLabel('无编号', t)).toBeNull();
   });
 });

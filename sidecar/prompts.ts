@@ -472,3 +472,73 @@ export function buildEnhancedPrompt(
 
   return `${sections.join('\n\n')}${ENHANCED_SUFFIX[language]}`;
 }
+
+// ── #14 自然语言选股：解析 prompt ───────────────────────────────────────────
+// 语言中性英文（避免夹带中文进 en/ja 用户上下文）；仅在末尾注明用户 UI 语言，
+// 帮助模型理解可能出现的中/英/日本地化措辞。输出恒为严格 JSON。
+const SCREEN_LOCALE_HINT: Record<Language, string> = {
+  zh: "The user's input may be written in Chinese.",
+  en: "The user's input may be written in English.",
+  ja: "The user's input may be written in Japanese.",
+};
+
+/**
+ * 构建 NL 选股解析 system prompt。要求 LLM 把自然语言选股需求转成严格 ScreenQuery JSON。
+ * 枚举全部字段+单位、op、board 映射、分类语义映射规则，并给 few-shot（含空条件例）。
+ */
+export function buildScreenPrompt(language: Language = 'zh'): string {
+  return `You convert a natural-language A-share (China mainland) stock-screening request into a STRICT JSON object. Output ONLY the JSON object, no Markdown fences, no commentary.
+
+The universe is ALL China A-shares (Shanghai + Shenzhen + STAR + ChiNext + Beijing). You do NOT support US stocks, Hong Kong stocks, industry/sector-name filtering, or any non-numeric criteria. Silently ignore any dimension you cannot map to the fields below — never invent a condition.
+
+Output schema:
+{
+  "conditions": [ { "field": <field>, "op": <op>, "value": <number> } ],
+  "board": <board>,            // optional, default "all"
+  "limit": <integer 1-100>,    // optional, default 30
+  "sortBy": { "field": <field>, "order": "asc" | "desc" }  // optional
+}
+
+Fields and units (use EXACTLY these field names):
+- price          : latest price, in CNY yuan
+- changePercent  : daily change, percent (e.g. 5 means +5%)
+- pe             : dynamic price-to-earnings ratio
+- pb             : price-to-book ratio
+- marketCap      : total market cap, in CNY YUAN (NOT 亿/100M). "100亿"/"10 billion" => 10000000000 ; "500亿" => 50000000000
+- turnoverRate   : turnover rate, percent
+- roe            : return on equity, percent
+- netMargin      : net profit margin, percent
+- grossMargin    : gross profit margin, percent
+- debtToAsset    : debt-to-asset ratio, percent
+- currentRatio   : current ratio, a multiple (x)
+- revenueGrowth  : revenue YoY growth, percent
+- netIncomeGrowth: net income YoY growth, percent
+- compositeScore : overall quant score, 0-100
+
+Operators (op): "gt" (>), "gte" (>=), "lt" (<), "lte" (<=), "eq" (=).
+
+Board mapping:
+- "沪深主板" / "main board" => "main"
+- "科创板" / "STAR" => "star"
+- "创业板" / "ChiNext" => "chinext"
+- "北交所" / "Beijing" => "bj"
+- unspecified / "全部" => "all"
+
+Classification-semantics mapping (turn vague words into numeric thresholds):
+- "看涨" / "优质" / "quality" / "bullish" => { "field": "compositeScore", "op": "gte", "value": 60 }
+- "低估" / "undervalued" => prefer pe/pb thresholds, or omit if unclear.
+- Any dimension you cannot express with the fields above => ignore it.
+- If NONE of the request maps to a valid condition, return { "conditions": [] }.
+
+Examples:
+Input: "ROE大于15%且市盈率小于20的沪深主板股票"
+Output: {"conditions":[{"field":"roe","op":"gt","value":15},{"field":"pe","op":"lt","value":20}],"board":"main"}
+
+Input: "市值大于500亿、换手率低于5%的优质创业板股票，按综合分排序取前10"
+Output: {"conditions":[{"field":"marketCap","op":"gt","value":50000000000},{"field":"turnoverRate","op":"lt","value":5},{"field":"compositeScore","op":"gte","value":60}],"board":"chinext","limit":10,"sortBy":{"field":"compositeScore","order":"desc"}}
+
+Input: "今天天气怎么样"
+Output: {"conditions":[]}
+
+${SCREEN_LOCALE_HINT[language]}`;
+}

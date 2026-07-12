@@ -1,0 +1,1164 @@
+
+
+
+
+
+ 
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>上证e互动</title>	
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta http-equiv="content-type" content="text/html;charset=UTF-8" /> 
+	<meta http-equiv="X-Content-Type-Options" content="nosniff" />   
+	<meta http-equiv="pragma" content="no-cache">  
+	<meta property="wb:webmaster" content="6983a1253ca799d0" />
+	<meta name="keywords" content="上证e互动,e互动,易访谈,观点"></meta>
+	<meta name="description" content="上证e互动是由上海证券交易所建立、上海证券市场所有参与主体无偿使用的沟通平台，旨在引导和促进上市公司、投资者等各市场参与主体之间的信息沟通，构建集中、便捷的互动渠道。"></meta>
+	<meta http-equiv="imagetoolbar" content="no" />
+	<meta name="baidu-site-verification" content="codeva-ssQL4VgA6K" />
+	<script>
+	var _PUBLIC_ = ('https:' == document.location.protocol ? 'https://sns.sseinfo.com/' : 'http://sns.sseinfo.com/');
+	var _IMAGES_ = 'https://sns.sseinfo.com/';
+	var isAtPermit = '1';
+	var isMsgPermit = '1';
+	var isFacePermit = '1';
+	document.write('<base href="' + _PUBLIC_ + '"/>');
+	
+	if(!-[1,] && !window.XMLHttpRequest) {
+		window.location.href = 'ietip.do';
+	}
+	</script>
+	<link rel="shortcut icon" href="https://sns.sseinfo.com/resources/images/favicon.ico" type="image/x-icon" />
+	<link rel="stylesheet" href="https://sns.sseinfo.com/resources/css/easy.css?v=1.1" media="screen" />
+	<link rel="stylesheet" href="https://sns.sseinfo.com/resources/css/main.css?v=1.0" media="screen" />
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/js/jquery.min.js?v=1.0"></script>
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/js/jquery-migrate-1.4.1.min.js"></script>
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/js/jquery.validate.min.js"></script>
+	<!-- popup -->
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/js/jBox/jquery.jBox-2.3.min.js"></script>
+	<link rel="stylesheet" href="https://sns.sseinfo.com/resources/js/jBox/Skins/Blue/jbox.css" type="text/css"/>
+	<!-- date pick -->
+	<script type="text/javascript" src="//sns.sseinfo.com/resources/js/datepicker/WdatePicker.js"></script>
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/js/main.js?v=3.16.0"></script>
+	<!-- infinite scroll -->
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/js/jquery.infinitescroll.dev.js"></script>
+	<script src="https://sns.sseinfo.com/resources/js/jquery/jquery-message-select.js"></script>	
+	<!-- emoticons -->
+	<link rel="stylesheet" href="https://sns.sseinfo.com/resources/css/emoticon.css" media="screen" />
+	<script src="https://sns.sseinfo.com/resources/js/jquery/jquery.emoticons.js"></script>
+	<!-- atwho -->
+	<script src="https://sns.sseinfo.com/resources/js/jquery/at/jquery.caret.min.js"></script>
+	<script src="https://sns.sseinfo.com/resources/js/jquery/at/jquery.atwho.js"></script>
+	<link rel="stylesheet" href="https://sns.sseinfo.com/resources/css/atwho.css" media="screen" />
+	<!-- layer -->
+	<script src="https://sns.sseinfo.com/resources/js/layer/layer.js"></script>
+	<script>
+	$(function(){
+		$(".navclose").click(function(){
+			$.ajax({
+				type: "post",
+				url : _PUBLIC_+"company/agreeTip.do",
+				data: {},
+				beforeSend: function(XMLHttpRequest){                        
+				},                
+				success: function(data){
+					if(data.status==0){
+						alert("登录信息已过期，请重新登录");
+					}else if(data.status==1){
+						$("#tipalert").css({"display":"none"});
+					}
+				},
+				error: function(){
+					alert("Network Error！");
+				}
+			});
+		});
+	});
+	</script>
+	
+	<style>
+		pre{
+			white-space: pre-wrap !important;
+    		word-wrap: break-word !important;
+    		font-size: 14px !important;
+    		font-family: -apple-system,Helvetica,Arial,Microsoft Yahei,Hiragino Sans GB,sans-serif !important;
+    		font: none !important;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="header">
+		<div class="inner">
+			<h1 id="logo"><a href="index.do" title="上证e互动"></a></h1>
+		<input type="hidden" value="" id="curUser"></input>
+			<ul id="nav">
+				<li class="active" ><a href="index.do">首页</a></li>
+				<li  ><a href="qa.do">问答</a>	</li>
+				<li ><a target="_blank" href="https://sns.sseinfo.com/vote/">投票</a></li>
+				<li  ><a href="point.do">观点</a></li>
+				<li  ><a href="talkIndex.do">访谈</a></li>
+				<li  ><a href="list/company.do">公司</a></li>
+			</ul> 
+			<!-- 搜索 -->
+			<div class="search-top">
+				<input type="text" placeholder="搜索&nbsp;公司/问答/观点/用户" id="top_search_txt"/>
+				<button id="top_search"><i></i></button>
+			</div>
+			<!-- 搜索 end --> 
+			<ul id="rnav">
+				
+					
+					
+						<li class="moon">
+							<a href="javascript:;">登录</a>
+							<div class="layer_topmenu_list hidden">
+								<div node-type="noticeContent">
+									<ul>
+										<li>
+											<a href="javascript:void(0);" onclick="oauthLogin();" target="_top">投资者登录 </a>
+										</li>
+										<li>
+											<a href="javascript:void(0);" onclick="companyLogin()">主板公司登录</a> 
+										</li>
+										<li>
+											<a href="javascript:void(0);" onclick="kcCompanyLogin()">科创板公司登录</a> 
+										</li>
+									</ul>
+								</div>
+								<div class="clear" style="display: none;"></div>
+							</div>
+						</li>
+						<li><a href="https://sns.sseinfo.com/en/index.do" style="color:#fff;font-size: 20px;">EN</a></li>
+					
+				
+			</ul>
+		</div>
+		<div class="clear" style="display: none;"></div>
+		<script type="text/javascript">
+			/*提示Tip*/
+			$(document).ready(function() {
+				$('#top_search_txt').placeholder({isUseSpan:true,addHeight:10});
+			});
+			
+			function oauthLogin() {
+				window.location.href = "https://sns.sseinfo.com/oauthLogin.do"
+			}
+			
+			function oauthLogout() {
+				window.location.href = "https://sns.sseinfo.com/oauthLogout.do"
+			}
+			
+			function winxinClose(){
+				$('.W_weixin').css("display","none");
+			}
+			function winxinHover(){			
+				$('#wxHover').attr("src","https://sns.sseinfo.com/resources/images/close_hover.png");
+			}		
+			function winxinOut(){
+				$('#wxHover').attr("src","https://sns.sseinfo.com/resources/images/close.png");
+			};
+			
+			function companyLogin(){
+				plUrl = "https://list.sseinfo.com";
+				var submit = function (v, h, f) {
+				    if (v == true)
+				    	window.parent.location.href = plUrl;
+				    return true;
+				};  
+				   $.jBox.confirm("上市公司e互动后台已迁至上证e服务平台</br>（https://list.sseinfo.com），点击确认后将自动跳转。使用ekey登录上证e服务平台，请在左侧菜单中选择投资者关系服务-e互动。", 
+				"提示",submit, { buttons: { '确认': true, '取消': false} }); 
+			} 
+			function kcCompanyLogin(){ 
+				var kcbUrl = "https://kcb.sseinfo.com";
+				var submit = function (v, h, f) {
+				    if (v == true)
+				    	window.parent.location.href = kcbUrl;
+				    return true;
+				};  
+				   $.jBox.confirm("科创板公司e互动后台已迁至上证e服务科创专版</br>（https://kcb.sseinfo.com）,点击确认后将自动跳转。请使用ekey登录科创专版平台，在首页上方菜单中选择“IR”，然后选择左侧的“上证e互动”进入后台。", 
+				"提示",submit, { buttons: { '确认': true, '取消': false} }); 
+			}
+		</script>
+	</div>
+</body>
+</html>
+<link rel="stylesheet" href="https://sns.sseinfo.com/resources/css/ask_tip.css" media="screen" />
+<div class="ask-ht-alert" id="ques-tip" style="z-index: 9999;display: none">
+      <div class="pr ask-copyright">
+         <h4 class="ask-copyright-size">重要提示</h4>
+         <pre class="ask-copyright-content" style="text-align: center;">></pre>
+         <div class="ask-copyright-button"><a id="ques-tip-btn" class="ask-input-button-default" style="width:100px;background-color:#2d63ca!important;text-decoration: none!important;color: #fff;">我已了解</a></div>
+      </div>
+</div>
+<div id="container">
+		<div class="content">
+		<div class="top_cur"></div>
+		<div id="main">
+			<div class="cols cols3">
+				<div class="col1 first" style="width: 205px;">
+					
+<div class="box">
+	<div class="com_info">
+		<div class="head_info">
+			<a href="javascript:;"><img src="https://sns.sseinfo.com/resources/images/avatar/company/600519.png" width="70" height="70"/></a>
+		</div>
+		<span style="margin-top: 5px;">贵州茅台</span><div class="y_v"></div>
+		<p>(600519)</p>
+		<ul class="clearfix">
+			<li class="color-blue"><strong>328</strong><span style="color: #000;">回复数</span></li>
+			<li class="color-blue"><strong id="followedNum">1813</strong><span style="color: #000;">被关注数</span></li>
+		</ul>
+		
+	</div>
+</div>
+<div class="box" id="hq">
+
+
+<script type="text/javascript" src="https://sns.sseinfo.com/resources/hq/hq_home_highstock.js"></script>
+<script type="text/javascript" src="https://sns.sseinfo.com/resources/hq/searchCC.js?v=1.0"></script>
+<style>
+    .index_market_Main{
+        width:203px;
+        height:130px;
+    }
+    .index_market_Main .left{
+        width: 100%;
+        height: 100%;
+    }
+ 
+    .index_market_Main p{
+        margin:3px 20px;
+        font-size:12px;
+        color:#333;
+    }
+    .index_market_Main h1 {
+        color:#666;font-size:20px;margin:5px;font-weight:normal;margin-bottom:0px;
+    }
+    .index_market_Main h2 {
+        font-size:30px;margin:0px 5px;float:left;font-weight: normal;
+    }
+    .index_market_Main h3{
+        font-size:16px;margin:0px 8px;float:right;font-weight: normal;
+    }
+    .index_market_Main .col_red{
+        color:#f22;
+    }
+    .index_market_Main .col_green{
+        color:#2d2;
+    }
+
+    .index_market_Main .col_color{
+        color:#6C5B5B;
+    }
+    .index_market_Main .mm5{
+        list-style:none;
+        padding:0px;
+        margin:0px;
+        color:#666;
+    }
+    .index_market_Main .mm5 li {
+        font-size:14px;
+        margin:1px 10px 0px 10px;
+        padding:0px;
+        line-height: 19px;
+    }
+    .index_market_Main .mm5 .li_first{
+        margin-top:10px;
+    }
+    .index_market_Main .mm5 .li_last{
+        padding-bottom:3px;
+        border-bottom:1px solid #eee;
+    }
+    .index_market_Main .mm5 li .first_span {
+        margin-left:62px;
+    }
+    .index_market_Main .mm5 li .last_span {
+        color:#999;
+        float:right;
+    }
+    .index_market_Main .m5{
+        list-style:none;
+        padding:0px;
+        margin:0px;
+        color:#666;
+    }
+    .index_market_Main .m5 li {
+        font-size:14px;
+        margin:0px 10px 1px 10px;
+        padding:0px;
+        line-height: 19px;
+    }
+    .index_market_Main .m5 .li_first{
+        margin-top:3px;
+    }
+    .index_market_Main .m5 .li_last{
+        padding-bottom:10px;
+    }
+    .index_market_Main .m5 li .first_span {
+        margin-left:62px;
+    }
+    .index_market_Main .m5 li .last_span {
+        color:#999;
+        float:right;
+    }
+    
+    .index_market_Main #index_market{
+        width:203px;
+        height: 130px;
+    }
+    
+</style>
+<div class="mod-02" >
+	<div class="tit02 clearfix"><span style="float: left;">今日行情</span></div>
+	<div class="index_market_Main searchCC">
+        <div class="left">
+            <div id="index_market"></div>
+        </div>  
+   	</div>
+</div>
+<script type="text/javascript">
+$(function(){
+	var stockCode = '600519';
+	hqzs(stockCode);
+});
+</script>
+
+
+</div>
+<div class="com-box">
+	
+    <div class="mod-02">
+		<div class="tit02 clearfix"><span>公司资料</span></div>
+		
+
+		<ul class="com-profile clearfix">
+			<li class="linext"><a href="http://www.sse.com.cn/assortment/stock/list/info/company/index.shtml?COMPANY_CODE=600519" target="_blank">公司信息</a></li>
+			<li><a href="http://www.sse.com.cn/assortment/stock/list/info/company/index.shtml?COMPANY_CODE=600519" target="_blank">行情统计</a></li>
+			<li class="linext"><a href="http://www.sse.com.cn/assortment/stock/list/info/company/index.shtml?COMPANY_CODE=600519" target="_blank">相关公告</a></li>
+		</ul>
+	 </div>
+</div>
+<div class="com-box" id="manager">
+</div>	
+<script type="text/javascript">
+$(function(){
+	//获得上市公司高管信息
+	$.ajax({
+		type: "get",
+		url : "ajax/getallmanager.do",
+		data : {"uid":"519"},
+		beforeSend: function(XMLHttpRequest){
+			
+		},                
+		success: function(content){
+			$("#manager").html(content);
+		},
+		error: function(){
+		}
+	});
+});
+</script>
+
+				</div>
+				<div class="col2" style="border-left: 1px solid #E8E8E8;border-right: 1px solid #E8E8E8;">
+					<div id="main_col">
+						
+	<!-- 提问 -->
+	<script src="https://sns.sseinfo.com/resources/js/jquery/jquery-message-select.js"></script>
+	<script src="https://sns.sseinfo.com/resources/js/jquery/jquery-at-auto.js"></script>
+ 	<script type="text/javascript" src="https://sns.sseinfo.com/resources/swf/myhandlers.js"></script>
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/swf/swfupload.js?v=1.0"></script>
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/swf/swfupload.queue.js"></script>
+	<script type="text/javascript" src="https://sns.sseinfo.com/resources/swf/fileprogress.js"></script> 
+	<script src="https://sns.sseinfo.com/resources/js/index/index.js?v=3.17.0"></script>
+	<script src="https://sns.sseinfo.com/resources/js/jquery/jquery.flexslider.js"></script>
+<style>
+<!--
+.m_feed_nav_bottom{margin-top: 10px;}
+.current{font-weight: bold;}
+.addfollow{cursor:pointer;border: none;width: 82px;height: 30px;background: #288BCA;border-radius: 5px;color:#fff;}
+-->
+</style>
+
+
+<div class="index_top_top clearfix">
+	<div class="ask_txt">
+		 <i></i>
+		 <input type="text" value="贵州茅台(600519)" id="company_txt" readonly="true"/>
+	</div>
+	<div class="char_remain" id="char_remain">
+	 还可输入<b>200</b>字
+	</div>
+	<div class="content_area">
+		
+			
+		    
+			
+				<textarea class="input_detail" id="input_detail" placeholder=" "></textarea>
+			
+		
+	</div>
+		
+	
+		
+	
+	
+	<div class="submitDiv">
+		
+			<div class="v_code askcode">
+				<span class="v_code_char">验证码</span><input type="text" size="4" maxLength="4" id="vcode">
+				<IMG style="CURSOR: pointer" id=randImage title=刷新  width="75" height="26" name=randImage align=absMiddle src="https://sns.sseinfo.com/validateCode.do">
+			</div>
+		
+          
+          
+            <button class="submit_but" id="submit_but" ></button>
+            <button class="submit_but" id="dis_submit_but"  disabled style="display: none;background: #999;font-size: 18px;border-radius: 4px;">提问</button>
+          
+        
+	</div>
+	
+	 <div class="message" style="display: none;" id="message" >
+	</div>
+	<div class="imgWrap">
+		<div class="sort_arrow"></div>
+			<div class="imgDiv">	
+			<div class="img_load"></div>	
+			</div>
+			<div class="img_del">
+			<div class="im_close" style="text-align: right;margin-right: 20px;"><a href="javascript:closeImage();">关闭</a></div>
+			</div>
+		</div>
+	<div id="tips" class="message">
+	</div>
+</div>
+<div class="slider">
+		<div class="flexslider">
+	  <ul class="slides">
+	     
+<!-- <li>
+	     <a href="http://roadshow.sseinfo.com/areaRoadshowIndex.do?id=1166">
+	      <img src="https://sns.sseinfo.com/resources/images/banner4.png" />
+	     </a>
+	    </li>
+	  	<li>
+	      <a href="http://roadshow.sseinfo.com/areaRoadshowIndex.do?id=1216">
+	      	<img src="https://sns.sseinfo.com/resources/images/slide_xz.jpg"/>
+	      </a>
+	    </li>
+	  	<li>
+	      <a href="http://roadshow.sseinfo.com/areaRoadshowIndex.do?id=1184">
+	      	<img src="https://sns.sseinfo.com/resources/images/slide08.jpg"/>
+	      </a>
+	    </li> 
+	    <li>
+	      <img src="https://sns.sseinfo.com/resources/images/banner2.png" />
+	    </li>
+	    <li>
+	      <img src="https://sns.sseinfo.com/resources/images/banner3.png" />
+	    </li>-->
+	  </ul>
+	</div>
+</div>
+
+						
+
+<div class="frame">
+	<!-- feed begin -->
+	<div id="m_content_feed">
+		<div class="m_feed_nav clearfix">
+			<div class="m_feed_nav_top clearfix">
+				<ul class="m_feed_sort clearfix"  id="feed_top">
+					<li class="m_feed_sort_item current">
+						<a href="javascript:qa_type(1);">问答</a>
+						<div class="m_feed_sort_arrow"></div>
+					</li>
+					<li class="m_feed_sort_item">
+						<a href="javascript:qa_type(2);">上市公司发布</a>
+					</li>
+					<li class="m_feed_sort_item">
+						<a href="https://www.sse.com.cn/assortment/stock/list/info/company/index.shtml?COMPANY_CODE=600519&tabActive=1" target="_blank">上市公司公告</a>
+					</li>
+				</ul>
+			</div>
+			<div class="m_feed_nav_bottom clear"  id="qa_bottom">
+				<ul>
+					<li class="m_feed_bottom_item current" onclick="qa_style(2);">
+						<a href="javascript:;">最新答复</a>
+					</li>
+					<li class="m_feed_bottom_item" onclick="qa_style(1);">
+						<a href="javascript:;">最新提问</a>
+					</li>
+					<li class="m_feed_bottom_item hidden" onclick="qa_style(3);">
+						<a href="javascript:;">热门问答</a>
+					</li>
+					<li class="m_feed_bottom_item" onclick="qa_style(4);">
+						<a href="javascript:;">热推问答</a>
+					</li>
+				</ul>
+			</div>
+			<div class="m_feed_nav_bottom clear hidden pt" id="publish_bottom">
+			  <ul>
+			    <li class="m_feed_bottom_item current" onclick="qa_style(7);">
+			    <a href="javascript:;">
+			      最新发布
+			    </a>
+			  </li>
+			  <li class="m_feed_bottom_item" onclick="qa_style(9);">
+			    <a href="javascript:;">
+			     年报视频
+			    </a>
+			  </li>
+			</ul>
+			</div>
+			<div class="clear"></div>
+		</div>
+		<div class="m_feed_wb" id="feedall">
+			<!-- feed list begin -->
+
+			<!-- feed list end -->
+		</div>
+		<div class="loading hidden"><img alt="Loading..." src="https://sns.sseinfo.com/resources/images/ajaxs.gif"><div>努力加载中...</div></div>
+		
+		<div id="page-nav" style="" class="hidden">
+              <a href="ajax/userfeeds.do?typeCode=company&type=11&pageSize=10&uid=519&page=2"></a>
+        </div>
+	</div>
+	<!-- feed end -->
+	
+	
+
+</div>
+
+<script>
+	$(function(){
+		var url = "ajax/userfeeds.do?typeCode=company&type=11&pageSize=10&uid=519&page=1";	
+		$.ajax({
+			type: "get",
+			url : url,
+			cache: false,
+			beforeSend: function(XMLHttpRequest){                        
+				$(".loading").show();                
+			},                
+			success: function(data, textStatus){               
+				$('#feedall').append(data);    
+				var currentPage = $('#currentPage').val()
+				$('#currentPage').parent().remove()
+				//$("#page-nav a").attr("href", url); 
+			     
+			   $('#feedall').infinitescroll({
+			        navSelector  : '#page-nav',    // selector for the paged navigation 
+			        nextSelector : '#page-nav a',  // selector for the NEXT link (to page 2)
+			        itemSelector : 'div.m_feed_item',     // selector for all items you'll retrieve
+					state:{currPage:currentPage?currentPage:1},
+			        loading: {
+			            finishedMsg: '已经到底了！亲',
+			            img: 'https://sns.sseinfo.com/resources/images/ajaxs.gif',
+			            msgText:'努力加载中...'
+			            }
+			    },
+			        function( data ) {
+			            // $('#feedall').append(data);
+						var currentPage = $('#currentPage').val()
+						$('#currentPage').parent().remove()
+						$('#feedall').infinitescroll('update', {
+							state:{currPage:currentPage}}
+						);
+			    }); 
+			    
+			    
+			    
+			},                
+			complete: function(XMLHttpRequest, textStatus){                        
+				$(".loading").hide();                
+			},                
+			error: function(){                        
+				//请求出错处理   
+				//showError("网络出错，请刷新页面");             
+			}
+		});
+	    
+	 });
+	
+	//点击最新提问、最新回复
+       function qa_style(type){
+                    var url = "";
+                    var $bottom;
+                    var current;
+
+                    switch(type){
+                      case 1:
+                      url = "ajax/userfeeds.do?type=10";
+                      $bottom = $("#qa_bottom ul");
+                      current = 1;
+                      break;
+                      case 2:
+                      url = "ajax/userfeeds.do?type=11";
+                      $bottom = $("#qa_bottom ul");
+                      current = 0;
+                      break;
+                      case 3:
+                      url = "ajax/userfeeds.do?type=12";
+                      $bottom = $("#qa_bottom ul");
+                      current = 2;
+                      break;
+                      case 4:
+                      url = "ajax/userfeeds.do?type=13";
+                      $bottom = $("#qa_bottom ul");
+                      current = 3;
+                      break;
+                      case 7:
+                      url = "ajax/userfeeds.do?type=30";
+                      $bottom = $("#publish_bottom ul");
+                      current = 0;
+                      break;
+                      case 8:
+                      url = "ajax/userfeeds.do?type=40";
+                      $bottom = $("#notice_bottom ul");
+                      current = 0;
+                      break;
+                      case 9:
+                         url = "ajax/userfeeds.do?type=80";
+                         $bottom = $("#publish_bottom ul");
+                         current = 1;
+                       break;
+                    }
+                    
+                    url += "&uid=519&pageSize=10&typeCode=company&page=1";
+
+                    $bottom.find("li").each(function(i){
+                      if(i == current){
+                        $(this).addClass("current");
+                      }else{
+                        $(this).removeClass("current");
+                      }
+                    });
+
+                    $('#feedall').html("");
+                    $.ajax({
+                        type: "get",
+                        url : url,
+                        cache: false,
+                        beforeSend: function(XMLHttpRequest){
+                          $(".loading").show();
+                          },
+                          success: function(data, textStatus){
+							  $('#feedall').html(data);
+                              var href = url;
+                              href = href.replace(/page=\d+/g,"page=");
+                              $("#page-nav a").attr("href", href);
+							  var currentPage = $('#currentPage').val()
+							  $('#currentPage').parent().remove()
+                              $('#feedall').infinitescroll('update', {
+                                path:new Array(href),
+                                state:{currPage:currentPage?currentPage:1,isDone:false,isDuringAjax:false,isInvalidPage:false}
+                            	}
+                    		 );
+                    	     $('#feedall').infinitescroll('bind');
+                         },
+                        	complete: function(XMLHttpRequest, textStatus){
+                          $(".loading").hide();
+                          },
+                          error: function(){
+                            //请求出错处理
+                            //showError("网络出错，请刷新页面");
+                            $("#feedall").html('<a href="javascript:;" class="m_feed_note">网络出错，请刷新页面</a>');
+                          }
+                          });
+      }
+      
+     function qa_type(type){
+          var url = "";
+          var $top = $("#feed_top");
+          var current = type - 1;
+             
+          $top.find("li").each(function(i){
+            if(i != current){
+              $(this).removeClass("current").find(".m_feed_sort_arrow").remove();
+            }else{
+              if(!$(this).hasClass("current"))
+              $(this).addClass("current").append("<div class=\"m_feed_sort_arrow\"></div>");
+              if(current == 1){
+                $(this).find(".m_feed_sort_arrow").css("margin-left","35px");
+              } else if(current == 2){
+                $(this).find(".m_feed_sort_arrow").css("margin-left","35px");
+              }
+            }
+            });
+            $(".m_feed_nav_bottom").each(function(i){
+              if(i == current){
+                $(this).removeClass("hidden");
+              }else{
+                $(this).addClass("hidden");
+              }
+              
+              	if(!$(this).hasClass("hidden")){
+          			$(this).find("li.current").click();
+          		}
+              });
+          
+        
+        }
+      
+	
+	//加关注
+	function dofollow(actionType, uid, usertype){
+		$.ajax({
+			type : "post",
+			url  : "uajax/follow.do",
+			data : {"id": uid, "type":actionType, "usertype": usertype},
+			beforeSend: function(XMLHttpRequest){
+				
+			},
+			complete: function(XMLHttpRequest, textStatus){
+				
+			},
+			error:function (XMLHttpRequest, textStatus, errorThrown){
+				var data = eval('(' + XMLHttpRequest.responseText + ')');
+				if(data && data !== "none"){
+										
+				}
+			},
+			success:function(data, textStatus){
+				if(data && (data.status == 0 || data.status == 1 || data.status == 3 || data.status == 5)){
+					showError(data.reason);				
+				}else if(data && (data.status == 2 || data.status == 4)){
+					if(actionType == "follow"){
+						if(!$('#followuser').hasClass("hidden"))
+							$('#followuser').addClass("hidden");
+						$('#unfollowuser').removeClass("hidden");
+						var num = $('#followedNum').text();
+						num++;
+						$('#followedNum').html(num);
+					}else{
+						if(!$('#unfollowuser').hasClass("hidden"))
+							$('#unfollowuser').addClass("hidden");
+						$('#followuser').removeClass("hidden");
+						var num = $('#followedNum').text();
+						if(num > 0)num--;
+						$('#followedNum').html(num);
+					}
+				}
+			}
+		});
+	}
+</script>
+
+
+
+					</div>
+				</div>
+				<div class="col3" style="width: 180px;">
+					
+
+
+
+<div class="company_rightZone">
+	
+
+<div class="company_search">
+	<span class="tltleStr color-blue">公司检索</span><br/>
+	<input type="text" placeholder="上市公司名称/代码" id="com_search_txt">
+	<span class="to_company" id="to_companyByCode">进入公司主页</span>
+	<span class="com_concer" id="com_concerByCode"><i></i>关注</span>
+</div>
+
+<script type="text/javascript">
+$(function(){
+	// 公司搜素
+	$('#to_companyByCode').click(function(){
+		var txt = $('#com_search_txt').val().replace(/(^\s*)|(\s*$)/g, "");
+		if (txt == '代码/简称/拼音' || txt == '') {
+			showError("请输入公司代码");
+		} else {
+			txt = txt.split('(')[0];
+			$.ajax({
+			   type: "post",
+			   contentType:   "application/x-www-form-urlencoded",
+			   url: "ajax/getCompany.do",
+			   data:{data:txt},
+			   success: function(str){
+				   str != ''?window.location.href = _PUBLIC_+'company.do?uid='+str:
+					   showError("没有这个公司");
+			   }
+			});
+		}
+	});
+	// 文本框
+	$('#com_search_txt').placeholder({isUseSpan:true});
+	// 加关注
+	$('#com_concerByCode').click(function(){
+		if (!$("#rnav li.uname").length > 0){
+//			loadingHtml("dialogLogin.do","登录",600,350);
+			showLoginAlert();
+			return false;
+		}
+		var txt = $('#com_search_txt').val().replace(/(^\s*)|(\s*$)/g, "");
+		if (txt == '代码/简称/拼音' || txt == '') {
+			showError("请输入公司代码");
+		} else {
+			txt = txt.split('(')[0];
+			$.ajax({
+				   type: "post",
+				   contentType:   "application/x-www-form-urlencoded",
+				   url: "uajax/followCompByCode.do",
+				   data:{data:txt},
+				   beforeSend: function(XMLHttpRequest){
+				   },
+				   complete: function(XMLHttpRequest, textStatus){
+				   },
+				   error:function (XMLHttpRequest, textStatus, errorThrown){
+					 showError("网络出错,请稍后再试");
+					 var data = eval('(' + XMLHttpRequest.responseText + ')');
+					 if(data && data !== "none"){
+											
+					 }
+				   },
+				   success:function(data, textStatus){
+					 if(data && (data.status == 0 || data.status == 1 || data.status == 3 || data.status == 5)){
+						 showError(data.reason);				
+					 }else if(data && (data.status == 2 || data.status == 4)){
+						 showSuccess(data.reason);
+					 }
+				   }
+			});
+		}
+	});
+});
+</script>
+</div>
+<div class="box" id="comTalk">
+	<span>&nbsp;</span>
+</div>
+<div class="box" id="comVote">
+	
+
+
+<span> <a href="http://vote.sseinfo.com/home" target="_blank">
+			<img
+					style="width: 100%; border-top: 1px #e7e7e7 solid; padding: 20px 0 10px 5px;"
+					alt="" src="$../../../../resources/images/vote.png?v=3.16.0">
+	</a>
+	</span>
+
+
+
+
+
+
+</div>
+<div class="box">
+	
+
+<script type="text/javascript" src="https://roadshow.sseinfo.com/resources/ssesns/allroadshow.js?t=2026-07-12"></script>
+<!--<link rel="stylesheet" href="https://sns.sseinfo.com/resources/css/top.css" media="screen">-->
+<style>
+<!--
+.top-item{border-bottom: 1px dashed #e8e8e8;padding: 5px 0;}
+-->
+</style>
+<div class="top-container">
+    <div class="top-title">
+    	<div class="top-show-lefter">
+        	<span class="color-blue">路演</span>
+        </div>
+        <div class="top-more">
+        	<span class="top-color-gray"><a href='list/showindex.do'>更多...</a></span>
+        </div>
+    </div>
+    <div class="top-items" id="myShows">
+    	暂无该公司路演
+    </div>
+</div>
+<script type="text/javascript">
+	$(function(){
+		var stockCode = '600519';
+		if(stockCode==''){
+			stockCode= '';
+		}
+		var html = "";
+		if(allroadshow != null && allroadshow.result != null && allroadshow.result.length > 0){
+			var len = allroadshow.result.length;
+			var total = 0;
+			for(var i = 0; i < len; i++){				
+				var show = allroadshow.result[i];
+				if(typeof(show) != undefined && show != null){
+					//路径处理
+					var tmp_lshowUrl = show.U;
+					if(show.U.substring(0,1)=="/") {
+						tmp_lshowUrl = "http://roadshow.sseinfo.com" + show.U; 
+					}
+					if(show.C != null && show.C == stockCode){
+						total++;
+						if(total > 3){
+							break;
+						}
+						html = html + "<div class='top-item'>";
+						html = html + "  <div class='top-show-lefter'>";
+						html = html + "    <div>";
+						html = html + "      <a href='" + tmp_lshowUrl + "' target='_blank' style='border: 1px solid #DCDCDC;display: inline-block;padding:2px;'>";
+						html = html + "      <img src='" + show.I + "' height='60' width='90' >";
+						html = html + "      </a>";
+						html = html + "    </div>";
+						html = html + "  </div>";
+						html = html + "  <div class='top-show-righter'>";
+						//html = html + "    <div>" + show.N + "</div>";
+						html = html + "    <div><a href='" + tmp_lshowUrl + "' target='_blank' style='color:#333333;'>" + show.T + "</a></div>";
+						html = html + "    <div class='top-color-gray'>" + show.D.split(' ')[0] + "</div>";
+						html = html + "    <div class='top-color-gray'>" + show.D.split(' ')[1]+"-"+show.E.split(' ')[1] + "</div>";
+						html = html + "  </div>";
+						html = html + "  <div class='clear'></div>";
+						html = html + "</div>";
+					}
+				}
+			}
+			if(html == null || $.trim(html) == ""){
+				html = html + '<em></em><span class="noCon">暂无该公司路演</span>';
+			}
+		}
+		
+		$("#myShows").html(html);
+	})
+</script>
+</div>
+<div class="box">
+	<span>
+    	<a href="https://www.investor.org.cn/rights_interests_protection/exercise_service/online_xingq/index2.shtml?stockCode=600519" target="_blank">
+        	<img style="width:100%;border-top: 1px #e7e7e7 solid;padding:20px 0 10px 5px;" alt="" src="$../../../../../resources/images/investment.png" >
+    	</a>
+	</span>
+</div>
+<div class="box" id="followedInvestor">
+	<div id="nofollowedInvestor" class="hidden">
+		<link rel="stylesheet" href="https://sns.sseinfo.com/resources/css/top.css" media="screen">
+		<div class="top-container">
+			<div class="top-title">
+				<span class="color-blue">关注该公司的用户</span>
+			</div>
+			<div class="top-items" style="padding-left: 5px;">
+				当前无关注该公司的用户
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<script type="text/javascript">
+$(function(){
+	
+	//获取该公司的易访谈
+	$.ajax({
+		type: "get",
+		url : "ajax/companytalk.do",
+		data : {"count":3, "uid":"519"},
+		beforeSend: function(XMLHttpRequest){
+		},
+		success: function(content){
+			$("#comTalk").html(content);
+		},
+		error: function(){
+			
+		}
+	});
+	
+	//获取关注该公司的投资者
+	$.ajax({
+		type: "get",
+		url : "ajax/followedinvestor.do",
+		data : {"count":3, "userType":"company","uid":"519"},
+		beforeSend: function(XMLHttpRequest){
+		},
+		success: function(content){
+			if(content != "") {
+				$("#followedInvestor").html(content);
+				if(!$('#nofollowedInvestor').hasClass("hidden"))
+					$('#nofollowedInvestor').addClass("hidden");
+			} else {
+				$('#nofollowedInvestor').removeClass("hidden");
+			}
+		},
+		error: function(){
+		}
+	});
+});
+</script>
+				</div>
+			</div>
+			<script type="text/javascript">
+			
+			</script>
+			<a id="scrollToTop" onclick="goTop();" href="javascript:;" class="W_gotop"><span class="S_line5"><em class="index_ico icon_gotop"></em><em class="S_txt2">返回顶部</em></span></a>
+			<a id="" href="javascript:;" class="W_litHelper"><img alt="" src="https://sns.sseinfo.com/resources/images/help.png"></a>
+            
+              
+              
+                <a target="_blank" href="help.do" class="W_litHelper"><img alt="" src="https://sns.sseinfo.com/resources/images/help.png"></a>
+              
+            
+		</div>
+		<div class="bot_cur"></div>
+		
+  
+  
+	<div class="footer-box">
+	<div class="top_cur"></div>
+	<div class="footer-content">
+		<div class="mz">
+			<p><b style="color: black;">使用声明：</b>本服务提供上海证券市场各参与主体之间互动交流的平台。上海证券交易所及上证所信息网络有限公司（以下简称:平台运营方）力求本平台的正常运行，但不对其适用性做出任何保证。<span class="openFot"><i></i></span></p>
+			<div class="hid_p hidden">
+			<p style="text-indent: 2em;"><b><i>本平台上使用的商标等知识产权归属于上海证券交易所或上证所信息网络有限公司。</i></b>任何人不得擅自使用,一经发现，追究法律责任。</p>
+			<p style="text-indent: 2em;">本平台上的信息由上海证券交易所及相关用户提供，除法律法规另有规定或当事人另有约定外，平台上的所有资料（包括但不限于上市公司信息、市场统计信息等）以及相关软件程序的知识产权及其他相关权益均归属于上海证券交易所。</p>
+			<p style="text-indent: 2em;"><b><i>本平台上的信息未经许可均不得转载。</i></b>经上证所信息网络有限公司书面授权许可后，在授权许可的有效范围内可进行非营利性的转载。转载时应注明出处，并不得篡改信息。</p>
+			<p style="text-indent: 2em;">用户经申请获通过后在本平台网站上发表信息，视为用户同意授予平台运营方在全世界范围内永久性的、不可撤销的、免费的、非独家的和再许可的权利和许可，运营方可以使用、复制、修改、改编、出版、翻译、据以创作衍生作品、传播、转载、表演和展示该等内容的全部或部分，和/或将此等内容的全部或部分编入其他任何形式的作品、媒体或技术中。</p>
+			<p style="text-indent: 2em;"><b><i>对任何因直接或间接使用“上证e互动”平台及其展示的信息而造成损失或引致法律纠纷的，平台运营方不承担任何责任。</i></b></p>
+			<p style="text-indent: 2em;">用户通过本平台发布的内容不得含有中伤他人的、辱骂性的、攻击性的、缺乏事实依据的和违反当前法律法规等不良信息。平台运营方有权对含有上述信息内容的问题进行删除，网络系统记录有可能作为用户违反法律的证据。</p>
+			<p style="text-indent: 2em;"><b><i>上市公司通过本平台发布的内容不构成任何法定信息披露，上市公司信息披露应以其在指定媒体披露的内容为准。</i></b></p>
+			<p style="text-indent: 2em;"><b><i>“上证e互动”平台中的任何信息、评述及其他内容均不构成投资建议或投资结果，用户应当根据自身判断审慎做出投资决定，并自行承担风险。</i></b><span class="upFot"><i></i></span></p>
+			</div>
+		</div>
+		<div class="footer-href"> 
+		<a href="http://www.sse.com.cn" target="_blank">上海证券交易所</a>
+		<a href="http://www.sseinfo.com" target="_blank">上证所信息网络有限公司</a>
+		<a href="http://edu.sse.com.cn" target="_blank">上证所投资者教育网站</a>
+		<a href="http://bond.sse.com.cn" target="_blank">上证债券信息网 </a>
+		</div>
+		<div class="footer-bottom">
+		<a href="https://sns.sseinfo.com/resources/files/help.pdf" target="_blank">帮助</a><span>|</span>
+		<a href="contact.do">联系方式</a><span>|</span>
+		<a href="mailto:investor@sse.com.cn">反馈意见</a><span>|</span>
+		<a href="javascript:addfavor(location.href,document.title);">加入收藏</a><!-- <span>|</span> -->
+		</div>
+		<div class="footer-bottom">
+			上证e互动支持<span style="font-style: italic;">IPV6</span>
+		</div>
+		<div class="footer-bottom">
+			<div><span style="font-family:arial;">&copy;</span>上证所信息网络有限公司版权所有 2013 <a target="_blank" href="https://beian.miit.gov.cn/">沪B2-20050241-2</a><br/><a target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=31011502016235" style="line-height:20px;"><img style="vertical-align:middle;margin-right:5px;" src="https://sns.sseinfo.com/resources/images/anbei.png"/>沪公网安备 31011502016235号</a></div>
+			<i></i>
+		</div>
+	</div>
+	<div class="bot_cur"></div>
+	</div>
+	</div>
+</body>
+
+<script src="https://sns.sseinfo.com/resources/js/gio/gioEventAutoTracking.js"></script>
+<script src="https://sns.sseinfo.com/resources/js/gio/gioCompress.js"></script>
+<script type="text/javascript">
+	!(function (e, n, t, c, i) {
+	    (e[i] =
+	      e[i] ||
+	      function () {
+	        (e[i].q = e[i].q || []).push(arguments);
+	      }),
+	      (t = n.createElement('script'));
+	    s = n.getElementsByTagName('script')[0];
+	    (t.async = 1), (t.src = c), s.parentNode.insertBefore(t, s);
+	  })(window, document, 'script', 'https://sns.sseinfo.com/resources/js/gio/gdp-es5.js', 'gdp');
+
+	gdp('registerPlugins', [gioEventAutoTracking,gioCompress]);
+	gdp('init', 'ba17301551dcbaf9', '99aa294a783e4303', {
+		host: 'prod-ua.sseinfo.com',
+		version: '1.0.0',
+		compress: 'true',
+		scheme: 'https',
+		debug: true,
+		dataCollect: true
+	});
+</script>
+</html>
+
+			
+			<div class="rz-model-box" style="display: none">
+
+<style>
+    .xt-model-box {
+        width: 550px;
+        border-radius: 5px;
+        /*box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);*/
+        display: none;
+        box-sizing: border-box;
+        padding: 0 10px 10px;
+        background-image: url("https://sns.sseinfo.com/resources/images/systemNotify/notifyBack.jpg");
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+
+    .model-big-title {
+        font-size: 30px;
+        font-weight: bold;
+        box-sizing: border-box;
+        padding: 25px;
+        letter-spacing: 6px;
+        /*background: rgba(72, 122, 205, 0.9);*/
+        color: #ffffff;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+        position: relative;
+    }
+
+    .model-content-box {
+        border-radius: 10px;
+        background: #ffffff;
+        overflow: hidden;
+    }
+
+    .zh-content {
+        text-align: left;
+        padding: 20px;
+    }
+
+    .zh-content p {
+        font-size: 14px;
+        line-height: 25px;
+    }
+
+    .rz-close-box {
+        position: absolute;
+        right: 10px;
+        top: calc((100% - 30px) / 2);
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        background-image: url("https://sns.sseinfo.com/resources/images/systemNotify/closebtn.png");
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+    .rz-model-box{
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+    }
+</style>
+<div class="xt-model-box" style="display:block">
+    <div class="model-big-title">
+        <span>用户告知书</span>
+        <div class="rz-close-box"></div>
+    </div>
+    <div class="model-content-box zh-content" style="text-indent: 28px;margin-top: 10px;">
+       <p>
+        根据《网络安全法》《互联网用户公众账号信息服务管理规定》等相关规定，互联网信息服务提供者为互联网用户提供信息发布等服务的，应当对申请注册相关账号信息的用户进行基于移动电话号码、身份证号码等方式的真实身份信息认证。</p>
+       <p>上证e互动网站将采用复合验证措施对注册用户开展真实身份信息认证工作，我们会收集您的姓名、身份证号码、手机号码等身份信息，进行有效性核验。<span id="probationPeriod"></span>若您拒绝提供，自<span
+        class="rz-date"></span>起，您将无法使用上证e互动网站的用户提问等注册用户功能。</p>
+        <p style="text-align: center"><a
+                href="/realPersonAuth.do"
+                target="_blank">请您点击此处进行身份信息认证</a></p>
+    </div>
+</div>
+
+
+
+</div>
+
+		
+		
+		

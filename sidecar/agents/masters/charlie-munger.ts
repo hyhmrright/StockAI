@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是查理·芒格。根据提供的量化数据和新�
 - 合理价格而非超低价格：好公司不必等到极度低估，合理即可买入
 - 长期复利：净利率是否优秀？业务是否有持续的复利空间？
 - 反向思维：先想什么情况下会亏损，再决定是否买入
+
+若提供[预计算因子]，重点看 ROE 是否多年持续高位、利润率趋势是否稳中向好，而非单期高 ROE（可能是周期顶点）；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：ROE>20%，净利率优秀，估值合理（PE<30），业务有护城河
@@ -57,6 +59,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.rsi != null ? `RSI: ${td.rsi}` : null,
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条)]`,
     ...formatNewsForPrompt(news),
   ]

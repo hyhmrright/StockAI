@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是菲利普·费雪。根据提供的量化数据和�
 - 销售组织质量：产品/服务的销售竞争力如何？新闻中的客户反馈如何？
 - 管理层诚信与能力：新闻中管理层的言行是否一致？是否有长远规划？
 - 闲聊法验证：综合多方信息（供应商、竞争对手、客户视角）评估企业质量
+
+若提供[预计算因子]，以多期年报的营收/净利增长稳定性与利润率趋势判断长期成长一致性与利润率扩张，而非仅凭单期增长套阈值；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：营收增长持续>15%，净利率改善，管理层质量高，有长期成长逻辑
@@ -57,6 +59,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     `趋势信号: ${quant.technical.signal}, 置信度 ${quant.technical.confidence}%`,
     td.rsi != null ? `RSI: ${td.rsi}` : null,
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条，关注管理层质量和成长逻辑)]`,
     ...formatNewsForPrompt(news),
   ]

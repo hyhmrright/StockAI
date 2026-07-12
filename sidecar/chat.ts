@@ -37,19 +37,27 @@ const SYSTEM_INTRO: Record<Language, (symbol: string) => string> = {
 
 const CONTEXT_LABELS: Record<
   Language,
-  { news: string; quant: string; analysis: string; none: string }
+  { news: string; quant: string; analysis: string; report: string; none: string }
 > = {
-  zh: { news: '近期新闻', quant: '量化评分', analysis: '已有分析结论', none: '（暂无额外上下文）' },
+  zh: {
+    news: '近期新闻',
+    quant: '量化评分',
+    analysis: '已有分析结论',
+    report: '投资者互动问答',
+    none: '（暂无额外上下文）',
+  },
   en: {
     news: 'Recent news',
     quant: 'Quant score',
     analysis: 'Prior analysis',
+    report: 'Investor Q&A',
     none: '(no extra context)',
   },
   ja: {
     news: '最近のニュース',
     quant: '定量スコア',
     analysis: '既存の分析',
+    report: '投資家Q&A',
     none: '（追加コンテキストなし）',
   },
 };
@@ -60,9 +68,9 @@ const CONTEXT_LABELS: Record<
  * 三语仅解释含义。校验与改写在 extractCitations，LLM 标错/越界会被静默删除，故指令宽松即可。
  */
 const CITATION_GUIDE: Record<Language, string> = {
-  zh: '标注规则：若某条论断直接来自上方某条上下文，请在该论断句末紧跟来源标记——引用第 N 条新闻用 [src:news:N]（N 为上方新闻列表中的可见编号），引用量化评分用 [src:quant]，引用已有分析结论用 [src:analysis]。仅在确有对应来源时标注；不确定或来源不明时不要标注。标记须原样输出，不要翻译或改写方括号内的内容。',
-  en: 'Citation rules: if a statement comes directly from one of the context items above, append a source marker right after it — use [src:news:N] to cite the N-th news item (N is the visible number in the news list above), [src:quant] for the quant score, [src:analysis] for the prior analysis. Only annotate when a matching source truly exists; do not annotate when unsure or when there is no clear source. Output the marker verbatim; do not translate or alter what is inside the brackets.',
-  ja: '引用ルール：ある主張が上記コンテキストのいずれかに直接基づく場合、その主張の直後にソースマーカーを付けてください——N番目のニュースを引用するには [src:news:N]（N は上記ニュース一覧の可視番号）、定量スコアには [src:quant]、既存の分析には [src:analysis] を使います。対応するソースが確実にある場合のみ付与し、不確かな場合やソースが明確でない場合は付けないでください。マーカーはそのまま出力し、角括弧内の内容を翻訳・改変しないでください。',
+  zh: '标注规则：若某条论断直接来自上方某条上下文，请在该论断句末紧跟来源标记——引用第 N 条新闻用 [src:news:N]（N 为上方新闻列表中的可见编号），引用第 N 条投资者互动问答用 [src:report:N]（N 为上方投资者互动问答列表中的可见编号），引用量化评分用 [src:quant]，引用已有分析结论用 [src:analysis]。仅在确有对应来源时标注；不确定或来源不明时不要标注。标记须原样输出，不要翻译或改写方括号内的内容。',
+  en: 'Citation rules: if a statement comes directly from one of the context items above, append a source marker right after it — use [src:news:N] to cite the N-th news item (N is the visible number in the news list above), [src:report:N] to cite the N-th investor Q&A item (N is the visible number in the investor Q&A list above), [src:quant] for the quant score, [src:analysis] for the prior analysis. Only annotate when a matching source truly exists; do not annotate when unsure or when there is no clear source. Output the marker verbatim; do not translate or alter what is inside the brackets.',
+  ja: '引用ルール：ある主張が上記コンテキストのいずれかに直接基づく場合、その主張の直後にソースマーカーを付けてください——N番目のニュースを引用するには [src:news:N]（N は上記ニュース一覧の可視番号）、N番目の投資家Q&Aを引用するには [src:report:N]（N は上記投資家Q&A一覧の可視番号）、定量スコアには [src:quant]、既存の分析には [src:analysis] を使います。対応するソースが確実にある場合のみ付与し、不確かな場合やソースが明確でない場合は付けないでください。マーカーはそのまま出力し、角括弧内の内容を翻訳・改変しないでください。',
 };
 
 /** 把上下文拼成 system prompt 的事实段 */
@@ -75,6 +83,14 @@ function buildContextBlock(payload: ChatPayload, lang: Language): string {
   }
   if (context.quantSummary) parts.push(`[${L.quant}]\n${context.quantSummary}`);
   if (context.analysisSummary) parts.push(`[${L.analysis}]\n${context.analysisSummary}`);
+  if (context.reportChunks?.length) {
+    // 逐条编号列出投资者互动问答片段，编号供 LLM 用 [src:report:N] 引用（1-based，与 extractCitations 对齐）
+    const lines = context.reportChunks.map((c, i) => {
+      const meta = [c.docTitle, c.docDate, c.position].filter(Boolean).join(' · ');
+      return `${i + 1}. 「${meta}」${c.text}`;
+    });
+    parts.push(`[${L.report}]\n${lines.join('\n')}`);
+  }
   return parts.length ? parts.join('\n\n') : L.none;
 }
 
@@ -109,8 +125,8 @@ export async function runChat(
   return response.choices[0]?.message?.content ?? '';
 }
 
-/** 匹配 LLM 产出的合法结构 token（news:N / quant / analysis），大小写不敏感 */
-const CITE_TOKEN = /\[src:(?:news:(\d+)|quant|analysis)\]/gi;
+/** 匹配 LLM 产出的合法结构 token（news:N / report:N / quant / analysis），大小写不敏感 */
+const CITE_TOKEN = /\[src:(?:news:(\d+)|report:(\d+)|quant|analysis)\]/gi;
 /** 兜底：任何 [src:...] 形状的残留（如 [src:foobar] / [src:news:]），清除避免原始标记泄漏 */
 const CITE_RESIDUAL = /\[src:[^\]]*\]/gi;
 
@@ -135,41 +151,59 @@ export function extractCitations(
   const citations: ChatCitation[] = [];
   const dedupe = new Map<string, number>(); // key(sourceType:sourceRef) → citation 下标
 
-  const rewritten = reply.replace(CITE_TOKEN, (match: string, newsNum?: string) => {
-    let sourceType: CitationSourceType;
-    let sourceRef: number | string;
-    let snippet: string;
+  const rewritten = reply.replace(
+    CITE_TOKEN,
+    (match: string, newsNum?: string, reportNum?: string) => {
+      let sourceType: CitationSourceType;
+      let sourceRef: number | string;
+      let snippet: string;
+      // report 专属：链接 + 来源行元信息（title/date/position），前端 badge 据此渲染
+      let extra: Pick<ChatCitation, 'sourceUrl' | 'sourceMeta'> | undefined;
 
-    if (newsNum !== undefined) {
-      // news:N —— N 为 1-based，越界（含 0）即非法
-      const n = Number(newsNum);
-      const titles = context.newsTitles;
-      if (!titles?.length || n < 1 || n > titles.length) return '';
-      sourceType = 'news';
-      sourceRef = n;
-      snippet = titles[n - 1];
-    } else if (/quant/i.test(match)) {
-      if (!context.quantSummary) return '';
-      sourceType = 'quant';
-      sourceRef = 'summary';
-      snippet = context.quantSummary;
-    } else {
-      // analysis
-      if (!context.analysisSummary) return '';
-      sourceType = 'analysis';
-      sourceRef = 'summary';
-      snippet = context.analysisSummary;
-    }
+      if (newsNum !== undefined) {
+        // news:N —— N 为 1-based，越界（含 0）即非法
+        const n = Number(newsNum);
+        const titles = context.newsTitles;
+        if (!titles?.length || n < 1 || n > titles.length) return '';
+        sourceType = 'news';
+        sourceRef = n;
+        snippet = titles[n - 1];
+      } else if (reportNum !== undefined) {
+        // report:N —— N 为 1-based，越界 / reportChunks 缺席即非法（静默降级）
+        const n = Number(reportNum);
+        const chunks = context.reportChunks;
+        if (!chunks?.length || n < 1 || n > chunks.length) return '';
+        const chunk = chunks[n - 1];
+        sourceType = 'report';
+        sourceRef = n;
+        snippet = chunk.text; // snippet 取真实 chunk 原文，不信任 LLM 声称的内容
+        extra = {
+          sourceUrl: chunk.url,
+          sourceMeta: { title: chunk.docTitle, date: chunk.docDate, position: chunk.position },
+        };
+      } else if (/quant/i.test(match)) {
+        if (!context.quantSummary) return '';
+        sourceType = 'quant';
+        sourceRef = 'summary';
+        snippet = context.quantSummary;
+      } else {
+        // analysis
+        if (!context.analysisSummary) return '';
+        sourceType = 'analysis';
+        sourceRef = 'summary';
+        snippet = context.analysisSummary;
+      }
 
-    const key = `${sourceType}:${sourceRef}`;
-    let idx = dedupe.get(key);
-    if (idx === undefined) {
-      idx = citations.length;
-      dedupe.set(key, idx);
-      citations.push({ index: idx, sourceType, sourceRef, snippet });
-    }
-    return `[[cite:${idx}]]`;
-  });
+      const key = `${sourceType}:${sourceRef}`;
+      let idx = dedupe.get(key);
+      if (idx === undefined) {
+        idx = citations.length;
+        dedupe.set(key, idx);
+        citations.push({ index: idx, sourceType, sourceRef, snippet, ...extra });
+      }
+      return `[[cite:${idx}]]`;
+    },
+  );
 
   // 兜底：清除任何未匹配已知类型的残留标记，正文其余部分完整保留
   const cleaned = rewritten.replace(CITE_RESIDUAL, '');

@@ -1,13 +1,14 @@
 import type { FinancialMetrics, FundamentalResult, SubSignal } from './types';
 import type { CheckItem } from '../../shared/types';
 import { logger, toErrorMessage } from '../utils';
+import { annualizeRoe } from './roe-annualize';
 
 /**
  * 东财 datacenter F10 响应形态：数据在 result.data，非顶层 data。
  * 字段名失效/参数错误时返回 { success:false, result:null, code:9501 }。
  */
 interface EastmoneyF10Response {
-  result?: { data?: Record<string, number>[] } | null;
+  result?: { data?: (Record<string, number> & { REPORT_TYPE?: string })[] } | null;
   success?: boolean;
   message?: string;
 }
@@ -21,7 +22,7 @@ export function parseEastmoneyFinancials(json: EastmoneyF10Response): FinancialM
   const row = json?.result?.data?.[0];
   if (!row) return {};
   return {
-    roe: row.ROEJQ ?? undefined,
+    roe: annualizeRoe(row.ROEJQ ?? undefined, row.REPORT_TYPE),
     grossMargin: row.XSMLL ?? undefined,
     netMargin: row.XSJLL ?? undefined,
     debtToAsset: row.ZCFZL ?? undefined,
@@ -153,7 +154,7 @@ export async function fetchFundamentals(
 async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetrics> {
   const cleaned = code.replace(/\D/g, '');
   if (!/^\d{6}$/.test(cleaned)) throw new Error(`无效的 A 股代码: ${code}`);
-  const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=ROEJQ,XSJLL,XSMLL,ZCFZL,LD,TOTALOPERATEREVETZ,PARENTNETPROFITTZ,MGJYXJJE&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
+  const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=REPORT_TYPE,ROEJQ,XSJLL,XSMLL,ZCFZL,LD,TOTALOPERATEREVETZ,PARENTNETPROFITTZ,MGJYXJJE&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
 
   const resp = await fetch(url, {
     headers: { Referer: 'https://emweb.securities.eastmoney.com' },

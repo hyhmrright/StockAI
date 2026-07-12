@@ -1,5 +1,5 @@
 import type { MasterAgent, MasterAnalysisContext, MasterSignal } from '../types';
-import type { MasterMeta, Language, StockNews } from '../../../shared/types';
+import type { MasterMeta, Language, StockNews, MasterFactors } from '../../../shared/types';
 import { logger, toErrorMessage } from '../../utils';
 
 /** deepMode 抓到的正文注入大师 prompt 时的截断长度（防 13 大师 token 膨胀） */
@@ -18,6 +18,69 @@ export function formatNewsForPrompt(
     const body = n.content?.trim();
     return body ? `${i + 1}. ${n.title}\n   ${body.slice(0, bodyChars)}` : `${i + 1}. ${n.title}`;
   });
+}
+
+const MARGIN_DIR_ZH: Record<string, string> = { up: '上升', down: '下降', flat: '持平' };
+const DEBT_DIR_ZH: Record<string, string> = {
+  falling: '下降（去杠杆）',
+  stable: '平稳',
+  rising: '上升（加杠杆，警惕）',
+};
+const STABILITY_ZH: Record<string, string> = { stable: '稳定', volatile: '波动' };
+const MOAT_VERDICT_ZH: Record<string, string> = { wide: '宽阔', narrow: '中等', none: '不明显' };
+
+/** 带正负号的百分点/百分比标签 */
+function signed(v: number, unit: string): string {
+  return `${v >= 0 ? '+' : ''}${v}${unit}`;
+}
+
+/**
+ * 大师专属预计算因子 → 中文标签段（表现层，与纯函数 computeFactors 分离）。
+ * available:false 时返回空数组（大师完全回退单期快照行为）。token 有界（~6-8 行）。
+ * 沿用现有 buildUserPrompt 各段（[基本面数据] 等）的硬编码中文约定，无需新增 zh.json key。
+ */
+export function formatFactorsForPrompt(factors?: MasterFactors): string[] {
+  if (!factors?.available) return [];
+  const asOf = factors.asOf ? `，截至 ${factors.asOf}` : '';
+  const lines: string[] = [`[预计算因子]（基于 ${factors.annualPeriods} 期年报${asOf}）`];
+
+  const roe = factors.roeConsistency;
+  if (roe) {
+    lines.push(
+      `护城河(ROE持续性): ROE 连续 ${roe.streak} 期年报 >${roe.threshold}%` +
+        `（${roe.totalPeriods} 期中 ${roe.periodsAbove} 期达标，均值 ${roe.avgRoe}%），判定：${MOAT_VERDICT_ZH[roe.verdict]}`,
+    );
+  }
+  const mt = factors.marginTrend;
+  if (mt?.gross)
+    lines.push(
+      `毛利率趋势: 最新 ${mt.gross.latest}%，${MARGIN_DIR_ZH[mt.gross.direction]}（较早期 ${signed(mt.gross.deltaPp, 'pp')}）`,
+    );
+  if (mt?.net)
+    lines.push(
+      `净利率趋势: 最新 ${mt.net.latest}%，${MARGIN_DIR_ZH[mt.net.direction]}（较早期 ${signed(mt.net.deltaPp, 'pp')}）`,
+    );
+  const dt = factors.debtTrend;
+  if (dt)
+    lines.push(`负债率趋势: 最新 ${dt.latest}%（均值 ${dt.avg}%），${DEBT_DIR_ZH[dt.direction]}`);
+
+  const gs = factors.growthStability;
+  if (gs?.revenue)
+    lines.push(
+      `营收增长稳定性: 年均 ${signed(gs.revenue.avgGrowth, '%')}` +
+        `（${gs.revenue.positivePeriods}/${gs.revenue.totalPeriods} 期正增，${STABILITY_ZH[gs.revenue.stability]}）`,
+    );
+  if (gs?.netIncome)
+    lines.push(
+      `净利增长稳定性: 年均 ${signed(gs.netIncome.avgGrowth, '%')}（${STABILITY_ZH[gs.netIncome.stability]}）`,
+    );
+  const dcf = factors.simpleDcf;
+  if (dcf)
+    lines.push(
+      `简化DCF每股内在价值: ¥${dcf.intrinsicValuePerShare}` +
+        `（口径:${dcf.basis === 'ocfps' ? '每股经营现金流' : '每股收益'}；假设增速 ${dcf.assumedGrowthPct}%；${dcf.note}）`,
+    );
+  return lines;
 }
 
 const LANG_INSTRUCTION: Record<Language, string> = {

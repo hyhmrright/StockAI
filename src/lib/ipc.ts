@@ -13,6 +13,7 @@ import {
   ChatPayload,
   ChatResponse,
   MasterWeightInput,
+  ScreenResponse,
 } from '../../shared/types';
 import {
   MOCK_STOCKS,
@@ -25,6 +26,7 @@ import {
   MOCK_DEEP_ANALYSIS,
   MOCK_BACKTEST,
   MOCK_CHAT,
+  MOCK_SCREEN,
 } from './dev-mocks';
 
 /**
@@ -266,6 +268,22 @@ export async function runBacktest(symbol: string): Promise<BacktestResult> {
   try {
     const raw = await invoke<string>('run_backtest', { symbol });
     return parseServiceResponse<BacktestResult>(raw);
+  } catch (error) {
+    rethrow(error);
+  }
+}
+
+/**
+ * #14 自然语言选股：把用户自然语言查询交给 sidecar 两阶段全市场筛选。
+ * ServiceError（含 code，如 ERR_SCREEN_PARSE / ERR_SCREEN_NO_CONDITIONS）原样透传，
+ * 供 useNlScreener 按 code 映射差异化降级文案。
+ */
+export async function screenStocks(query: string): Promise<ScreenResponse> {
+  if (!isTauri()) return devBridgeInvoke<ScreenResponse>('screen_stocks', { query }, MOCK_SCREEN);
+
+  try {
+    const raw = await invoke<string>('screen_stocks', { query });
+    return parseServiceResponse<ScreenResponse>(raw);
   } catch (error) {
     rethrow(error);
   }

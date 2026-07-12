@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -20,6 +20,8 @@ const SYSTEM_PROMPT = `你是阿斯瓦斯·达摩达兰。根据提供的量化�
 - 风险溢价评估：负债率高意味着更高的权益风险溢价，需要更大折价
 - 纪律性估值：设定内在价值区间，只在折价足够时才买入
 - 全维度数据分析：所有基本面指标综合评估，不依赖单一指标
+
+若提供[预计算因子]，用增长稳定性与简化DCF交叉验证估值故事，多期趋势优先于单期快照；无因子段时才回退单期数据。
 
 信号规则：
 - bullish：增长与 ROE 支撑当前估值，或存在显著折价（PE/PB 远低于成长支撑的合理值）
@@ -79,6 +81,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
         ]
       : []),
     '',
+    ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条，验证叙事与数字一致性)]`,
     ...formatNewsForPrompt(news),
   ]

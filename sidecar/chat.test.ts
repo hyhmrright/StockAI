@@ -1,6 +1,23 @@
 import { describe, test, expect } from 'bun:test';
 import { buildChatMessages, runChat, extractCitations } from './chat';
-import type { ChatPayload } from '../shared/types';
+import type { ChatPayload, ReportChunk } from '../shared/types';
+
+const REPORT_CHUNKS: ReportChunk[] = [
+  {
+    text: '问：营收为何下滑？\n答：主要受行业需求疲软影响。',
+    docTitle: '投资者互动问答',
+    docDate: '2024-04-01',
+    url: 'https://sns.sseinfo.com/company.do?stockcode=600519',
+    position: '问答 #7',
+  },
+  {
+    text: '问：毛利率变化？\n答：同比下降两个百分点。',
+    docTitle: '投资者互动问答',
+    docDate: '2024-04-01',
+    url: 'https://sns.sseinfo.com/company.do?stockcode=600519',
+    position: '问答 #8',
+  },
+];
 
 function makePayload(over: Partial<ChatPayload> = {}): ChatPayload {
   return { symbol: 'AAPL', question: '它的护城河如何？', history: [], context: {}, ...over };
@@ -230,5 +247,98 @@ describe('extractCitations', () => {
     );
     expect(citations.map((c) => c.sourceType)).toEqual(['news', 'quant']);
     expect(reply).toBe('A[[cite:0]]B[[cite:1]]C');
+  });
+});
+
+describe('extractCitations · report 分支', () => {
+  test('合法 report 序号 → citation 含 report 字段，snippet/sourceUrl/sourceMeta 取自真实 chunk', () => {
+    const { reply, citations } = extractCitations(
+      '营收下滑主因需求疲软[src:report:1]。',
+      makePayload({ context: { reportChunks: REPORT_CHUNKS } }),
+    );
+    expect(reply).toBe('营收下滑主因需求疲软[[cite:0]]。');
+    expect(citations).toHaveLength(1);
+    expect(citations[0]).toEqual({
+      index: 0,
+      sourceType: 'report',
+      sourceRef: 1,
+      snippet: REPORT_CHUNKS[0].text,
+      sourceUrl: REPORT_CHUNKS[0].url,
+      sourceMeta: { title: '投资者互动问答', date: '2024-04-01', position: '问答 #7' },
+    });
+  });
+
+  test('越界 report:99 → 静默删除、无 citation、正文完整', () => {
+    const { reply, citations } = extractCitations(
+      '一个说法[src:report:99]。',
+      makePayload({ context: { reportChunks: REPORT_CHUNKS } }),
+    );
+    expect(reply).toBe('一个说法。');
+    expect(citations).toHaveLength(0);
+    expect(reply).not.toContain('src:');
+  });
+
+  test('reportChunks 缺席 → report 标记静默删除', () => {
+    const { reply, citations } = extractCitations(
+      '据说[src:report:1]如此。',
+      makePayload({ context: {} }),
+    );
+    expect(reply).toBe('据说如此。');
+    expect(citations).toHaveLength(0);
+  });
+
+  test('report:0 也算越界（1-based）→ 删除', () => {
+    const { reply, citations } = extractCitations(
+      'x[src:report:0]y',
+      makePayload({ context: { reportChunks: REPORT_CHUNKS } }),
+    );
+    expect(reply).toBe('xy');
+    expect(citations).toHaveLength(0);
+  });
+
+  test('同一 report 多次引用 → dedupe 复用同一 index', () => {
+    const { reply, citations } = extractCitations(
+      '先看[src:report:2]，再回到[src:report:2]。',
+      makePayload({ context: { reportChunks: REPORT_CHUNKS } }),
+    );
+    expect(citations).toHaveLength(1);
+    expect(citations[0].sourceRef).toBe(2);
+    expect(citations[0].sourceMeta?.position).toBe('问答 #8');
+    expect(reply).toBe('先看[[cite:0]]，再回到[[cite:0]]。');
+  });
+
+  test('report 与 news/quant 混排 → index 递增且类型正确', () => {
+    const { reply, citations } = extractCitations(
+      '新闻[src:news:1]，报告[src:report:1]，量化[src:quant]。',
+      makePayload({
+        context: {
+          newsTitles: ['苹果财报超预期'],
+          quantSummary: '综合 72/100',
+          reportChunks: REPORT_CHUNKS,
+        },
+      }),
+    );
+    expect(citations.map((c) => c.sourceType)).toEqual(['news', 'report', 'quant']);
+    expect(reply).toBe('新闻[[cite:0]]，报告[[cite:1]]，量化[[cite:2]]。');
+    expect(citations[1].sourceUrl).toContain('sns.sseinfo.com');
+  });
+});
+
+describe('buildContextBlock / CITATION_GUIDE · report', () => {
+  test('注入 reportChunks → system 含 [投资者互动问答] 段与编号原文', () => {
+    const sys = buildChatMessages(makePayload({ context: { reportChunks: REPORT_CHUNKS } }))[0]
+      .content;
+    expect(sys).toContain('投资者互动问答');
+    expect(sys).toContain('1. 「投资者互动问答');
+    expect(sys).toContain('营收为何下滑');
+    expect(sys).toContain('[src:report:N]');
+  });
+
+  test('三语 CITATION_GUIDE 均含 report token，ja 无西里尔字母', () => {
+    for (const lang of ['zh', 'en', 'ja'] as const) {
+      const sys = buildChatMessages(makePayload(), lang)[0].content;
+      expect(sys).toContain('[src:report:N]');
+    }
+    expect(/[Ѐ-ӿ]/.test(buildChatMessages(makePayload(), 'ja')[0].content)).toBe(false);
   });
 });

@@ -4,6 +4,7 @@ import type { FinancialHistory, FinancialSnapshot } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
 import { detectMarket } from '../../shared/market';
 import { logger, toErrorMessage } from '../utils';
+import { annualizeRoe } from './roe-annualize';
 
 /**
  * 历史财务时序（东财 F10 RPT_F10_FINANCE_MAINFINADATA）。
@@ -78,7 +79,9 @@ export function parseEastmoneyFinancialHistory(
       // "2026-03-31 00:00:00" → "2026-03-31"（仅保留日期部分）
       reportDate: (r.REPORT_DATE as string).slice(0, 10),
       reportType: r.REPORT_TYPE ?? '',
-      roe: num(r.ROEJQ),
+      // 非年报期为累计值，年化后与年报同口径可比（年报本身乘数为 1，含 §12 因子预计算在内的
+      // 消费者不受影响——computeFactors 只筛年报子序列）
+      roe: annualizeRoe(num(r.ROEJQ), r.REPORT_TYPE),
       grossMargin: num(r.XSMLL),
       netMargin: num(r.XSJLL),
       debtToAsset: num(r.ZCFZL),

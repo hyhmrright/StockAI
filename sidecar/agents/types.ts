@@ -4,6 +4,7 @@ import type {
   MasterMeta,
   MasterSignal,
   Language,
+  MasterFactors,
 } from '../../shared/types';
 
 export type { MasterSignal };
@@ -20,6 +21,8 @@ export interface MasterAnalysisContext {
   news: StockNews[];
   chat: ChatProvider;
   language?: Language;
+  /** 预计算因子（#12）；仅价值派大师消费，缺省/available:false 时回退单期快照 */
+  factors?: MasterFactors;
 }
 
 /** 大师 Agent 接口 */
