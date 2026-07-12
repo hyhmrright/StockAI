@@ -14,7 +14,12 @@ import AnalysisHistory from './AnalysisHistory';
 import { sentimentBgClass, sentimentBadgeClass } from '../lib/signal-styles';
 import { useLanguage } from '../hooks/useLanguage';
 import type { AIAnalysisRecord } from '../hooks/useAIAnalysis';
-import type { StockInfo, QuantBundle, DeepAnalysisResult } from '../../shared/types';
+import type {
+  StockInfo,
+  QuantBundle,
+  DeepAnalysisResult,
+  BacktestResult,
+} from '../../shared/types';
 
 interface AnalysisPanelProps {
   symbol: string;
@@ -34,6 +39,8 @@ interface AnalysisPanelProps {
   deepError: string | null;
   onDeepAnalyze: () => void;
   masterAnalysisEnabled: boolean;
+  backtest: BacktestResult | null; // 回测结果（Dashboard 持有，与 PriceChart 叠加共用）
+  onBacktestResult: (result: BacktestResult | null) => void;
   chatSlot?: React.ReactNode; // 对话式追问面板（由 Dashboard 注入）
 }
 
@@ -61,6 +68,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   deepError,
   onDeepAnalyze,
   masterAnalysisEnabled,
+  backtest,
+  onBacktestResult,
   chatSlot,
 }) => {
   const result = record?.result;
@@ -84,7 +93,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
       <FundFlowCard fundFlow={quant?.fundFlow} />
 
-      {stockInfo && <BacktestPanel symbol={stockInfo.code} />}
+      {stockInfo && (
+        <BacktestPanel symbol={stockInfo.code} result={backtest} onResult={onBacktestResult} />
+      )}
 
       {/* 虚拟大师组合战绩榜（全局 · 前向跟踪，与当前 symbol 无关，懒加载） */}
       <MasterPortfolioPanel />

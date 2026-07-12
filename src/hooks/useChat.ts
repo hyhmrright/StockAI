@@ -42,8 +42,9 @@ export function useChat(
 
       try {
         // history 传不含本次问题的历史；question 单独传，由 sidecar 拼成 user 末条
-        const { reply } = await runner({ symbol, question: q, history: prev, context });
-        const botMsg: ChatMessage = { role: 'assistant', content: reply };
+        const { reply, citations } = await runner({ symbol, question: q, history: prev, context });
+        // citations 随消息持久化，多轮历史里角标不丢失
+        const botMsg: ChatMessage = { role: 'assistant', content: reply, citations };
         historyRef.current.set(symbol, [...prev, userMsg, botMsg]);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));

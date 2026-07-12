@@ -1,5 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import type { DeepAnalysisResult, StockNews, QuantBundle } from '../../shared/types';
+import type {
+  DeepAnalysisResult,
+  StockNews,
+  QuantBundle,
+  MasterWeightInput,
+} from '../../shared/types';
 import { deepAnalyze } from '../lib/ipc';
 import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from './cache-utils';
 
@@ -7,13 +12,14 @@ export interface UseDeepAnalysisResult {
   result: DeepAnalysisResult | null;
   analyzing: boolean;
   error: string | null;
-  analyze: (news: StockNews[], quant?: QuantBundle) => Promise<void>;
+  analyze: (news: StockNews[], quant?: QuantBundle, weights?: MasterWeightInput[]) => Promise<void>;
 }
 
 type DeepAnalyzeFn = (
   symbol: string,
   news: StockNews[],
   quant?: QuantBundle,
+  weights?: MasterWeightInput[],
 ) => Promise<DeepAnalysisResult>;
 
 /**
@@ -35,7 +41,7 @@ export function useDeepAnalysis(
   const cacheKey = `${symbol}::${configFingerprint}`;
 
   const analyze = useCallback(
-    async (news: StockNews[], quant?: QuantBundle) => {
+    async (news: StockNews[], quant?: QuantBundle, weights?: MasterWeightInput[]) => {
       if (!symbol) return;
       const key = `${symbol}::${configFingerprint}`;
       if (news.length === 0) {
@@ -57,7 +63,7 @@ export function useDeepAnalysis(
       force((n) => n + 1);
 
       try {
-        const data = await runner(symbol, news, quant);
+        const data = await runner(symbol, news, quant, weights);
         if (reqIdRef.current.get(key) !== myReqId) return;
         setWithLRI(cacheRef.current, key, data, MAX_SYMBOLS_IN_CACHE);
       } catch (err) {

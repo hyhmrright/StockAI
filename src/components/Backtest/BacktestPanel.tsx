@@ -4,6 +4,10 @@ import type { BacktestResult } from '../../../shared/types';
 
 interface BacktestPanelProps {
   symbol: string;
+  /** 回测结果（受控：由 Dashboard 持有，供 PriceChart 叠加买卖点/净值曲线共用同一份数据） */
+  result: BacktestResult | null;
+  /** 结果上提：跑完回测 / 「重新回测」时通知父级，切 symbol 时由父级清空 */
+  onResult: (result: BacktestResult | null) => void;
 }
 
 function formatPct(n: number): string {
@@ -30,13 +34,12 @@ function MetricCard({ label, value, valueClass = 'text-white' }: MetricCardProps
   );
 }
 
-const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol }) => {
-  const [result, setResult] = useState<BacktestResult | null>(null);
+const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol, result, onResult }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // result 由父级持有并随 symbol 变化清空，这里只重置本地瞬态（loading/error）
   useEffect(() => {
-    setResult(null);
     setError(null);
     setLoading(false);
   }, [symbol]);
@@ -45,13 +48,13 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol }) => {
     setLoading(true);
     setError(null);
     try {
-      setResult(await runBacktest(symbol));
+      onResult(await runBacktest(symbol));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
-  }, [symbol]);
+  }, [symbol, onResult]);
 
   return (
     <div className="mb-6">
@@ -74,7 +77,7 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol }) => {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-white">回测结果</span>
             <button
-              onClick={() => setResult(null)}
+              onClick={() => onResult(null)}
               className="text-[10px] text-gray-500 hover:text-gray-300"
             >
               重新回测

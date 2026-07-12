@@ -14,9 +14,17 @@ import type {
   fetchMarketBundle as FetchBundleFn,
   analyzeNewsWithLLM as AnalyzeFn,
 } from './analysis';
+import type { fetchFinancialHistory as FinancialHistoryFn } from './quant/fundamental-history';
+import type { fetchMarketSnapshot as MarketSnapshotFn } from './quant/market-snapshot';
 import { ScrapeEmptyError } from './analysis';
 import type { ResolvedConfig } from './configResolver';
-import type { StockNews, QuantBundle, ChatPayload, ProviderType } from '../shared/types';
+import type {
+  StockNews,
+  QuantBundle,
+  ChatPayload,
+  ProviderType,
+  MasterWeightInput,
+} from '../shared/types';
 
 /** 某 provider 静态目录的模型 id 列表（动态拉取无端点或返回空时兜底） */
 function staticModelValues(provider: ProviderType): string[] {
@@ -67,6 +75,21 @@ function tryParseQuant(
   }
 }
 
+/**
+ * 解析大师权重摘要（best-effort）：解析失败/非数组一律静默降级为空数组，
+ * 绝不因权重解析失败而让整个深度分析报错——权重只是聚合层微调，缺省即默认权重。
+ */
+function parseWeights(weightsJson: string | undefined): MasterWeightInput[] {
+  if (!weightsJson) return [];
+  try {
+    const parsed = JSON.parse(weightsJson);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    logger.warn(`大师权重解析失败，退化为默认权重: ${toErrorMessage(err)}`);
+    return [];
+  }
+}
+
 export interface RawConfig {
   provider?: string;
   baseUrl?: string;
@@ -82,6 +105,9 @@ interface HandlerDeps {
   _analyzeOnly?: typeof AnalyzeFn;
   /** 测试注入：替换真实的列模型 HTTP 拉取，避开网络 */
   _listModelsFetch?: typeof fetchProviderModels;
+  /** 测试注入：替换历史财务/全市场快照的真实抓取，避开网络 */
+  _fetchFinancialHistory?: typeof FinancialHistoryFn;
+  _fetchMarketSnapshot?: typeof MarketSnapshotFn;
 }
 
 export function createHandlers(deps: HandlerDeps = {}) {
@@ -294,6 +320,44 @@ export function createHandlers(deps: HandlerDeps = {}) {
       }
     },
 
+    /**
+     * 历史财务时序（按需拉东财 F10，24h 磁盘缓存）— 供 #11 RAG 数值溯源 / #12 因子预计算。
+     * periods 为字符串（CLI 传入），非法/缺省时默认 12 期。
+     */
+    async handleFinancialHistory(symbol: string, periods?: string) {
+      if (!symbol) {
+        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
+        return;
+      }
+      try {
+        const parsed = periods ? Number.parseInt(periods, 10) : Number.NaN;
+        const n = Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
+        const fetchHistory =
+          deps._fetchFinancialHistory ??
+          (await import('./quant/fundamental-history')).fetchFinancialHistory;
+        const history = await fetchHistory(symbol, n);
+        out(successEnvelope(history));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_FIN_HISTORY', error));
+      }
+    },
+
+    /**
+     * 全市场基本面快照（分页串行拉东财 clist，24h 磁盘缓存）— 供 #14 NL 选股粗筛。
+     * 返回全市场横截面；深层财报字段由候选精拉补齐（两阶段筛选）。
+     */
+    async handleMarketSnapshot() {
+      try {
+        const fetchSnapshot =
+          deps._fetchMarketSnapshot ??
+          (await import('./quant/market-snapshot')).fetchMarketSnapshot;
+        const snapshot = await fetchSnapshot();
+        out(successEnvelope(snapshot));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_MARKET_SNAPSHOT', error));
+      }
+    },
+
     async handleBacktest(symbol: string) {
       if (!symbol) {
         out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
@@ -331,6 +395,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
       news: StockNews[],
       config: ResolvedConfig,
       quantJson?: string,
+      weightsJson?: string,
     ) {
       try {
         if (!Array.isArray(news) || news.length === 0) {
@@ -371,6 +436,8 @@ export function createHandlers(deps: HandlerDeps = {}) {
           concurrency: concurrencyForProvider(brain.provider),
           // 缓存指纹含 brain+quick 两者：任一角色换模型即 miss，避免复用旧 sentiment/大师结果
           cacheFingerprint: `${brain.provider}:${brain.model}|${quick.provider}:${quick.model}`,
+          // 大师历史命中率摘要（前端算好经参数注入）；解析失败已在 parseWeights 静默降级
+          masterWeights: parseWeights(weightsJson),
         });
         out(successEnvelope(result));
       } catch (error) {
@@ -387,11 +454,11 @@ export function createHandlers(deps: HandlerDeps = {}) {
           out(errorEnvelope('ERR_MISSING_PARAM', '未提供问题'));
           return;
         }
-        const { runChat, buildChatMessages } = await import('./chat');
+        const { runChat, buildChatMessages, extractCitations } = await import('./chat');
         const messages = buildChatMessages(payload, config.language);
         // 对话追问走 summarize 角色（基于已抓上下文的信息提炼，可用更便宜的模型）
         const { summarize } = config.roles;
-        const reply = await runChat(
+        const rawReply = await runChat(
           {
             provider: summarize.provider,
             apiKey: summarize.apiKey,
@@ -400,7 +467,9 @@ export function createHandlers(deps: HandlerDeps = {}) {
           },
           messages,
         );
-        out(successEnvelope({ reply }));
+        // 校验 + 静默降级：LLM 标错/越界的来源会被删除，只有真实上下文命中的才产生 citation
+        const { reply, citations } = extractCitations(rawReply, payload);
+        out(successEnvelope({ reply, citations }));
       } catch (error) {
         out(errorEnvelopeFromUnknown('ERR_CHAT', error));
       }

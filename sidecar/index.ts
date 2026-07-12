@@ -42,6 +42,7 @@ interface ParsedArgs {
   actionParam?: string;
   newsJson?: string;
   quantJson?: string;
+  weightsJson?: string;
 }
 
 /** 命令定义表：flag → 参数提取逻辑 */
@@ -100,13 +101,29 @@ const COMMAND_TABLE: CommandDef[] = [
     extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
   },
   {
-    // --deep-analysis config_json symbol news_path [quant_json]
+    // --fundamentals-history symbol [periods]（无 config；periods 复用 newsJson 通用槽位）
+    flag: '--fundamentals-history',
+    extract: (args, idx) => ({
+      configStr: '{}',
+      actionParam: args[idx + 1],
+      newsJson: args[idx + 2],
+    }),
+  },
+  {
+    // --market-snapshot（无 config、无参数；全市场快照，筛选在下游 #14）
+    flag: '--market-snapshot',
+    extract: () => ({ configStr: '{}' }),
+  },
+  {
+    // --deep-analysis config_json symbol news_path quant_json weights_json
+    // 固定槽位：quant 缺省为 ""（tryParseQuant 视为未提供），weights 缺省为 "[]"，消除位置歧义
     flag: '--deep-analysis',
     extract: (args, idx) => ({
       configStr: args[idx + 1] || '{}',
       actionParam: args[idx + 2],
       newsJson: args[idx + 3],
       quantJson: args[idx + 4],
+      weightsJson: args[idx + 5],
     }),
   },
   {
@@ -175,7 +192,14 @@ async function run() {
   const { resolveConfig } = await import('./configResolver');
   const { Handlers } = await import('./cli-handlers');
 
-  const { action, configStr: rawConfigStr, actionParam, newsJson, quantJson } = parseArgs(args);
+  const {
+    action,
+    configStr: rawConfigStr,
+    actionParam,
+    newsJson,
+    quantJson,
+    weightsJson,
+  } = parseArgs(args);
   const configStr = await resolveConfigStr(rawConfigStr);
 
   logger.info(
@@ -246,6 +270,13 @@ async function run() {
     case '--backtest':
       await Handlers.handleBacktest(actionParam || '');
       break;
+    case '--fundamentals-history':
+      // newsJson 复用为 periods 字符串槽位（可选，缺省默认 12 期）
+      await Handlers.handleFinancialHistory(actionParam || '', newsJson);
+      break;
+    case '--market-snapshot':
+      await Handlers.handleMarketSnapshot();
+      break;
     case '--deep-analysis':
       try {
         const config = resolveConfig(rawConfig);
@@ -262,7 +293,7 @@ async function run() {
           );
           return;
         }
-        await Handlers.handleDeepAnalysis(actionParam || '', news, config, quantJson);
+        await Handlers.handleDeepAnalysis(actionParam || '', news, config, quantJson, weightsJson);
       } catch (error) {
         outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
       }

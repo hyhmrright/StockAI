@@ -177,6 +177,24 @@ impl SidecarManager {
         Self::run(app_handle, vec!["--quant".to_string(), symbol]).await
     }
 
+    // 历史财务时序：payload 小，走 argv 即可（无 config、无临时文件）。periods 缺省时不传，Sidecar 默认 12 期。
+    async fn fetch_financial_history(
+        app_handle: &tauri::AppHandle,
+        symbol: String,
+        periods: Option<u32>,
+    ) -> Result<String, String> {
+        let mut args = vec!["--fundamentals-history".to_string(), symbol];
+        if let Some(p) = periods {
+            args.push(p.to_string());
+        }
+        Self::run(app_handle, args).await
+    }
+
+    // 全市场基本面快照：无参数（筛选在下游 #14）
+    async fn fetch_market_snapshot(app_handle: &tauri::AppHandle) -> Result<String, String> {
+        Self::run(app_handle, vec!["--market-snapshot".to_string()]).await
+    }
+
     async fn fetch_market_bundle(
         app_handle: &tauri::AppHandle,
         symbol: String,
@@ -255,15 +273,23 @@ impl SidecarManager {
         news: serde_json::Value,
         config: serde_json::Value,
         quant: Option<String>,
+        weights: Option<String>,
     ) -> Result<String, String> {
         let config_guard = Self::write_temp_config(&config)?;
         let config_arg = format!("@{}", config_guard.path().to_string_lossy());
         let news_guard = Self::write_temp_news(&news)?;
         let news_arg = news_guard.path().to_string_lossy().into_owned();
-        let mut args = vec!["--deep-analysis".to_string(), config_arg, symbol, news_arg];
-        if let Some(q) = quant {
-            args.push(q);
-        }
+        // 固定槽位消除位置歧义：quant 缺省填 ""（sidecar 视为未提供、自行拉取），
+        // weights 缺省填 "[]"（空摘要 → 聚合层按默认权重）。weights 仅含 masterId+两个整数、
+        // 无 API key/PII，可安全内联 argv，无需像 config/news 那样走 0o600 临时文件。
+        let args = vec![
+            "--deep-analysis".to_string(),
+            config_arg,
+            symbol,
+            news_arg,
+            quant.unwrap_or_default(),
+            weights.unwrap_or_else(|| "[]".to_string()),
+        ];
         Self::run(app_handle, args).await
     }
 
@@ -421,6 +447,7 @@ async fn deep_analyze(
     symbol: String,
     news: serde_json::Value,
     quant: Option<String>,
+    weights: Option<String>,
 ) -> Result<String, String> {
     let store = app_handle
         .store("settings.json")
@@ -431,7 +458,7 @@ async fn deep_analyze(
         .filter(|v| !v.is_null())
         .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
 
-    SidecarManager::deep_analyze(&app_handle, symbol, news, settings_val, quant).await
+    SidecarManager::deep_analyze(&app_handle, symbol, news, settings_val, quant, weights).await
 }
 
 /**
@@ -467,6 +494,26 @@ async fn run_backtest(app_handle: tauri::AppHandle, symbol: String) -> Result<St
     SidecarManager::run(&app_handle, vec!["--backtest".to_string(), symbol]).await
 }
 
+/**
+ * 拉取历史财务时序（近 N 期 F10 主要财务指标）
+ */
+#[tauri::command]
+async fn fetch_financial_history(
+    app_handle: tauri::AppHandle,
+    symbol: String,
+    periods: Option<u32>,
+) -> Result<String, String> {
+    SidecarManager::fetch_financial_history(&app_handle, symbol, periods).await
+}
+
+/**
+ * 拉取全市场基本面快照（横截面粗筛用）
+ */
+#[tauri::command]
+async fn fetch_market_snapshot(app_handle: tauri::AppHandle) -> Result<String, String> {
+    SidecarManager::fetch_market_snapshot(&app_handle).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -487,6 +534,7 @@ mod tests {
         let cfg = ModelListConfig {
             provider: "openai".to_string(),
             base_url: "https://api.openai.com/v1".to_string(),
+            api_key: "test-key".to_string(),
         };
         let json = serde_json::to_string(&cfg).unwrap();
         assert!(
@@ -605,7 +653,9 @@ pub fn run() {
             fetch_kline,
             fetch_realtime_quote,
             fetch_quant_bundle,
-            run_backtest
+            run_backtest,
+            fetch_financial_history,
+            fetch_market_snapshot
         ])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");

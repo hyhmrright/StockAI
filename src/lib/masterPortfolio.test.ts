@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { computeMasterPortfolio } from './masterPortfolio';
+import { describe, it, expect, vi } from 'vitest';
+import {
+  computeMasterPortfolio,
+  deriveMasterWeights,
+  loadMasterPortfolio,
+} from './masterPortfolio';
 import type { MasterSignalRecord } from '../../shared/types';
 
 // 测试构造助手：默认值齐全，按需覆写
@@ -109,5 +113,60 @@ describe('computeMasterPortfolio', () => {
     const signals = [sig({ id: 1, recordedAt: 5_000 }), sig({ id: 2, recordedAt: 1_500 })];
     const r = computeMasterPortfolio(signals, { AAPL: 110 }, 9_000);
     expect(r.firstSignalAt).toBe(1_500);
+  });
+});
+
+describe('deriveMasterWeights', () => {
+  it('过滤 hitRate===null（resolved===0 的大师），映射 resolved→sampleSize、hits→hits', () => {
+    const signals = [
+      sig({ id: 1, masterId: 'a', symbol: 'AAPL', signal: 'bullish', priceAt: 100 }), // 命中
+      sig({ id: 2, masterId: 'b', symbol: 'AAPL', signal: 'neutral', priceAt: 100 }), // 全待定 → hitRate null
+      sig({ id: 3, masterId: 'c', symbol: 'AAPL', signal: 'bullish', priceAt: 100 }), // 命中
+      sig({ id: 4, masterId: 'c', symbol: 'AAPL', signal: 'bearish', priceAt: 100 }), // 涨了 → 看跌未命中
+    ];
+    const data = computeMasterPortfolio(signals, { AAPL: 110 }, 3_000);
+    const weights = deriveMasterWeights(data);
+
+    // b 因 hitRate===null 被过滤，仅剩 a / c
+    expect(weights.map((w) => w.masterId).sort()).toEqual(['a', 'c']);
+    const a = weights.find((w) => w.masterId === 'a');
+    expect(a).toEqual({ masterId: 'a', sampleSize: 1, hits: 1 });
+    const c = weights.find((w) => w.masterId === 'c');
+    expect(c).toEqual({ masterId: 'c', sampleSize: 2, hits: 1 });
+    // 契约红线：不透传 hitRate（由 sidecar 自算）
+    expect(a).not.toHaveProperty('hitRate');
+  });
+
+  it('空组合（无信号）派生空数组', () => {
+    const data = computeMasterPortfolio([], {}, 1_000);
+    expect(deriveMasterWeights(data)).toEqual([]);
+  });
+
+  it('全部大师样本不足（无现价 → 全待定）时派生空数组', () => {
+    const signals = [sig({ masterId: 'a', priceAt: 100 })];
+    const data = computeMasterPortfolio(signals, {}, 1_000); // 无现价 → resolved=0 → hitRate null
+    expect(deriveMasterWeights(data)).toEqual([]);
+  });
+});
+
+describe('loadMasterPortfolio', () => {
+  it('去重并发回查现价并聚合，报价失败的 symbol 静默跳过', async () => {
+    const loadSignals = vi.fn(async () => [
+      sig({ id: 1, symbol: 'AAPL', priceAt: 100 }),
+      sig({ id: 2, symbol: 'AAPL', priceAt: 100 }), // 同 symbol 去重
+      sig({ id: 3, symbol: 'MSFT', priceAt: 200 }),
+    ]);
+    // AAPL 报价成功、MSFT 抛错 → MSFT 信号判「待定」
+    const loadPrice = vi.fn(async (sym: string) => {
+      if (sym === 'MSFT') throw new Error('quote failed');
+      return 110;
+    });
+
+    const data = await loadMasterPortfolio(loadSignals, loadPrice);
+
+    // AAPL 去重后只查一次现价
+    expect(loadPrice).toHaveBeenCalledTimes(2);
+    expect(data.totalSignals).toBe(3);
+    expect(data.resolvedSignals).toBe(2); // 两条 AAPL 已裁决；MSFT 待定
   });
 });

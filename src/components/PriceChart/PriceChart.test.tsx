@@ -1,6 +1,6 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { KlinePoint, RealtimeQuote } from '../../../shared/types';
+import type { KlinePoint, RealtimeQuote, PriceLevel, TradeRecord } from '../../../shared/types';
 
 // 完全 mock lightweight-charts：happy-dom 没有 canvas，无法真渲染图表；
 // 我们只关心 PriceChart 协调层（数据拉取 + 状态机 + 子组件 prop）的行为。
@@ -138,6 +138,34 @@ describe('PriceChart 协调层', () => {
       expect(fetchKline).toHaveBeenCalledWith(expect.objectContaining({ symbol: 'MSFT' }));
     });
     expect(vi.mocked(fetchKline).mock.calls.length).toBe(2);
+  });
+
+  it('传入 levels/backtestTrades/equityCurve 叠加时不抛错', async () => {
+    const klines = buildKline(30);
+    vi.mocked(fetchKline).mockResolvedValue(klines);
+    const levels: PriceLevel[] = [
+      { price: 95, type: 'support', source: 'boll_lower' },
+      { price: 130, type: 'resistance', source: 'boll_upper' },
+      { price: 150, type: 'target', source: 'valuation' },
+      { price: 88, type: 'stopLoss', source: 'atr' },
+    ];
+    const trades: TradeRecord[] = [
+      { type: 'buy', date: klines[2].time, price: 100, shares: 100, value: 10000, score: 70 },
+      { type: 'sell', date: klines[12].time, price: 110, shares: 100, value: 11000, score: 35 },
+    ];
+    const equityCurve = klines.map((k, i) => ({ time: k.time, value: 100000 + i * 100 }));
+
+    await act(async () => {
+      render(
+        <PriceChart
+          symbol="AAPL"
+          levels={levels}
+          backtestTrades={trades}
+          equityCurve={equityCurve}
+        />,
+      );
+    });
+    await waitFor(() => expect(fetchKline).toHaveBeenCalled());
   });
 
   it('报价时间戳与最后一根 K 线非同一交易日时不合并', async () => {

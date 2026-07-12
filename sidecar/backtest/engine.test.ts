@@ -68,4 +68,45 @@ describe('runBacktest', () => {
     expect(result.totalTrades).toBe(0);
     expect(result.equityCurve.length).toBeGreaterThan(0);
   });
+
+  // 前端叠加层直接消费 trades（买卖箭头）与 equityCurve（净值曲线），锁定其结构契约
+  test('trades 与 equityCurve 结构契约（前端叠加层依赖）', () => {
+    const kline = generateTrendingKline(200, 100, 150);
+    const result = runBacktest(kline, {
+      symbol: 'TEST',
+      period: 200,
+      buyThreshold: 55,
+      sellThreshold: 45,
+      initialCapital: 100000,
+      transactionCost: 0.001,
+    });
+
+    // 强上涨行情至少触发一次买入（含末尾强制平仓）
+    expect(result.totalTrades).toBeGreaterThan(0);
+    expect(result.trades.length).toBe(result.totalTrades);
+
+    for (const t of result.trades) {
+      expect(['buy', 'sell']).toContain(t.type);
+      expect(Number.isFinite(t.date)).toBe(true); // 真实交易日 Unix 秒，供 marker 对齐
+      expect(Number.isFinite(t.price)).toBe(true);
+      expect(Number.isFinite(t.shares)).toBe(true);
+      expect(Number.isFinite(t.value)).toBe(true);
+      expect(Number.isFinite(t.score)).toBe(true);
+    }
+
+    // trades 按交易日升序（前端 setMarkers 要求时间升序）
+    for (let i = 1; i < result.trades.length; i++) {
+      expect(result.trades[i].date).toBeGreaterThanOrEqual(result.trades[i - 1].date);
+    }
+
+    // equityCurve 每点 {time, value} 均为有限值，且时间升序
+    expect(result.equityCurve.length).toBeGreaterThan(0);
+    for (const p of result.equityCurve) {
+      expect(Number.isFinite(p.time)).toBe(true);
+      expect(Number.isFinite(p.value)).toBe(true);
+    }
+    for (let i = 1; i < result.equityCurve.length; i++) {
+      expect(result.equityCurve[i].time).toBeGreaterThanOrEqual(result.equityCurve[i - 1].time);
+    }
+  });
 });

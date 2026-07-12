@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Send, Loader2, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
-import type { ChatMessage } from '../../shared/types';
+import type { ChatMessage, StockNews } from '../../shared/types';
 import { useLanguage } from '../hooks/useLanguage';
+import { renderChatContent } from './chat/CitationBadge';
 
 interface ChatPanelProps {
   messages: ChatMessage[];
   sending: boolean;
   error: string | null;
   disabled?: boolean; // 无新闻上下文时不可用
+  newsRef?: StockNews[]; // 供溯源角标 popover 补新闻原文链接/日期
   onAsk: (question: string) => void;
   onReset: () => void;
 }
@@ -19,6 +21,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   sending,
   error,
   disabled,
+  newsRef,
   onAsk,
   onReset,
 }) => {
@@ -64,7 +67,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 m.role === 'user' ? 'bg-blue-600/80 text-white' : 'bg-gray-700/60 text-gray-200',
               )}
             >
-              {m.content}
+              {m.role === 'assistant'
+                ? renderChatContent(m.content, m.citations, newsRef)
+                : m.content}
             </div>
           </div>
         ))}

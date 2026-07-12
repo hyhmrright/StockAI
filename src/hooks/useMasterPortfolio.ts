@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { MasterSignalRecord, MasterPortfolioData } from '../../shared/types';
+import type { MasterPortfolioData } from '../../shared/types';
 import { getAllMasterSignals } from '../lib/db';
 import { fetchRealtimeQuote } from '../lib/ipc';
-import { computeMasterPortfolio } from '../lib/masterPortfolio';
+import {
+  loadMasterPortfolio,
+  type PriceFetcher,
+  type SignalsFetcher,
+} from '../lib/masterPortfolio';
 
 export type MasterPortfolioStep = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -12,9 +16,6 @@ export interface UseMasterPortfolioResult {
   error: string | null;
   refetch: () => void;
 }
-
-type SignalsFetcher = () => Promise<MasterSignalRecord[]>;
-type PriceFetcher = (symbol: string) => Promise<number>;
 
 const defaultPriceFetcher: PriceFetcher = async (symbol) =>
   (await fetchRealtimeQuote(symbol)).price;
@@ -44,18 +45,7 @@ export function useMasterPortfolio(
     setStep('loading');
     setError(null);
 
-    (async () => {
-      const signals = await fns.current.loadSignals();
-      // 按 symbol 去重并发回查现价，失败者跳过
-      const symbols = [...new Set(signals.map((s) => s.symbol))];
-      const quotes = await Promise.allSettled(symbols.map((sym) => fns.current.loadPrice(sym)));
-      const priceMap: Record<string, number> = {};
-      symbols.forEach((sym, i) => {
-        const q = quotes[i];
-        if (q.status === 'fulfilled' && Number.isFinite(q.value)) priceMap[sym] = q.value;
-      });
-      return computeMasterPortfolio(signals, priceMap, Date.now());
-    })()
+    loadMasterPortfolio(fns.current.loadSignals, fns.current.loadPrice)
       .then((result) => {
         if (requestId !== latestRequestId.current) return;
         setData(result);

@@ -9,13 +9,16 @@ import { detectMarket } from '../../lib/market-hours';
 import { sma } from '../../lib/indicators';
 import { DEFAULT_CONFIG, rangeToPeriod, maPeriodsForMarket, type ChartConfig } from './types';
 import { useRealtimeQuote } from '../../hooks/useRealtimeQuote';
-import type { KlinePoint } from '../../../shared/types';
+import type { KlinePoint, PriceLevel, TradeRecord } from '../../../shared/types';
 
 interface Props {
   symbol: string;
+  levels?: PriceLevel[]; // AI 关键价位线（来自 quant）
+  backtestTrades?: TradeRecord[]; // 回测买卖点
+  equityCurve?: { time: number; value: number }[]; // 回测净值曲线
 }
 
-const PriceChart: React.FC<Props> = ({ symbol }) => {
+const PriceChart: React.FC<Props> = ({ symbol, levels, backtestTrades, equityCurve }) => {
   const [config, setConfig] = useState<ChartConfig>(DEFAULT_CONFIG);
   const [data, setData] = useState<KlinePoint[]>([]);
   const [compareData, setCompareData] = useState<KlinePoint[]>([]);
@@ -112,6 +115,9 @@ const PriceChart: React.FC<Props> = ({ symbol }) => {
           compareData={compareData}
           compareLabel={config.compareSymbol}
           onCrosshair={setCrosshair}
+          levels={levels}
+          backtestTrades={backtestTrades}
+          equityCurve={equityCurve}
         />
         <CrosshairTooltip
           point={crosshair}

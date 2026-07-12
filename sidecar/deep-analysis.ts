@@ -4,6 +4,7 @@ import type {
   DeepAnalysisResult,
   MasterSignal,
   Language,
+  MasterWeightInput,
 } from '../shared/types';
 import type { ChatProvider, MasterAgent, MasterAnalysisContext } from './agents/types';
 import { getSelectedMasters, DEFAULT_MASTER_IDS } from './agents/registry';
@@ -48,6 +49,8 @@ export interface DeepAnalysisOptions {
   cacheFingerprint?: string;
   /** 缓存存储选项（目录/TTL/上限）；测试可注入临时目录 */
   cache?: CacheOptions;
+  /** 各大师历史命中率摘要（前端算好经参数注入）；缺省 → 聚合层按默认权重，行为同今天 */
+  masterWeights?: MasterWeightInput[];
 }
 
 /**
@@ -96,6 +99,7 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
     concurrency = DEFAULT_CONCURRENCY,
     cacheFingerprint,
     cache,
+    masterWeights,
   } = opts;
 
   let masters = getSelectedMasters(selectedMasters);
@@ -131,7 +135,15 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
     analyzeSentiment(news, sentimentChat ?? chat, language),
   ]);
 
-  const result = await synthesize(masterResults, sentimentResult, quant, chat, language);
+  // 权重只微调聚合层，不纳入缓存 key（会随时间缓慢漂移，纳入则几乎不命中）——见蓝图 §4
+  const result = await synthesize(
+    masterResults,
+    sentimentResult,
+    quant,
+    chat,
+    language,
+    masterWeights,
+  );
   if (key) writeCache(key, result, cache);
   return result;
 }

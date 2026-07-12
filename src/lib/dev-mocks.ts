@@ -169,5 +169,21 @@ export const MOCK_BACKTEST: BacktestResult = {
 };
 
 export const MOCK_CHAT: ChatResponse = {
-  reply: '（开发模式 mock 回复）这是一条占位回答。启动 sidecar bridge 可获得真实 AI 回复。',
+  // 内含 [[cite:0]]/[[cite:1]] token，便于浏览器 dev 模式自测角标渲染
+  reply:
+    '（开发模式 mock 回复）近期基本面稳健[[cite:0]]，量化模型也给出偏多信号[[cite:1]]。启动 sidecar bridge 可获得真实 AI 回复。',
+  citations: [
+    {
+      index: 0,
+      sourceType: 'news',
+      sourceRef: 1,
+      snippet: '示例新闻标题：公司发布季度财报，营收超预期',
+    },
+    {
+      index: 1,
+      sourceType: 'quant',
+      sourceRef: 'summary',
+      snippet: '综合 72/100（看涨）',
+    },
+  ],
 };

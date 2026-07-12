@@ -22,6 +22,19 @@ export interface ChartTheme {
   prevCloseLine: string;
   /** 比较基准 series 颜色 */
   compareSeries: string;
+  /** AI 关键价位线配色（按 PriceLevel.type 索引） */
+  levelColors: {
+    support: string; // 支撑（BOLL 下轨）
+    resistance: string; // 阻力（BOLL 上轨）
+    target: string; // 目标价（估值安全边际）
+    stopLoss: string; // 止损（现价 −2×ATR）
+  };
+  /** 回测买入箭头（绿） */
+  buyMarker: string;
+  /** 回测卖出箭头（红） */
+  sellMarker: string;
+  /** 回测净值曲线（独立隐藏轴） */
+  equityLine: string;
   /** 副图 MACD/KDJ/RSI 等的固定通用色（与 MA_COLORS 互补） */
   series: {
     yellow: string; // KDJ K 线、MACD DIF
@@ -45,6 +58,15 @@ export const DARK_CHART_THEME: ChartTheme = {
   bollMid: 'rgba(255,255,255,0.6)',
   prevCloseLine: 'rgba(255,255,255,0.4)',
   compareSeries: '#FF6B9D',
+  levelColors: {
+    support: '#2DD4BF', // teal
+    resistance: '#FBBF24', // amber
+    target: '#B388FF', // violet
+    stopLoss: '#F87171', // red
+  },
+  buyMarker: '#22C55E', // green
+  sellMarker: '#EF4444', // red
+  equityLine: '#22D3EE', // cyan（与 MA 长线区分）
   series: {
     yellow: '#F5C842',
     purple: '#B388FF',

@@ -8,32 +8,49 @@ import {
 import type { FinancialMetrics } from './types';
 
 describe('parseEastmoneyFinancials', () => {
-  test('从东方财富 API 响应中提取财务指标', () => {
+  test('从东方财富 API 响应中提取财务指标（真实 result.data 形态 + 新字段名）', () => {
+    // 实测形态：数据在 result.data，字段名为 ROEJQ/LD/TOTALOPERATEREVETZ 等
     const response = {
-      data: [
-        {
-          WEIGHTAVG_ROE: 18.5,
-          XSJLL: 32.0,
-          XSMLL: 45.0,
-          ZCFZL: 42.3,
-          LD_RATIO: 1.8,
-          YYZSRTBZZ: 15.2,
-          GSJLRTBZZ: 12.8,
-        },
-      ],
+      result: {
+        data: [
+          {
+            ROEJQ: 18.5,
+            XSJLL: 32.0,
+            XSMLL: 45.0,
+            ZCFZL: 42.3,
+            LD: 1.8,
+            TOTALOPERATEREVETZ: 15.2,
+            PARENTNETPROFITTZ: 12.8,
+            MGJYXJJE: 3.5,
+          },
+        ],
+      },
+      success: true,
     };
     const metrics = parseEastmoneyFinancials(response);
     expect(metrics.roe).toBeCloseTo(18.5, 1);
     expect(metrics.grossMargin).toBeCloseTo(45.0, 1);
     expect(metrics.netMargin).toBeCloseTo(32.0, 1);
     expect(metrics.debtToAsset).toBeCloseTo(42.3, 1);
+    expect(metrics.currentRatio).toBeCloseTo(1.8, 1);
     expect(metrics.revenueGrowth).toBeCloseTo(15.2, 1);
     expect(metrics.netIncomeGrowth).toBeCloseTo(12.8, 1);
+    expect(metrics.operatingCashFlow).toBeCloseTo(3.5, 1);
   });
 
   test('数据为空时返回空对象', () => {
-    const metrics = parseEastmoneyFinancials({ data: [] });
+    const metrics = parseEastmoneyFinancials({ result: { data: [] } });
     expect(metrics.roe).toBeUndefined();
+  });
+
+  test('端点返回 success:false（字段名失效）时返回空对象', () => {
+    // 复现历史 bug：旧字段名现返回 success:false，须显式降级为空而非崩溃
+    const metrics = parseEastmoneyFinancials({
+      result: null,
+      success: false,
+      message: 'WEIGHTAVG_ROE返回字段不存在',
+    });
+    expect(metrics).toEqual({});
   });
 });
 
@@ -187,17 +204,20 @@ describe('fetchFundamentals', () => {
       calledUrl = String(url);
       return new Response(
         JSON.stringify({
-          data: [
-            {
-              WEIGHTAVG_ROE: 15,
-              XSJLL: 20,
-              XSMLL: 35,
-              ZCFZL: 40,
-              LD_RATIO: 1.5,
-              YYZSRTBZZ: 10,
-              GSJLRTBZZ: 8,
-            },
-          ],
+          success: true,
+          result: {
+            data: [
+              {
+                ROEJQ: 15,
+                XSJLL: 20,
+                XSMLL: 35,
+                ZCFZL: 40,
+                LD: 1.5,
+                TOTALOPERATEREVETZ: 10,
+                PARENTNETPROFITTZ: 8,
+              },
+            ],
+          },
         }),
       );
     }) as typeof fetch;

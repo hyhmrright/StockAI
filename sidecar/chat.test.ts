@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { buildChatMessages, runChat } from './chat';
+import { buildChatMessages, runChat, extractCitations } from './chat';
 import type { ChatPayload } from '../shared/types';
 
 function makePayload(over: Partial<ChatPayload> = {}): ChatPayload {
@@ -68,5 +68,167 @@ describe('runChat', () => {
       { complete: async (msgs) => `echo:${msgs[msgs.length - 1].content}` },
     );
     expect(reply).toBe('echo:hi');
+  });
+});
+
+describe('buildChatMessages · 溯源标注指令', () => {
+  test('system 追加 [src:...] 标注规则且不破坏既有断言', () => {
+    const sys = buildChatMessages(makePayload({ context: { newsTitles: ['财报超预期'] } }))[0]
+      .content;
+    // 既有断言不受影响
+    expect(sys).toContain('AAPL');
+    expect(sys).toContain('财报超预期');
+    // 新增标注指令（marker token 原样出现，供 LLM 学习）
+    expect(sys).toContain('[src:news:N]');
+    expect(sys).toContain('[src:quant]');
+    expect(sys).toContain('[src:analysis]');
+  });
+
+  test('三语指令均含 marker token，ja 无西里尔字母混入', () => {
+    for (const lang of ['zh', 'en', 'ja'] as const) {
+      const sys = buildChatMessages(makePayload(), lang)[0].content;
+      expect(sys).toContain('[src:news:N]');
+    }
+    const ja = buildChatMessages(makePayload(), 'ja')[0].content;
+    expect(/[Ѐ-ӿ]/.test(ja)).toBe(false);
+  });
+});
+
+describe('extractCitations', () => {
+  const ctx = {
+    newsTitles: ['苹果财报超预期', '供应链传闻', '分析师上调目标价'],
+    quantSummary: '综合 72/100，技术面看涨',
+    analysisSummary: '整体偏多，估值合理',
+  };
+
+  test('合法 news 序号 → 1 条 citation + [[cite:0]]，snippet 取真实标题', () => {
+    const { reply, citations } = extractCitations(
+      '财报表现亮眼[src:news:1]。',
+      makePayload({ context: ctx }),
+    );
+    expect(reply).toBe('财报表现亮眼[[cite:0]]。');
+    expect(citations).toHaveLength(1);
+    expect(citations[0]).toEqual({
+      index: 0,
+      sourceType: 'news',
+      sourceRef: 1,
+      snippet: '苹果财报超预期',
+    });
+  });
+
+  test('越界 news:99（仅 3 条）→ 标记删除、无 citation、正文完整', () => {
+    const { reply, citations } = extractCitations(
+      '有个说法[src:news:99]值得注意。',
+      makePayload({ context: ctx }),
+    );
+    expect(reply).toBe('有个说法值得注意。');
+    expect(citations).toHaveLength(0);
+    expect(reply).not.toContain('src:');
+    expect(reply).not.toContain('cite:');
+  });
+
+  test('news:0 也算越界（1-based）→ 删除', () => {
+    const { reply, citations } = extractCitations('x[src:news:0]y', makePayload({ context: ctx }));
+    expect(reply).toBe('xy');
+    expect(citations).toHaveLength(0);
+  });
+
+  test('quant 有上下文 → 生成 citation；无上下文 → 静默删除', () => {
+    const withQuant = extractCitations('评分不错[src:quant]。', makePayload({ context: ctx }));
+    expect(withQuant.citations).toHaveLength(1);
+    expect(withQuant.citations[0]).toEqual({
+      index: 0,
+      sourceType: 'quant',
+      sourceRef: 'summary',
+      snippet: '综合 72/100，技术面看涨',
+    });
+    expect(withQuant.reply).toBe('评分不错[[cite:0]]。');
+
+    const noQuant = extractCitations(
+      '评分不错[src:quant]。',
+      makePayload({ context: { newsTitles: ['x'] } }),
+    );
+    expect(noQuant.citations).toHaveLength(0);
+    expect(noQuant.reply).toBe('评分不错。');
+  });
+
+  test('analysis 有上下文 → 生成 citation；无上下文 → 静默删除', () => {
+    const withA = extractCitations('结论一致[src:analysis]。', makePayload({ context: ctx }));
+    expect(withA.citations).toHaveLength(1);
+    expect(withA.citations[0].sourceType).toBe('analysis');
+    expect(withA.citations[0].snippet).toBe('整体偏多，估值合理');
+
+    const noA = extractCitations('结论一致[src:analysis]。', makePayload({ context: {} }));
+    expect(noA.citations).toHaveLength(0);
+    expect(noA.reply).toBe('结论一致。');
+  });
+
+  test('同一来源多次引用 → 去重复用同一 index', () => {
+    const { reply, citations } = extractCitations(
+      '先看这条[src:news:2]，再回到这条[src:news:2]。',
+      makePayload({ context: ctx }),
+    );
+    expect(citations).toHaveLength(1);
+    expect(citations[0].sourceRef).toBe(2);
+    expect(reply).toBe('先看这条[[cite:0]]，再回到这条[[cite:0]]。');
+  });
+
+  test('多条不同来源 → index 递增，[[cite:N]] 与数组下标一致', () => {
+    const { reply, citations } = extractCitations(
+      '新闻[src:news:1]，量化[src:quant]，另一条新闻[src:news:3]。',
+      makePayload({ context: ctx }),
+    );
+    expect(citations.map((c) => c.index)).toEqual([0, 1, 2]);
+    expect(citations.map((c) => c.sourceType)).toEqual(['news', 'quant', 'news']);
+    expect(reply).toBe('新闻[[cite:0]]，量化[[cite:1]]，另一条新闻[[cite:2]]。');
+  });
+
+  test('malformed [src:xxx] → 兜底清除且正文完整、无 citation', () => {
+    const { reply, citations } = extractCitations(
+      '一段话[src:foobar]，还有[src:news:]不完整，以及[src:]空。',
+      makePayload({ context: ctx }),
+    );
+    expect(citations).toHaveLength(0);
+    expect(reply).toBe('一段话，还有不完整，以及空。');
+    expect(reply).not.toContain('src:');
+  });
+
+  test('无标记 → citations 空、reply 原样不变', () => {
+    const original = '这是一段没有任何来源标记的普通回答。';
+    const { reply, citations } = extractCitations(original, makePayload({ context: ctx }));
+    expect(reply).toBe(original);
+    expect(citations).toHaveLength(0);
+  });
+
+  test('空 reply / 空 context 均安全返回，不抛异常', () => {
+    expect(extractCitations('', makePayload())).toEqual({ reply: '', citations: [] });
+    // @ts-expect-error 模拟 provider 返回 undefined
+    expect(extractCitations(undefined, makePayload())).toEqual({ reply: '', citations: [] });
+    const emptyCtx = extractCitations('引用[src:news:1]。', makePayload({ context: {} }));
+    expect(emptyCtx.reply).toBe('引用。');
+    expect(emptyCtx.citations).toHaveLength(0);
+  });
+
+  test('多语言正文（中/英/日）标记解析一致', () => {
+    const cases = [
+      { text: '中文引用[src:news:1]结尾', head: '中文引用', tail: '结尾' },
+      { text: 'English cite[src:news:1] here', head: 'English cite', tail: ' here' },
+      { text: '日本語の引用[src:news:1]です', head: '日本語の引用', tail: 'です' },
+    ];
+    for (const c of cases) {
+      const { reply, citations } = extractCitations(c.text, makePayload({ context: ctx }));
+      expect(reply).toBe(`${c.head}[[cite:0]]${c.tail}`);
+      expect(citations).toHaveLength(1);
+      expect(citations[0].snippet).toBe('苹果财报超预期');
+    }
+  });
+
+  test('大小写不敏感的 marker（[SRC:NEWS:1] / [src:QUANT]）也能解析', () => {
+    const { reply, citations } = extractCitations(
+      'A[SRC:NEWS:1]B[src:QUANT]C',
+      makePayload({ context: ctx }),
+    );
+    expect(citations.map((c) => c.sourceType)).toEqual(['news', 'quant']);
+    expect(reply).toBe('A[[cite:0]]B[[cite:1]]C');
   });
 });

@@ -6,6 +6,7 @@ import { fetchFundamentals, scoreFundamentals } from './fundamental';
 import { computeComposite } from './scoring';
 import { computeValuation } from './valuation';
 import { computeRiskMetrics } from './volatility';
+import { deriveLevels } from './levels';
 import { fetchFundFlow } from './fundflow';
 import { detectMarket } from '../../shared/market';
 import { logger, toErrorMessage } from '../utils';
@@ -63,6 +64,10 @@ export async function fetchQuantBundle(symbol: string, deps: QuantDeps = {}): Pr
     riskResult,
   );
 
+  // 关键价位：现价基准取实时报价，退回 K 线最后一根收盘
+  const lastClose = quote?.price ?? kline[kline.length - 1]?.close ?? Number.NaN;
+  const levels = deriveLevels(technicalResult.subSignals, valuationResult, lastClose);
+
   return {
     symbol,
     technical: technicalResult.composite,
@@ -72,5 +77,6 @@ export async function fetchQuantBundle(symbol: string, deps: QuantDeps = {}): Pr
     valuation: valuationResult ?? undefined,
     risk: riskResult ?? undefined,
     fundFlow: fundFlow ?? undefined,
+    levels,
   };
 }

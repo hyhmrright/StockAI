@@ -2,22 +2,35 @@ import type { FinancialMetrics, FundamentalResult, SubSignal } from './types';
 import type { CheckItem } from '../../shared/types';
 import { logger, toErrorMessage } from '../utils';
 
-export function parseEastmoneyFinancials(json: {
-  data?: Record<string, number>[];
-}): FinancialMetrics {
-  const row = json?.data?.[0];
+/**
+ * 东财 datacenter F10 响应形态：数据在 result.data，非顶层 data。
+ * 字段名失效/参数错误时返回 { success:false, result:null, code:9501 }。
+ */
+interface EastmoneyF10Response {
+  result?: { data?: Record<string, number>[] } | null;
+  success?: boolean;
+  message?: string;
+}
+
+export function parseEastmoneyFinancials(json: EastmoneyF10Response): FinancialMetrics {
+  // 端点在字段名失效时返回 success:false（历史 bug：旧字段名被静默吞成空数据），显式告警到 stderr
+  if (json?.success === false) {
+    logger.warn(`东财 F10 返回失败: ${json.message ?? '未知原因'}`);
+    return {};
+  }
+  const row = json?.result?.data?.[0];
   if (!row) return {};
   return {
-    roe: row.WEIGHTAVG_ROE ?? undefined,
+    roe: row.ROEJQ ?? undefined,
     grossMargin: row.XSMLL ?? undefined,
     netMargin: row.XSJLL ?? undefined,
     debtToAsset: row.ZCFZL ?? undefined,
-    currentRatio: row.LD_RATIO ?? undefined,
-    revenueGrowth: row.YYZSRTBZZ ?? undefined,
-    netIncomeGrowth: row.GSJLRTBZZ ?? undefined,
-    // 注意：MGJYXJL 为每股经营现金流（元/股），与 Yahoo 的绝对值字段单位不同；
+    currentRatio: row.LD ?? undefined,
+    revenueGrowth: row.TOTALOPERATEREVETZ ?? undefined,
+    netIncomeGrowth: row.PARENTNETPROFITTZ ?? undefined,
+    // 注意：MGJYXJJE 为每股经营现金流（元/股），与 Yahoo 的绝对值字段单位不同；
     // 估值模型使用前须结合 sharesOutstanding 换算，或仅作定性参考。
-    operatingCashFlow: row.MGJYXJL ?? undefined,
+    operatingCashFlow: row.MGJYXJJE ?? undefined,
   };
 }
 
@@ -140,7 +153,7 @@ export async function fetchFundamentals(
 async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetrics> {
   const cleaned = code.replace(/\D/g, '');
   if (!/^\d{6}$/.test(cleaned)) throw new Error(`无效的 A 股代码: ${code}`);
-  const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=WEIGHTAVG_ROE,XSJLL,XSMLL,ZCFZL,LD_RATIO,YYZSRTBZZ,GSJLRTBZZ,MGJYXJL&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
+  const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=ROEJQ,XSJLL,XSMLL,ZCFZL,LD,TOTALOPERATEREVETZ,PARENTNETPROFITTZ,MGJYXJJE&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
 
   const resp = await fetch(url, {
     headers: { Referer: 'https://emweb.securities.eastmoney.com' },

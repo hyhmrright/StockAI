@@ -68,10 +68,27 @@ export interface StockNews {
   url: string; // 新闻原文链接
 }
 
+/** 溯源角标的来源类型 */
+export type CitationSourceType = 'news' | 'quant' | 'analysis';
+
+/**
+ * AI 回答里的一条溯源角标（sidecar 校验通过后才产生）。
+ * 关键红线：错误来源比无来源更糟——每条 citation 的 snippet 都由 sidecar 从「本次真实传入的 context」取值，
+ * 不信任 LLM 声称的内容；校验不过的标记被静默删除，不会产生 citation。
+ */
+export interface ChatCitation {
+  index: number; // 与 reply 中 [[cite:index]] token 对应，即 citations 数组下标
+  sourceType: CitationSourceType;
+  sourceRef: number | string; // news→1-based 序号；quant/analysis→'summary' 哨兵
+  snippet: string; // 被引用的原文片段（新闻标题 / 量化摘要 / 分析结论），取自本次 context
+  label?: string; // 可选：角标本地化标题；实际由前端按 useLanguage() 派生，sidecar 不生成
+}
+
 /** 对话式追问的单条历史消息（不含 system，system 由 sidecar 按上下文构建） */
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  citations?: ChatCitation[]; // 仅 assistant 消息可能携带，随多轮历史持久化
 }
 
 /** 对话式追问上下文：精简自当前股票的新闻/量化/已有分析，避免重复抓取与超长 payload */
@@ -91,7 +108,8 @@ export interface ChatPayload {
 
 /** 对话式追问响应 */
 export interface ChatResponse {
-  reply: string;
+  reply: string; // 已清洗：[src:...] 均被删除或改写为 [[cite:N]]
+  citations?: ChatCitation[]; // 校验通过的溯源角标，可能为空数组
 }
 
 /**
@@ -326,6 +344,16 @@ export interface FundFlowData {
   mainNetPct: number;
 }
 
+/** AI 关键价位（叠加到 K 线的水平线）。数值均由 quant 维度已算出的中间量推导，非新造计算 */
+export interface PriceLevel {
+  /** 价格（每股，与 K 线同坐标） */
+  price: number;
+  /** 类型：驱动颜色 + 基础标签（支撑/阻力/目标价/止损） */
+  type: 'support' | 'resistance' | 'target' | 'stopLoss';
+  /** 推导来源稳定标识（'boll_lower'|'boll_upper'|'valuation'|'atr'），前端据此补充括注标签 */
+  source: string;
+}
+
 /** 量化分析数据包（技术面 + 基本面 + 估值 + 风险，不含情绪——情绪由 LLM 综合研判） */
 export interface QuantBundle {
   symbol: string;
@@ -342,6 +370,62 @@ export interface QuantBundle {
   risk?: RiskSnapshot;
   /** 资金流向（仅 A 股） */
   fundFlow?: FundFlowData;
+  /** AI 关键价位（数据不足时为空数组，前端 guard 不画） */
+  levels?: PriceLevel[];
+}
+
+/**
+ * 一期财报快照（东财 F10 RPT_F10_FINANCE_MAINFINADATA 的一行）。
+ * 与 FinancialMetrics 重叠的字段（roe/grossMargin/netMargin/debtToAsset/currentRatio/
+ * revenueGrowth/netIncomeGrowth/revenue/netIncome）语义与单位一致，另加时序专属的
+ * reportDate/reportType/eps/bps。所有指标可能缺失（东财按报告期披露不齐），故全部可选。
+ */
+export interface FinancialSnapshot {
+  reportDate: string; // YYYY-MM-DD 报告期（REPORT_DATE，已从 "YYYY-MM-DD 00:00:00" 裁剪）
+  reportType: string; // '年报'|'一季报'|'中报'|'三季报'（REPORT_TYPE）
+  roe?: number; // ROEJQ 加权 ROE(%)
+  grossMargin?: number; // XSMLL 销售毛利率(%)
+  netMargin?: number; // XSJLL 销售净利率(%)
+  debtToAsset?: number; // ZCFZL 资产负债率(%)
+  currentRatio?: number; // LD 流动比率
+  revenueGrowth?: number; // TOTALOPERATEREVETZ 营收同比(%)
+  netIncomeGrowth?: number; // PARENTNETPROFITTZ 归母净利同比(%)
+  revenue?: number; // TOTALOPERATEREVE 营收绝对值(元)
+  netIncome?: number; // PARENTNETPROFIT 归母净利绝对值(元)
+  eps?: number; // EPSJB 基本每股收益(元)
+  bps?: number; // BPS 每股净资产(元)——配合 K 线收盘可推历史 PB
+  operatingCashFlowPerShare?: number; // MGJYXJJE 每股经营现金流(元/股)
+}
+
+/** 历史财务时序（按需从东财逐期拉取，24h 磁盘缓存；初版仅 A 股） */
+export interface FinancialHistory {
+  symbol: string; // 原始输入代码
+  market: Market; // 初版恒为 'A股'；美股历史留待后续扩展
+  snapshots: FinancialSnapshot[]; // 按 reportDate 降序，最新在前
+  fetchedAt: number; // 拉取时刻（Unix 毫秒）
+}
+
+/**
+ * 全市场横截面一行（东财 push2 clist 的一条）。
+ * clist 仅可靠携带估值+行情字段；ROE/负债率/增速等深层财报字段留空，由候选精拉
+ * （--quant / --fundamentals-history）补齐（两阶段筛选，见蓝图 §3）。
+ */
+export interface MarketSnapshotEntry {
+  symbol: string; // 6 位代码（f12）
+  name: string; // f14
+  price?: number; // f2 最新价
+  changePercent?: number; // f3 涨跌幅(%)
+  pe?: number; // f9 动态市盈率
+  pb?: number; // f23 市净率
+  marketCap?: number; // f20 总市值(元)
+  turnoverRate?: number; // f8 换手率(%)
+}
+
+/** 全市场基本面快照（分页串行拉 clist 聚合，24h 磁盘缓存） */
+export interface MarketSnapshot {
+  entries: MarketSnapshotEntry[];
+  fetchedAt: number; // 拉取时刻（Unix 毫秒）
+  total: number; // 东财声明的全市场标的总数（用于校验分页是否拉全）
 }
 
 /** 投资大师元信息 */
@@ -360,6 +444,16 @@ export interface MasterSignal {
   signal: 'bullish' | 'bearish' | 'neutral';
   confidence: number;
   reasoning: string;
+}
+
+/**
+ * 大师动态权重输入：前端从虚拟组合榜单（命中判定的单一真源）算好后经参数注入 sidecar。
+ * 跨层契约——sidecar 直接消费，hitRate = hits/sampleSize 由 sidecar 需要时自算。
+ */
+export interface MasterWeightInput {
+  masterId: string;
+  sampleSize: number; // 已裁决方向 signal 数（映射自 MasterLeaderboardEntry.resolved）
+  hits: number; // 方向兑现次数
 }
 
 /** 情绪分析信号 */

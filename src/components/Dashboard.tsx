@@ -6,6 +6,7 @@ import { useStockData } from '../hooks/useStockData';
 import { useAIAnalysis } from '../hooks/useAIAnalysis';
 import { useQuantData } from '../hooks/useQuantData';
 import { useDeepAnalysis } from '../hooks/useDeepAnalysis';
+import { useMasterWeights } from '../hooks/useMasterWeights';
 import { useChat } from '../hooks/useChat';
 import { useSettings, PROVIDER_PROFILES } from '../hooks/useSettings';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
@@ -15,7 +16,7 @@ import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import AnalysisPanel from './AnalysisPanel';
 import ChatPanel from './ChatPanel';
-import type { ChatContext } from '../../shared/types';
+import type { ChatContext, BacktestResult } from '../../shared/types';
 
 /**
  * Dashboard 组件实现了主仪表盘布局
@@ -29,6 +30,8 @@ const Dashboard: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentSymbol, setCurrentSymbol] = useState(DEFAULT_WATCHLIST[0].sym);
   const [autoFlowSymbol, setAutoFlowSymbol] = useState<string | null>(null);
+  // 回测结果提升到此：BacktestPanel（右列）跑出，PriceChart（中列）叠加买卖点/净值曲线共用
+  const [backtest, setBacktest] = useState<BacktestResult | null>(null);
 
   const { step, stockInfo, news, error: dataError } = useStockData(currentSymbol);
   const { record, analyzing, error: aiError, analyze } = useAIAnalysis(currentSymbol);
@@ -49,6 +52,10 @@ const Dashboard: React.FC = () => {
     error: deepError,
     analyze: analyzeDeep,
   } = useDeepAnalysis(currentSymbol, deepFingerprint);
+
+  // 大师动态权重快照（全局 · best-effort）：命中率好的大师在深度分析综合层获更大话语权。
+  // 没算好/空历史时为 []，退化默认权重 1.0，绝不阻塞分析。
+  const { weights: masterWeights, refetch: refetchMasterWeights } = useMasterWeights();
 
   // 追问上下文：从已抓新闻/量化/已有分析精简，作为对话事实底座（不重复抓取）
   const chatContext = useMemo<ChatContext>(
@@ -78,6 +85,17 @@ const Dashboard: React.FC = () => {
     setAutoFlowSymbol(currentSymbol);
     analyze(news, quant ?? undefined);
   }, [step, news, currentSymbol, settings.autoAnalyze, autoFlowSymbol, analyze, quant, quantStep]);
+
+  // 切换 symbol 时清空回测结果，避免旧标的的买卖点/净值曲线残留在新标的图上
+  useEffect(() => {
+    setBacktest(null);
+  }, [currentSymbol]);
+
+  // 新深度分析落账（usePersistAnalysisResults 会落账各大师 signal）后刷新权重快照，供下次分析用；
+  // best-effort，落账为 fire-and-forget，快照最终一致即可，无需与写库严格同步
+  useEffect(() => {
+    if (deepAnalysis) refetchMasterWeights();
+  }, [deepAnalysis, refetchMasterWeights]);
 
   // 分析结果自动持久化（AI/深度/量化存历史 + 落账大师 signal），逻辑抽至 hook 以收敛组件行数
   usePersistAnalysisResults({
@@ -137,7 +155,12 @@ const Dashboard: React.FC = () => {
             )}
           </div>
 
-          <PriceChart symbol={currentSymbol} />
+          <PriceChart
+            symbol={currentSymbol}
+            levels={quant?.levels}
+            backtestTrades={backtest?.trades}
+            equityCurve={backtest?.equityCurve}
+          />
 
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="p-6 bg-panel rounded-2xl border border-white/10 shadow-lg">
@@ -206,14 +229,17 @@ const Dashboard: React.FC = () => {
           deepAnalysis={deepAnalysis}
           deepAnalyzing={deepAnalyzing}
           deepError={deepError}
-          onDeepAnalyze={() => analyzeDeep(news, quant ?? undefined)}
+          onDeepAnalyze={() => analyzeDeep(news, quant ?? undefined, masterWeights)}
           masterAnalysisEnabled={settings.masterAnalysis}
+          backtest={backtest}
+          onBacktestResult={setBacktest}
           chatSlot={
             <ChatPanel
               messages={chatMessages}
               sending={chatSending}
               error={chatError}
               disabled={news.length === 0}
+              newsRef={news}
               onAsk={chatAsk}
               onReset={chatReset}
             />

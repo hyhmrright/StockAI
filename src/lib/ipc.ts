@@ -12,6 +12,7 @@ import {
   BacktestResult,
   ChatPayload,
   ChatResponse,
+  MasterWeightInput,
 } from '../../shared/types';
 import {
   MOCK_STOCKS,
@@ -187,17 +188,25 @@ export async function deepAnalyze(
   symbol: string,
   news: StockNews[],
   quant?: QuantBundle,
+  weights?: MasterWeightInput[],
 ): Promise<DeepAnalysisResult> {
   const quantJson = quant ? JSON.stringify(quant) : undefined;
+  // 权重摘要序列化为 JSON 字符串经 argv 内联传递（无敏感数据）；空/缺省 → Rust 侧填 "[]" 退化默认权重
+  const weightsJson = weights && weights.length > 0 ? JSON.stringify(weights) : undefined;
   if (!isTauri())
     return devBridgeInvoke<DeepAnalysisResult>(
       'deep_analyze',
-      { symbol, news, quant: quantJson },
+      { symbol, news, quant: quantJson, weights: weightsJson },
       MOCK_DEEP_ANALYSIS,
     );
 
   try {
-    const raw = await invoke<string>('deep_analyze', { symbol, news, quant: quantJson });
+    const raw = await invoke<string>('deep_analyze', {
+      symbol,
+      news,
+      quant: quantJson,
+      weights: weightsJson,
+    });
     return parseServiceResponse<DeepAnalysisResult>(raw);
   } catch (error) {
     rethrow(error);

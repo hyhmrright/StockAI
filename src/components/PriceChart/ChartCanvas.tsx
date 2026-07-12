@@ -13,12 +13,13 @@ import {
   PriceScaleMode,
   LineStyle,
 } from 'lightweight-charts';
-import type { KlinePoint } from '../../../shared/types';
+import type { KlinePoint, PriceLevel, TradeRecord } from '../../../shared/types';
 import { upColor, downColor } from '../../lib/market-hours';
 import { sma } from '../../lib/indicators';
 import { maPeriodsForMarket, MA_COLORS } from './types';
 import { CHART_THEME } from './chart-theme';
 import { useBollOverlay } from './useBollOverlay';
+import { useChartOverlays } from './useChartOverlays';
 
 interface Props {
   data: KlinePoint[];
@@ -32,6 +33,9 @@ interface Props {
   compareData?: KlinePoint[];
   compareLabel?: string;
   onCrosshair?: (point: KlinePoint | null) => void;
+  levels?: PriceLevel[]; // AI 关键价位线（quant 推导）
+  backtestTrades?: TradeRecord[]; // 回测买卖点
+  equityCurve?: { time: number; value: number }[]; // 回测净值曲线
 }
 
 const ChartCanvas: React.FC<Props> = ({
@@ -46,6 +50,9 @@ const ChartCanvas: React.FC<Props> = ({
   compareData,
   compareLabel,
   onCrosshair,
+  levels,
+  backtestTrades,
+  equityCurve,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -64,6 +71,8 @@ const ChartCanvas: React.FC<Props> = ({
   } | null>(null);
   const priceLinesRef = useRef<{ prev?: IPriceLine; current?: IPriceLine }>({});
   const compareRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const levelLinesRef = useRef<IPriceLine[]>([]); // AI 价位线句柄，用于清旧防泄漏
+  const equityRef = useRef<ISeriesApi<'Line'> | null>(null); // 回测净值 series（独立隐藏轴）
 
   // 让 ref 始终持有最新的 onCrosshair，避免被 effect 闭包"锁定"
   useEffect(() => {
@@ -128,6 +137,19 @@ const ChartCanvas: React.FC<Props> = ({
       .priceScale('compare')
       .applyOptions({ visible: false, scaleMargins: { top: 0.05, bottom: 0.3 } }); // 隐藏第二轴刻度
 
+    // 回测净值 series — 独立隐藏坐标轴，money 量级不污染 K 线刻度（照抄 compare 轴套路）
+    equityRef.current = chart.addLineSeries({
+      color: CHART_THEME.equityLine,
+      lineWidth: 2,
+      priceScaleId: 'equity',
+      lastValueVisible: false,
+      priceLineVisible: false,
+      title: '回测净值',
+    });
+    chart
+      .priceScale('equity')
+      .applyOptions({ visible: false, scaleMargins: { top: 0.1, bottom: 0.35 } });
+
     chartRef.current = chart;
     candleRef.current = candle;
     volumeRef.current = volume;
@@ -157,11 +179,13 @@ const ChartCanvas: React.FC<Props> = ({
       maRef.current =
         bollRef.current =
         compareRef.current =
+        equityRef.current =
         chartRef.current =
         candleRef.current =
         volumeRef.current =
           null;
       priceLinesRef.current = {}; // 清除指向旧 chart 的 IPriceLine handle
+      levelLinesRef.current = []; // 同上，清空 AI 价位线句柄
     };
   }, [market]);
 
@@ -200,23 +224,7 @@ const ChartCanvas: React.FC<Props> = ({
       maRef.current.long.setData(showMA.long ? toLine(sma(closes, lp)) : []);
     }
 
-    // 在最后一根 K 上标注 "现"，让用户一眼定位当前 K 线
-    const last = data[data.length - 1];
-    if (last) {
-      const isUp = last.close >= last.open;
-      candleRef.current.setMarkers([
-        {
-          time: last.time as UTCTimestamp,
-          position: isUp ? 'aboveBar' : 'belowBar',
-          color: isUp ? upColor(market) : downColor(market),
-          shape: isUp ? 'arrowDown' : 'arrowUp',
-          text: '现',
-        },
-      ]);
-    } else {
-      candleRef.current.setMarkers([]);
-    }
-
+    // 「现」marker 与回测买卖点合并逻辑已抽至 useChartOverlays（setMarkers 单一入口）
     chartRef.current?.timeScale().fitContent();
   }, [data, market, showMA.short, showMA.mid, showMA.long]);
 
@@ -229,6 +237,15 @@ const ChartCanvas: React.FC<Props> = ({
 
   // BOLL 上下轨叠加（主图）— 逻辑抽至 useBollOverlay hook
   useBollOverlay(chartRef, bollRef, showBoll, data);
+
+  // AI 关键价位线 + 回测买卖点/净值曲线叠加 — 逻辑抽至 useChartOverlays hook
+  useChartOverlays(candleRef, equityRef, levelLinesRef, {
+    data,
+    market,
+    levels,
+    backtestTrades,
+    equityCurve,
+  });
 
   // 比较基准数据：以起点为 100 归一化展示相对走势
   useEffect(() => {
