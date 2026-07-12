@@ -2,7 +2,7 @@
 
 All notable changes to StockAI will be documented in this file.
 
-## [0.15.0] - 2026-07-12
+## [0.15.1] - 2026-07-12
 
 ### Added
 
