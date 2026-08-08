@@ -16,6 +16,7 @@
   "deep_mode_desc": "Fetches full article text during analysis. Slower but more accurate.",
   "language_label": "Interface Language",
   "search_placeholder": "Search by ticker or name (e.g. AAPL, 600519)...",
+  "search_error": "Search failed. Check your connection and try again.",
   "analyzing": "Analyzing...",
   "start_analysis": "Analyze",
   "bullish": "Bullish",

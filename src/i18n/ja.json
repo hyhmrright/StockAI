@@ -16,6 +16,7 @@
   "deep_mode_desc": "記事全文を取得して分析します。時間がかかりますが精度が向上します。",
   "language_label": "表示言語",
   "search_placeholder": "銘柄コードまたは名称で検索 (例: AAPL, 600519)...",
+  "search_error": "検索に失敗しました。ネットワークを確認して再試行してください。",
   "analyzing": "分析中...",
   "start_analysis": "分析開始",
   "bullish": "強気",

@@ -25,8 +25,9 @@ export class ServiceError extends Error {
  * 一串中文技术文案。翻译只能在前端做，也就只能在这里做一次。
  *
  * **只登记能经 IPC 到达 UI 的码**：`ipc: false` 的 CLI 调试 action（`--info` /
- * `--market-snapshot` / `--fundamentals-history`）没有前端调用方，`ERR_SEARCH` 被
- * SearchHeader 吞进 console，登记它们都是死配置。
+ * `--market-snapshot` / `--fundamentals-history`）没有前端调用方，登记它们是死配置。
+ * 覆盖率由 service-errors.test.ts 的「Sidecar 错误码的翻译覆盖」交叉校验，
+ * 那里的豁免名单是这条规则的唯一出口。
  *
  * 译文带 `{message}` 的会把原始诊断接在本地化前缀之后；不带的表示 message 无增量信息
  * （如 ERR_SCRAPE_EMPTY 的 message 只是重复"没抓到新闻"）。判据是**用户拿这段 message
@@ -57,6 +58,7 @@ const SERVICE_ERROR_KEYS: Record<string, TranslationKey> = {
   ERR_MISSING_PARAM: 'err_missing_param',
   ERR_INVALID_PARAM: 'err_invalid_param',
   // 行情与量化：失败原因几乎总是"数据源全挂"，用户能做的只有重试，故复用无 message 的既有文案
+  ERR_SEARCH: 'search_error',
   ERR_KLINE: 'kline_load_error',
   ERR_QUANT: 'quant_error',
   ERR_QUOTE: 'err_quote',

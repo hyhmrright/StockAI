@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Settings as SettingsIcon, SlidersHorizontal } from 'lucide-react';
-import { searchStocks } from '../lib/ipc';
 import { useLanguage } from '../hooks/useLanguage';
+import { useStockSearch } from '../hooks/useStockSearch';
+import { formatServiceError } from '../lib/service-errors';
 import { StockSearchResult } from '../../shared/types';
 
 interface SearchHeaderProps {
@@ -24,33 +25,14 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
 }) => {
   const { t } = useLanguage();
   const [searchSymbol, setSearchSymbol] = useState('');
-  const [results, setResults] = useState<StockSearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
+  const { results, error, isSearching } = useStockSearch(searchSymbol);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 防抖搜索
+  // 有结果或有错误就展开，两者皆空则收起；点击外部 / 选中 / 提交仍可手动收起
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (searchSymbol.trim().length >= 2) {
-        setIsSearching(true);
-        try {
-          const data = await searchStocks(searchSymbol);
-          setResults(data);
-          setShowDropdown(data.length > 0);
-        } catch (err) {
-          console.error('搜索失败:', err);
-        } finally {
-          setIsSearching(false);
-        }
-      } else {
-        setResults([]);
-        setShowDropdown(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchSymbol]);
+    setShowDropdown(results.length > 0 || error !== null);
+  }, [results, error]);
 
   // 点击外部关闭下拉框
   useEffect(() => {
@@ -99,6 +81,11 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
           {/* 搜索建议下拉列表 */}
           {showDropdown && (
             <div className="absolute top-full left-0 w-full mt-2 bg-panel border border-white/10 rounded-lg shadow-2xl overflow-hidden z-50">
+              {error !== null && (
+                <div className="px-4 py-3 text-sm text-rose-400">
+                  {formatServiceError(error, t, 'search_error')}
+                </div>
+              )}
               <div className="max-h-60 overflow-y-auto">
                 {results.map((item, index) => (
                   <div

@@ -16,6 +16,7 @@
   "deep_mode_desc": "分析时提取新闻全文，耗时较长但准确度更高",
   "language_label": "界面语言",
   "search_placeholder": "搜索股票代码或名称 (例如: AAPL, 隆基绿能, 300866)...",
+  "search_error": "搜索失败，请检查网络后重试",
   "analyzing": "分析中...",
   "start_analysis": "开始分析",
   "bullish": "看涨",
