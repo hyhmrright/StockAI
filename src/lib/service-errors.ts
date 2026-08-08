@@ -38,6 +38,14 @@ const SERVICE_ERROR_KEYS: Record<string, TranslationKey> = {
   ERR_NO_RESPONSE: 'err_no_response',
   ERR_BAD_RESPONSE: 'err_bad_response',
   ERR_EMPTY_DATA: 'err_empty_data',
+  // Rust 层（src-tauri/src/lib.rs）：配置读不到 / 进程起不来 / 临时文件写不了。
+  // 这几条的 message 是给开发者的中立诊断，不进用户文案，故译文都不带 {message}。
+  ERR_NO_SETTINGS: 'err_no_settings',
+  ERR_STORE: 'err_store',
+  ERR_SIDECAR_SPAWN: 'err_sidecar_spawn',
+  ERR_TEMP_FILE: 'err_temp_file',
+  // Sidecar 起来了但没吐 JSON：退出码与 stderr 是唯一线索，必须透出
+  ERR_SIDECAR: 'err_sidecar',
   // 任何 action 都可能抛：配置解析与进程级故障
   ERR_CONFIG: 'err_config',
   ERR_BOOT_CRASH: 'err_internal',

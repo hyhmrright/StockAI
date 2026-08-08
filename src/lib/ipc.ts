@@ -104,12 +104,26 @@ async function devBridgeInvoke<T>(args: string[], opts: CallOptions, fallback: T
 }
 
 /**
+ * Rust 的 Err(String) 约定为 `ERR_XXX: 诊断`（见 src-tauri/src/lib.rs 顶部错误码说明）。
+ * 不解析出 code 的话，这类错误在 UI 上只能降级成兜底文案——「还没保存过配置」会变成
+ * 「操作失败，请稍后重试」，en / ja 用户尤其无从下手。
+ */
+const RUST_CODED_ERROR = /^(ERR_[A-Z0-9_]+): ([\s\S]+)$/;
+
+/** 把 Tauri invoke 抛出的裸字符串还原成带码的 ServiceError；无码的原样包成 Error。 */
+export function toServiceError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  const text = typeof error === 'string' ? error : String(error);
+  const matched = RUST_CODED_ERROR.exec(text);
+  return matched ? new ServiceError(matched[1], matched[2]) : new Error(text);
+}
+
+/**
  * 唯一的 Sidecar 调用管道：按 shared/actions.ts 的清单组装 argv，交给 Rust 的
  * invoke_sidecar。因此新增能力时本文件只需加一个薄封装，不必碰 Rust。
  *
  * 浏览器模式（非 Tauri）走开发桥接器，桥接器不在线时返回传入的 mock。
- * 抛出的一律是 Error（Tauri 的 invoke 会把 Rust 的 Err(String) 抛成裸字符串），
- * 调用方因此无需各自包一层 try/catch 转换。
+ * 抛出的一律是 Error，调用方因此无需各自包一层 try/catch 转换。
  */
 async function callSidecar<T>(
   action: SidecarActionDef,
@@ -122,8 +136,7 @@ async function callSidecar<T>(
     if (!isTauri()) return await devBridgeInvoke<T>(args, opts, devFallback);
     return parseServiceResponse<T>(await invoke<string>('invoke_sidecar', { args, ...opts }));
   } catch (error) {
-    if (error instanceof Error) throw error;
-    throw new Error(typeof error === 'string' ? error : String(error));
+    throw toServiceError(error);
   }
 }
 

@@ -11,6 +11,25 @@ const CONFIG_SLOT: &str = "@config";
 const PAYLOAD_SLOT: &str = "@payload";
 
 /**
+ * Rust 侧 `Err(String)` 的错误码。约定格式为 `ERR_XXX: 诊断`——前端 ipc.ts 按此前缀解析成
+ * ServiceError，再由 src/lib/service-errors.ts 译成用户语言。
+ *
+ * 为什么必须带码：不带码的裸字符串在 UI 上只能降级成兜底文案，en / ja 用户因此看不到
+ * 具体原因（比如「还没保存过配置」会显示成「操作失败，请稍后重试」）。冒号后的诊断只给
+ * 开发者看，故一律用中立措辞（OS 报错原文），不进用户可见文案。
+ *
+ * 新增码必须同步 SERVICE_ERROR_KEYS，由 test_error_codes_registered_in_frontend 守住。
+ */
+const ERR_NO_SETTINGS: &str = "ERR_NO_SETTINGS";
+const ERR_STORE: &str = "ERR_STORE";
+const ERR_SIDECAR_SPAWN: &str = "ERR_SIDECAR_SPAWN";
+const ERR_TEMP_FILE: &str = "ERR_TEMP_FILE";
+
+fn coded(code: &str, detail: impl std::fmt::Display) -> String {
+    format!("{}: {}", code, detail)
+}
+
+/**
  * RAII 临时文件守卫：drop 时自动删文件，覆盖 panic / async cancel / 提前 return 等所有退出路径。
  * 不依赖外部 crate，避免引入 tempfile / scopeguard 仅为此一处用。
  */
@@ -39,12 +58,12 @@ impl SidecarManager {
         let sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
-            .map_err(|e| format!("无法找到 Sidecar: {}", e))?
+            .map_err(|e| coded(ERR_SIDECAR_SPAWN, format!("sidecar not found: {}", e)))?
             .args(&args);
 
         let (mut rx, child) = sidecar_command
             .spawn()
-            .map_err(|e| format!("Sidecar 启动失败: {}", e))?;
+            .map_err(|e| coded(ERR_SIDECAR_SPAWN, format!("spawn failed: {}", e)))?;
 
         let mut stdout_buffer = String::new();
         let mut stderr_buffer = String::new();
@@ -79,16 +98,12 @@ impl SidecarManager {
             .to_string();
 
         if last_json.is_empty() {
+            // message 只放中立诊断（退出码 + stderr 原文）：前端会把它原样拼在本地化文案之后，
+            // 这里写中文等于又给 en / ja 用户看中文（err_sidecar 的译文才是给用户读的那句）。
             let err_msg = if stderr_buffer.is_empty() {
-                format!(
-                    "分析服务无响应 (ExitCode: {:?})。请尝试重新构建 Sidecar。",
-                    exit_code
-                )
+                format!("exit code {:?}, no stderr", exit_code)
             } else {
-                format!(
-                    "分析服务异常 (ExitCode: {:?})。详情: {}",
-                    exit_code, stderr_buffer
-                )
+                format!("exit code {:?}: {}", exit_code, stderr_buffer)
             };
 
             // 使用 serde_json 安全序列化，防止特殊字符破坏 JSON 结构
@@ -126,19 +141,19 @@ impl SidecarManager {
                 .mode(0o600)
                 .open(&temp_path)
                 .and_then(|mut f| f.write_all(content.as_bytes()))
-                .map_err(|e| format!("无法写入临时{}文件: {}", label, e))?;
+                .map_err(|e| coded(ERR_TEMP_FILE, format!("write {} failed: {}", label, e)))?;
         }
         #[cfg(not(unix))]
         {
             std::fs::write(&temp_path, content)
-                .map_err(|e| format!("无法写入临时{}文件: {}", label, e))?;
+                .map_err(|e| coded(ERR_TEMP_FILE, format!("write {} failed: {}", label, e)))?;
         }
         Ok(TempFileGuard(temp_path))
     }
 
     fn write_temp_json(label: &str, value: &serde_json::Value) -> Result<TempFileGuard, String> {
-        let json =
-            serde_json::to_string(value).map_err(|e| format!("{}序列化失败: {}", label, e))?;
+        let json = serde_json::to_string(value)
+            .map_err(|e| coded(ERR_TEMP_FILE, format!("serialize {} failed: {}", label, e)))?;
         Self::write_temp_file(label, &json)
     }
 }
@@ -151,12 +166,12 @@ impl SidecarManager {
 fn required_settings(app_handle: &tauri::AppHandle) -> Result<serde_json::Value, String> {
     let store = app_handle
         .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
+        .map_err(|e| coded(ERR_STORE, format!("open settings.json failed: {}", e)))?;
 
     store
         .get("app_settings")
         .filter(|v| !v.is_null())
-        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())
+        .ok_or_else(|| coded(ERR_NO_SETTINGS, "app_settings missing in settings.json"))
 }
 
 /**
@@ -254,7 +269,8 @@ pub fn run() {
 mod tests {
     use super::*;
 
-    const EMPTY_STDOUT_RESPONSE: &str = r#"{"error":{"code":"ERR_SIDECAR","message":"分析服务无响应 (ExitCode: None)。请尝试重新构建 Sidecar。"}}"#;
+    const EMPTY_STDOUT_RESPONSE: &str =
+        r#"{"error":{"code":"ERR_SIDECAR","message":"exit code None, no stderr"}}"#;
 
     #[test]
     fn test_empty_stdout_fallback_is_valid_json_with_error_field() {
@@ -278,6 +294,26 @@ mod tests {
             manifest.contains(&format!("PAYLOAD_SLOT = '{}'", PAYLOAD_SLOT)),
             "PAYLOAD_SLOT 与 shared/actions.ts 不一致"
         );
+    }
+
+    // 回归保护：Rust 抛出的每个码都必须在前端码表里有译文，否则 UI 只能降级成兜底文案
+    // （en / ja 用户看不到具体原因）。加码而忘登记不会有任何运行时报错，只有这条能拦。
+    #[test]
+    fn test_error_codes_registered_in_frontend() {
+        let table = include_str!("../../src/lib/service-errors.ts");
+        for code in [
+            ERR_NO_SETTINGS,
+            ERR_STORE,
+            ERR_SIDECAR_SPAWN,
+            ERR_TEMP_FILE,
+            "ERR_SIDECAR", // 空 stdout 时由 SidecarManager::run 直接写进信封
+        ] {
+            assert!(
+                table.contains(&format!("{}:", code)),
+                "{} 未登记进 src/lib/service-errors.ts 的 SERVICE_ERROR_KEYS",
+                code
+            );
+        }
     }
 
     // 回归保护：payload 走临时文件而非 argv，确保超过 macOS ARG_MAX (~256KB) 的大 payload

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseServiceResponse, ServiceError } from './ipc';
+import { parseServiceResponse, ServiceError, toServiceError } from './ipc';
 
 /** 取一次解析失败的错误码；没抛或抛的不是 ServiceError 都算失败 */
 function codeOf(raw: string): string {
@@ -49,5 +49,33 @@ describe('parseServiceResponse', () => {
   it('data 缺失时抛"未返回有效数据"', () => {
     const raw = JSON.stringify({});
     expect(() => parseServiceResponse(raw)).toThrow('未返回有效数据');
+  });
+});
+
+describe('toServiceError', () => {
+  // Tauri 的 invoke 把 Rust 的 Err(String) 抛成裸字符串，丢了 code 就只能在 UI 上
+  // 降级成兜底文案——「还没保存过配置」会显示成「操作失败，请稍后重试」
+  it('Rust 的带码字符串还原成 ServiceError', () => {
+    const e = toServiceError('ERR_NO_SETTINGS: app_settings missing in settings.json');
+    expect(e).toBeInstanceOf(ServiceError);
+    expect((e as ServiceError).code).toBe('ERR_NO_SETTINGS');
+    expect(e.message).toBe('app_settings missing in settings.json');
+  });
+
+  it('诊断含冒号与换行时只切第一个冒号', () => {
+    const e = toServiceError('ERR_SIDECAR_SPAWN: spawn failed: No such file\n  at line 2');
+    expect((e as ServiceError).code).toBe('ERR_SIDECAR_SPAWN');
+    expect(e.message).toBe('spawn failed: No such file\n  at line 2');
+  });
+
+  it('无码字符串包成普通 Error，不伪造 code', () => {
+    const e = toServiceError('something went wrong');
+    expect(e).not.toBeInstanceOf(ServiceError);
+    expect(e.message).toBe('something went wrong');
+  });
+
+  it('已是 Error 的原样返回', () => {
+    const original = new ServiceError('ERR_CHAT', 'x');
+    expect(toServiceError(original)).toBe(original);
   });
 });
