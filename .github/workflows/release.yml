@@ -180,7 +180,7 @@ jobs:
 
       - name: Build and publish release (signed)
         if: matrix.platform != 'macos-latest' || steps.check-signing.outputs.available == 'true'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -203,7 +203,7 @@ jobs:
 
       - name: Build and publish release (unsigned macOS)
         if: matrix.platform == 'macos-latest' && steps.check-signing.outputs.available != 'true'
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # 即便 Apple 证书缺失，更新器仍需用 minisign 私钥签名产物
