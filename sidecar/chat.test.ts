@@ -80,7 +80,7 @@ describe('buildChatMessages', () => {
 describe('runChat', () => {
   test('DI dep 注入时直接返回其结果', async () => {
     const reply = await runChat(
-      { provider: 'openai', apiKey: 'k', baseUrl: 'u', modelName: 'm' },
+      { provider: 'openai', apiKey: 'k', baseUrl: 'u', model: 'm' },
       [{ role: 'user', content: 'hi' }],
       { complete: async (msgs) => `echo:${msgs[msgs.length - 1].content}` },
     );

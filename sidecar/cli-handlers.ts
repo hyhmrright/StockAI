@@ -125,6 +125,16 @@ export function createHandlers(deps: HandlerDeps = {}) {
   const out = deps._out ?? outputJson;
   const listModelsFetch = deps._listModelsFetch ?? fetchProviderModels;
 
+  /**
+   * symbol 缺参守卫：缺失时写 ERR_MISSING_PARAM 信封并返回 false，调用方据此提前 return。
+   * 收敛为一处，避免同一判断散落各 handler 且文案分裂成两套说法。
+   */
+  const requireSymbol = (symbol: string | undefined): boolean => {
+    if (symbol) return true;
+    out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
+    return false;
+  };
+
   return {
     /**
      * 获取模型列表 - 不触发 playwright 加载
@@ -175,10 +185,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
      * 获取股票信息
      */
     async handleInfo(symbol: string) {
-      if (!symbol) {
-        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
-        return;
-      }
+      if (!requireSymbol(symbol)) return;
       try {
         const { parseSymbol } = await import('./parsers/exchange');
         const { fetchStockInfo } = await import('./stock-info');
@@ -217,10 +224,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
     async handleKline(reqJson: string) {
       try {
         const req = JSON.parse(reqJson);
-        if (!req?.symbol) {
-          out(errorEnvelope('ERR_MISSING_PARAM', '未提供 symbol'));
-          return;
-        }
+        if (!requireSymbol(req?.symbol)) return;
         const { getKline } = await import('./kline');
         const points = await getKline(req);
         out(successEnvelope(points));
@@ -233,10 +237,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
      * 拉取实时报价
      */
     async handleQuote(symbol: string) {
-      if (!symbol) {
-        out(errorEnvelope('ERR_MISSING_PARAM', '未提供 symbol'));
-        return;
-      }
+      if (!requireSymbol(symbol)) return;
       try {
         const { getQuote } = await import('./kline');
         const quote = await getQuote(symbol);
@@ -318,10 +319,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
     },
 
     async handleQuant(symbol: string) {
-      if (!symbol) {
-        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
-        return;
-      }
+      if (!requireSymbol(symbol)) return;
       try {
         const { fetchQuantBundle } = await import('./quant');
         const bundle = await fetchQuantBundle(symbol);
@@ -336,10 +334,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
      * 返回 { indexed, docCount }。ensureReportIndex 已吞掉网络异常返回 null，此处仅兜底信封。
      */
     async handleIndexReports(symbol: string) {
-      if (!symbol) {
-        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
-        return;
-      }
+      if (!requireSymbol(symbol)) return;
       try {
         const ensureIndex = deps._ensureReportIndex ?? (await import('./rag')).ensureReportIndex;
         const index = await ensureIndex(symbol);
@@ -354,10 +349,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
      * periods 为字符串（CLI 传入），非法/缺省时默认 12 期。
      */
     async handleFinancialHistory(symbol: string, periods?: string) {
-      if (!symbol) {
-        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
-        return;
-      }
+      if (!requireSymbol(symbol)) return;
       try {
         const parsed = periods ? Number.parseInt(periods, 10) : Number.NaN;
         const n = Number.isFinite(parsed) && parsed > 0 ? parsed : 12;
@@ -388,10 +380,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
     },
 
     async handleBacktest(symbol: string) {
-      if (!symbol) {
-        out(errorEnvelope('ERR_MISSING_PARAM', '未提供股票代码'));
-        return;
-      }
+      if (!requireSymbol(symbol)) return;
       try {
         const { getKline } = await import('./kline');
         const kline = await getKline({ symbol, period: '1d', range: '1y' });
@@ -439,18 +428,8 @@ export function createHandlers(deps: HandlerDeps = {}) {
         const { runDeepAnalysis, concurrencyForProvider } = await import('./deep-analysis');
         const { brain, quick } = config.roles;
         // 大师 + 综合走 brain；情绪逐条标注走 quick（可指向更便宜的模型）
-        const chat = createChatProvider({
-          provider: brain.provider,
-          apiKey: brain.apiKey,
-          baseUrl: brain.baseUrl,
-          modelName: brain.model,
-        });
-        const sentimentChat = createChatProvider({
-          provider: quick.provider,
-          apiKey: quick.apiKey,
-          baseUrl: quick.baseUrl,
-          modelName: quick.model,
-        });
+        const chat = createChatProvider(brain);
+        const sentimentChat = createChatProvider(quick);
         const result = await runDeepAnalysis({
           symbol,
           quant,
@@ -484,13 +463,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
       const nlScreen = await import('./quant/nl-screen');
       try {
         const { createChatProvider } = await import('./agents/chat-adapter');
-        const { quick } = config.roles;
-        const chat = createChatProvider({
-          provider: quick.provider,
-          apiKey: quick.apiKey,
-          baseUrl: quick.baseUrl,
-          modelName: quick.model,
-        });
+        const chat = createChatProvider(config.roles.quick);
         const result = await nlScreen.runScreen({ nlQuery, chat, language: config.language });
         out(successEnvelope(result));
       } catch (error) {
@@ -529,16 +502,7 @@ export function createHandlers(deps: HandlerDeps = {}) {
         }
         const messages = buildChatMessages(payload, config.language);
         // 对话追问走 summarize 角色（基于已抓上下文的信息提炼，可用更便宜的模型）
-        const { summarize } = config.roles;
-        const rawReply = await runChatFn(
-          {
-            provider: summarize.provider,
-            apiKey: summarize.apiKey,
-            baseUrl: summarize.baseUrl,
-            modelName: summarize.model,
-          },
-          messages,
-        );
+        const rawReply = await runChatFn(config.roles.summarize, messages);
         // 校验 + 静默降级：LLM 标错/越界的来源会被删除，只有真实上下文命中的才产生 citation
         const { reply, citations } = extractCitations(rawReply, payload);
         out(successEnvelope({ reply, citations }));

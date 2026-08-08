@@ -93,4 +93,12 @@ Bun 进程，主流程两步：
 
 ## PriceChart Subsystem
 
-前端 `src/components/PriceChart/` 是独立子系统：`ChartCanvas.tsx` 封装 TradingView lightweight-charts v4 主图（K 线 + MA + BOLL + 现价线 + "现"marker），`QuoteHeader` / `Toolbar` / `SubChart` / `CrosshairTooltip` 拆分页面区块，`index.tsx` 编排并通过 `useRealtimeQuote`（仅交易时段轮询）合并 K 线尾根与实时价。
+前端 `src/components/PriceChart/` 是独立子系统，封装 TradingView lightweight-charts v4 主图。职责按「实例 / 数据 / 叠加层」分开，新增图元时对号入座、不要往 `ChartCanvas` 里塞：
+
+| 文件 | 职责 |
+|------|------|
+| `useChartInstance.ts` | 建 chart 与全部常驻 series、订阅十字光标、market 变更时整体重建；持有所有 series/句柄 ref 并返回给下游 |
+| `ChartCanvas.tsx` | 只负责把数据喂进 series（K 线 / 成交量 / MA / 比较基准）与对数坐标切换 |
+| `useBollOverlay` / `useChartOverlays` / `usePriceLines` | 各叠加层：BOLL 三轨、AI 价位线 + 回测买卖点/净值、昨收/现价水平线 |
+
+`QuoteHeader` / `Toolbar` / `SubChart` / `CrosshairTooltip` 拆分页面区块，`index.tsx` 编排并通过 `useRealtimeQuote`（仅交易时段轮询）合并 K 线尾根与实时价。

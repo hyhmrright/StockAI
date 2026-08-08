@@ -1,5 +1,7 @@
 import type { KlinePeriod, KlineRange } from '../../../shared/types';
 
+export type Market = 'A股' | '美股';
+
 export type ChartType = 'candle' | 'line' | 'area' | 'heikin-ashi';
 
 export type SubChartIndicator = 'macd' | 'rsi' | 'kdj' | 'boll' | 'obv' | 'vwap';
@@ -40,7 +42,7 @@ export function rangeToPeriod(range: KlineRange): KlinePeriod {
 }
 
 /** 按市场返回三档均线周期（A 股 5/20/60；美股 20/50/200） */
-export function maPeriodsForMarket(market: 'A股' | '美股'): {
+export function maPeriodsForMarket(market: Market): {
   short: number;
   mid: number;
   long: number;

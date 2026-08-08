@@ -9,8 +9,7 @@ import {
 import type { KlinePoint, PriceLevel, TradeRecord } from '../../../shared/types';
 import { upColor, downColor } from '../../lib/market-hours';
 import { CHART_THEME } from './chart-theme';
-
-type Market = 'A股' | '美股';
+import type { Market } from './types';
 
 /** PriceLevel.type → 中文短标签（与 ChartCanvas 内 昨收/现价 同层的图内微标签，沿用硬编码中文） */
 const LEVEL_TYPE_LABEL: Record<PriceLevel['type'], string> = {

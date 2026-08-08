@@ -1,15 +1,8 @@
 import OpenAI from 'openai';
 import type { ChatProvider } from './types';
 import { PROVIDER_PROFILES } from '../../shared/constants';
-import type { ProviderType } from '../../shared/types';
+import type { ResolvedRole } from '../configResolver';
 import { logger } from '../utils';
-
-interface ChatConfig {
-  provider: string;
-  apiKey: string;
-  baseUrl: string;
-  modelName: string;
-}
 
 interface CompletionDep {
   createCompletion: (opts: {
@@ -19,13 +12,13 @@ interface CompletionDep {
   }) => Promise<{ choices: Array<{ message: { content: string } }> }>;
 }
 
-export function createChatProvider(config: ChatConfig, dep?: CompletionDep): ChatProvider {
+export function createChatProvider(config: ResolvedRole, dep?: CompletionDep): ChatProvider {
   const client = dep ?? createOpenAIClient(config);
 
   return {
     async chat(systemPrompt: string, userPrompt: string): Promise<string> {
       const response = await client.createCompletion({
-        model: config.modelName,
+        model: config.model,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
@@ -39,7 +32,7 @@ export function createChatProvider(config: ChatConfig, dep?: CompletionDep): Cha
   };
 }
 
-function createOpenAIClient(config: ChatConfig): CompletionDep {
+function createOpenAIClient(config: ResolvedRole): CompletionDep {
   const client = new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseUrl,
@@ -47,8 +40,8 @@ function createOpenAIClient(config: ChatConfig): CompletionDep {
 
   return {
     async createCompletion(opts) {
-      const profile =
-        PROVIDER_PROFILES[config.provider as ProviderType] ?? PROVIDER_PROFILES.openai;
+      // provider 已由 resolveConfig 校验必为 PROVIDER_PROFILES 的键，无需再兜底
+      const profile = PROVIDER_PROFILES[config.provider];
       const response = await client.chat.completions.create(
         {
           model: opts.model,

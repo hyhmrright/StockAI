@@ -1,24 +1,12 @@
 import OpenAI from 'openai';
 import { PROVIDER_PROFILES } from '../shared/constants';
-import type {
-  ProviderType,
-  ChatPayload,
-  ChatCitation,
-  CitationSourceType,
-  Language,
-} from '../shared/types';
+import type { ChatPayload, ChatCitation, CitationSourceType, Language } from '../shared/types';
+import type { ResolvedRole } from './configResolver';
 
 /** OpenAI 风格消息（含 system，与 shared 的 ChatMessage 区分——后者是不含 system 的对外历史） */
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
-}
-
-export interface ChatClientConfig {
-  provider: string;
-  apiKey: string;
-  baseUrl: string;
-  modelName: string;
 }
 
 /** 测试注入点：替换底层 completion，避开真实网络与 bun:test 的 mock.module 跨文件泄漏 */
@@ -108,16 +96,17 @@ export function buildChatMessages(payload: ChatPayload, language?: Language): LL
 
 /** 纯文本多轮对话补全（不强制 json_object，返回自然语言回答） */
 export async function runChat(
-  config: ChatClientConfig,
+  config: ResolvedRole,
   messages: LLMMessage[],
   dep?: ChatCompletionDep,
 ): Promise<string> {
   if (dep) return dep.complete(messages);
   const client = new OpenAI({ apiKey: config.apiKey, baseURL: config.baseUrl });
-  const profile = PROVIDER_PROFILES[config.provider as ProviderType] ?? PROVIDER_PROFILES.openai;
+  // provider 已由 resolveConfig 校验必为 PROVIDER_PROFILES 的键，无需再兜底
+  const profile = PROVIDER_PROFILES[config.provider];
   const response = await client.chat.completions.create(
     {
-      model: config.modelName,
+      model: config.model,
       messages: messages as OpenAI.ChatCompletionMessageParam[],
     },
     { timeout: profile.timeout },
