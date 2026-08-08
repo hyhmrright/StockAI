@@ -15,7 +15,11 @@ target/
 src-tauri/target/
 sidecar/stockai-backend-*
 *.lockb
+# 泛忽略挡掉零散 .lock，但两个 lockfile 是依赖的真源，必须进仓库——
+# 交付的是二进制，锁不住版本就没有可复现的构建
 *.lock
+!bun.lock
+!src-tauri/Cargo.lock
 # 本项目用 bun.lock 锁依赖；npm 生成的 lockfile 不是真源，别再提交进来
 package-lock.json
 
