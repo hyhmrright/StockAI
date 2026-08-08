@@ -14,6 +14,9 @@ dist-ssr
 target/
 src-tauri/target/
 sidecar/stockai-backend-*
+# sidecar 二进制是每次构建现场生成的产物（bun run sidecar:build / CI 的 Build sidecar 步骤），
+# 曾被误提交 8 次、在历史里压了 550+ MB。任何流程都不依赖它进仓库，别再提交。
+src-tauri/bin/stockai-backend-*
 *.lockb
 # 泛忽略挡掉零散 .lock，但两个 lockfile 是依赖的真源，必须进仓库——
 # 交付的是二进制，锁不住版本就没有可复现的构建
