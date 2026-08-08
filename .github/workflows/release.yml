@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
 
+# 双语 Release Notes 的路径，verify（校验存在）与 release（读进 releaseBody）共用一处声明
+env:
+  NOTES_FILE: docs/release-notes/${{ github.ref_name }}.md
+
 jobs:
   # 发版前置门禁。tag 一推、构建一绿，Release 就公开上线并推送自动更新，中间没有人工
   # 复核 Draft 的闸门——所以把 release-checklist 里「打 tag 前确认 main CI 全绿」这条
@@ -16,6 +20,21 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+
+      # tauri-action v1 每跑一次都会用 releaseBody 覆写已存在 Release 的标题与正文，无开关可关。
+      # 所以正文不能像以前那样事后手工 `gh release edit` 补——一次 `gh run rerun`
+      # （AppImage 上传 flaky 时的标准处理）就会把它打回默认文案。改成随 tag 一起进仓库，
+      # 重跑只写回同一份内容，覆写因此幂等。这一步放在装依赖之前，缺文件几秒内就红。
+      - name: Check release notes
+        run: |
+          if [ ! -s "$NOTES_FILE" ]; then
+            echo "::error::缺少 $NOTES_FILE —— 发版前必须写好双语 Release Notes 并随 tag 提交（模板见 .claude/rules/release-checklist.md）"
+            exit 1
+          fi
+          if [ "$(grep -c '^## StockAI' "$NOTES_FILE")" -lt 2 ]; then
+            echo "::error::$NOTES_FILE 只有一个语言版本 —— 中英文各一份、内容对等是硬要求"
+            exit 1
+          fi
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2.2.0
@@ -178,6 +197,17 @@ jobs:
           echo "🧹 Cleaning up attributes for signing..."
           find . -type f -exec xattr -c {} \; || true
 
+      # verify job 已确认文件存在且是双语的，这里只负责读进 step output
+      - name: Load release notes
+        id: notes
+        shell: bash
+        run: |
+          {
+            echo 'body<<STOCKAI_NOTES_EOF'
+            cat "$NOTES_FILE"
+            echo 'STOCKAI_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and publish release (signed)
         if: matrix.platform != 'macos-latest' || steps.check-signing.outputs.available == 'true'
         uses: tauri-apps/tauri-action@v1
@@ -195,8 +225,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"
-          releaseBody: |
-            See the [CHANGELOG](https://github.com/hyhmrright/StockAI/blob/main/CHANGELOG.md) for what's new in this release.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
@@ -212,8 +241,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "StockAI ${{ github.ref_name }}"
-          releaseBody: |
-            See the [CHANGELOG](https://github.com/hyhmrright/StockAI/blob/main/CHANGELOG.md) for what's new in this release.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

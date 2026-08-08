@@ -23,45 +23,13 @@
 - ...
 ```
 
-## 3. 确认 main 分支 CI 全绿
+## 3. 写双语 Release Notes（随 tag 进仓库）
 
-打 tag 前，必须确认 `main` 分支的所有 CI checks 均已通过：
+双语 notes 写进 `docs/release-notes/vx.y.z.md`，**和版本号、CHANGELOG 一起提交进 main**——它必须存在于被打 tag 的那个 commit 里。
 
-```bash
-gh run list --branch main --limit 5
-```
+`release.yml` 的 `verify` job 会在装依赖前校验该文件存在、且含两份 `## StockAI` 标题（中英各一），缺失即数秒内失败，不会白跑三平台构建；`release` job 再把它读进 `releaseBody` 发布。
 
-若最新 run 状态不是 `completed / success`，**禁止打 tag**。找到失败的 job、修复后重新推送，等 CI 再次全绿后再继续。
-
-## 4. 打 Tag 触发 Release CI
-
-```bash
-git tag vx.y.z
-git push origin vx.y.z
-```
-
-CI（`release.yml`）会自动构建三平台产物，**并直接发布（publish）为正式 Release**（不是 Draft）。也就是说，tag 一推、CI 一绿，Release 就公开上线、自动更新立即推送给老用户——**没有「人工 review Draft 再发布」这道闸门**，所以打 tag 前务必确认第 3 步 CI 全绿、版本号与 CHANGELOG 都已就绪。
-
-> **自动更新前置条件（首次配置后长期有效）**：仓库 Secrets 须包含 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`（由 `bun tauri signer generate` 生成的 minisign 私钥及密码），且 `tauri.conf.json` 的 `plugins.updater.pubkey` 已填对应公钥。缺失时 CI 仍能出包，但**不会生成 `.sig` 与 `latest.json`**，自动更新失效。
-
-> **已知 flaky：AppImage 上传偶发超时**。Linux 的 `.AppImage`（~100MB）经 tauri-action 上传到 Release 时偶发 `Headers Timeout Error`（**非构建问题**，AppImage 已成功打出，仅上传失败）。处理：`gh run rerun <run-id> --failed` 重跑失败的 Linux job 即可，无需改代码或重打 tag。
-
-## 5. 覆盖 Release Notes（CI 已自动发布，需事后覆盖）
-
-⚠️ Release 已由 CI **自动发布**，默认带的是 GitHub 自动生成的简略说明（commit 列表，~100 字符）。必须事后用双语 notes 覆盖：
-
-```bash
-# 先把下方双语模板写入临时文件，再覆盖（不会动产物，只改正文）
-gh release edit vx.y.z --notes-file /tmp/stockai-vx.y.z-notes.md
-```
-
-覆盖后核对：
-- **Release title**：`StockAI vx.y.z`（CI 默认就是 tag 名，如需调整 `--title`）
-- **Release notes**：使用下方双语模板，**中英文各一份，内容对等**，不得省略任一语言
-- 确认产物（`.dmg` / `.deb` / `.AppImage` / `.msi`）已全部上传
-- **确认 `latest.json` 已上传**（自动更新清单，更新器据此比对版本；缺失则老用户收不到更新）
-
-> 校验产物与正文长度：`gh release view vx.y.z --json assets,body -q '.assets|length, (.body|length)'`
+> **为什么不再事后 `gh release edit` 覆盖**：自 tauri-action v1 起，每次运行都会用 `releaseBody` 覆写已存在 Release 的标题与正文，且无开关可关。事后手写的正文会被下一次 `gh run rerun`（第 5 步 AppImage 上传 flaky 时的标准处理）打回默认文案。放进仓库后重跑只会写回同一份内容，覆写因此是幂等的。
 
 ### Release Notes 双语模板
 
@@ -152,13 +120,49 @@ Open the app → Settings (top-right) → enter your AI provider API Key (OpenAI
 - 中英文内容必须对等，不得一方比另一方信息量少
 - 避免「fix some bugs」「minor improvements」这类无意义措辞
 
-## 6. 更新 GitHub 仓库 About
+## 4. 确认 main 分支 CI 全绿
+
+打 tag 前，必须确认 `main` 分支的所有 CI checks 均已通过：
+
+```bash
+gh run list --branch main --limit 5
+```
+
+若最新 run 状态不是 `completed / success`，**禁止打 tag**。找到失败的 job、修复后重新推送，等 CI 再次全绿后再继续。
+
+## 5. 打 Tag 触发 Release CI
+
+```bash
+git tag vx.y.z
+git push origin vx.y.z
+```
+
+CI（`release.yml`）会自动构建三平台产物，**并直接发布（publish）为正式 Release**（不是 Draft）。也就是说，tag 一推、CI 一绿，Release 就公开上线、自动更新立即推送给老用户——**没有「人工 review Draft 再发布」这道闸门**，所以打 tag 前务必确认第 4 步 CI 全绿，版本号、CHANGELOG、Release Notes 都已就绪。
+
+> **自动更新前置条件（首次配置后长期有效）**：仓库 Secrets 须包含 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`（由 `bun tauri signer generate` 生成的 minisign 私钥及密码），且 `tauri.conf.json` 的 `plugins.updater.pubkey` 已填对应公钥。缺失时 CI 仍能出包，但**不会生成 `.sig` 与 `latest.json`**，自动更新失效。
+
+> **已知 flaky：AppImage 上传偶发超时**。Linux 的 `.AppImage`（~100MB）经 tauri-action 上传到 Release 时偶发 `Headers Timeout Error`（**非构建问题**，AppImage 已成功打出，仅上传失败）。处理：`gh run rerun <run-id> --failed` 重跑失败的 Linux job 即可，无需改代码或重打 tag。notes 已随 tag 进仓库（第 3 步），重跑不会改坏 Release 正文。
+
+## 6. 发布后核对
+
+Release 由 CI 自动发布，正文取自第 3 步的 `docs/release-notes/vx.y.z.md`，**无需手工覆盖**。只需核对：
+
+- **Release title**：`StockAI vx.y.z`
+- **正文**就是第 3 步那份双语全文
+- 产物（`.dmg` / `.deb` / `.AppImage` / `.msi`）已全部上传
+- **`latest.json` 已上传**（自动更新清单，更新器据此比对版本；缺失则老用户收不到更新）
+
+```bash
+gh release view vx.y.z --json assets,body -q '.assets|length, (.body|length)'
+```
+
+## 7. 更新 GitHub 仓库 About
 
 进入 GitHub → 仓库首页 → 右上角齿轮（Edit repository details）：
 - **Description**：保持简短（≤ 100 字符），若有功能新增需同步更新
 - **Website**：如有新的 landing page 或文档地址，一并更新
 - **Topics**：若版本引入了新技术/新平台支持，追加对应 topic
 
-## 7. 更新 GitHub Labels（按需）
+## 8. 更新 GitHub Labels（按需）
 
 若本版本引入了新的 issue 类型或工作流（如新增某 provider 的专属 bug 分类），进入 GitHub → Issues → Labels 添加对应标签。常规版本可跳过此步。
