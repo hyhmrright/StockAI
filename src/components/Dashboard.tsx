@@ -11,6 +11,7 @@ import { useSettings } from '../hooks/useSettings';
 import OnboardingGuide from './OnboardingGuide';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
+import IndexBar from './IndexBar';
 import NlScreenerModal from './Screener/NlScreenerModal';
 import PortfolioModal from './Portfolio/PortfolioModal';
 import AnalysisPanel from './AnalysisPanel';
@@ -94,6 +95,7 @@ const Dashboard: React.FC = () => {
         onOpenPortfolio={() => setIsPortfolioOpen(true)}
         stepLabel={stepLabel}
       />
+      <IndexBar />
 
       {/* 小屏纵向排列并整体滚动；lg 以上横向排列各区域独立滚动 */}
       <main className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">

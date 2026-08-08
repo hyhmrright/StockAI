@@ -1,0 +1,56 @@
+import React from 'react';
+import { useQuotes } from '../hooks/useQuotes';
+import { upColor, downColor } from '../lib/market-hours';
+import type { Market } from '../../shared/types';
+
+/**
+ * 大盘指数条。
+ *
+ * 这些代码走的是**既有**的报价链路，没有新增任何数据源：A 股指数由腾讯的
+ * `v_sh000001` 形态返回，美股指数由 Yahoo 返回，两侧 parser 的字段位置与个股完全一致
+ * （已实测：上证 / 深证成指 / 创业板指 / 标普 500 / 纳斯达克 / 道琼斯 六个全部解析正常）。
+ *
+ * 名称不取接口返回值而是写死：数据源给的是「上证指数」「S&P 500」这类混合语言的原名，
+ * 摆在一条里长短不一；这里要的是等宽的简称。
+ */
+const INDICES: { symbol: string; label: string; market: Market }[] = [
+  { symbol: 'sh000001', label: '上证', market: 'A股' },
+  { symbol: 'sz399001', label: '深证', market: 'A股' },
+  { symbol: 'sz399006', label: '创业板', market: 'A股' },
+  { symbol: '^GSPC', label: 'S&P 500', market: '美股' },
+  { symbol: '^IXIC', label: '纳斯达克', market: '美股' },
+  { symbol: '^DJI', label: '道琼斯', market: '美股' },
+];
+
+const SYMBOLS = INDICES.map((i) => i.symbol);
+
+const IndexBar: React.FC = () => {
+  const { quotes } = useQuotes(SYMBOLS);
+
+  return (
+    <div className="flex items-center gap-5 px-6 py-1.5 border-b border-white/5 bg-panel/60 overflow-x-auto shrink-0">
+      {INDICES.map(({ symbol, label, market }) => {
+        const q = quotes[symbol];
+        // 还没取到就留白占位，避免整条在加载时抖动
+        const color = !q ? undefined : q.change >= 0 ? upColor(market) : downColor(market);
+
+        return (
+          <div key={symbol} className="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span className="text-[11px] text-gray-500">{label}</span>
+            <span className="text-[11px] font-mono font-semibold" style={{ color }}>
+              {q ? q.price.toFixed(2) : '—'}
+            </span>
+            {q && (
+              <span className="text-[10px] font-mono" style={{ color }}>
+                {q.changePercent >= 0 ? '+' : ''}
+                {q.changePercent.toFixed(2)}%
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default IndexBar;
