@@ -6,7 +6,28 @@ on:
       - "v*"
 
 jobs:
+  # 发版前置门禁。tag 一推、构建一绿，Release 就公开上线并推送自动更新，中间没有人工
+  # 复核 Draft 的闸门——所以把 release-checklist 里「打 tag 前确认 main CI 全绿」这条
+  # 人工步骤变成机制：测试不过就不进构建，也就发不出去。
+  verify:
+    runs-on: ubuntu-24.04
+    # 只跑测试，不碰 Release；写权限只留给下面的 release job
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run unit tests
+        run: bun run test
+
   release:
+    needs: verify
     permissions:
       contents: write
     strategy:

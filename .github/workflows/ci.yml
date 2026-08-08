@@ -8,7 +8,32 @@ on:
     branches:
       - main
 
+# 仓库默认给 workflow token 的是 write；CI 只读代码、只构建，不写任何 GitHub 资源
+# （tauri-action 未传 tagName，不会建 Release）。收到只读，缩小 token 被滥用的面。
+permissions:
+  contents: read
+
 jobs:
+  # 平台无关的静态门禁，单跑 ubuntu 一次即可（放进矩阵会白跑三遍）。
+  # 与 lefthook 的 pre-push 同源，但那层可被 --no-verify 绕过，这里才是真门禁。
+  # 不给矩阵作业加 needs：两者并行，格式问题会更早红，但不拖慢正常构建。
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Check formatting (biome)
+        run: bun run format:check
+
+      - name: Security audit
+        run: bun audit --audit-level=high
+
   test-and-build:
     strategy:
       fail-fast: false
@@ -25,6 +50,11 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2.9.1
+        with:
+          workspaces: src-tauri
+
       - name: Install Linux system dependencies
         if: matrix.platform == 'ubuntu-24.04'
         run: |
@@ -34,11 +64,10 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Run frontend tests
-        run: bunx vitest run
-
-      - name: Run sidecar unit tests
-        run: cd sidecar && bun test ai.test.ts strategies/parsers.test.ts
+      # 聚合 runner：前端 vitest + sidecar 全量单测 + shared 跨层契约。
+      # 三个套件都离线、总耗时秒级，没有理由像以前那样只挑两个 sidecar 文件跑。
+      - name: Run unit tests
+        run: bun run test
 
       - name: Build sidecar
         shell: bash
@@ -64,6 +93,11 @@ jobs:
           BINARY="src-tauri/bin/stockai-backend-$TARGET_TRIPLE"
           if [ "${{ matrix.platform }}" = "windows-latest" ]; then BINARY="$BINARY.exe"; fi
           bun scripts/verify-bundle.ts "$BINARY"
+
+      # 放在 sidecar 构建之后：tauri build.rs 会校验 externalBin 存在，缺二进制则编译失败。
+      # 其中 test_slot_sentinels_match_shared_manifest 守住 Rust 哨兵与 shared/actions.ts 的一致性。
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
