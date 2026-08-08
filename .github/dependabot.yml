@@ -1,0 +1,28 @@
+version: 2
+updates:
+  # 每个生态的 patch/minor 合并成一个 PR，避免每周几十个单包 PR 淹没列表；
+  # major 不分组、单独开 PR——破坏性变更必须人工读 changelog
+  # （如 lightweight-charts v4→v5 的 series API 迁移）。
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      bun-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+    groups:
+      cargo-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
