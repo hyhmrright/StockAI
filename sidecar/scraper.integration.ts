@@ -1,7 +1,9 @@
 import { expect, test, describe } from 'bun:test';
 import { scrapeStockNews } from './scraper';
 
-const INTEGRATION_TEST_TIMEOUT = 60000;
+// 120s 而非 60s：无效代码那条要把 RSS + 三个 Playwright 策略全部走空才能返回，
+// CI runner 上冷启 Chromium + 三次导航实测超过 60s（本机有浏览器缓存所以看不出来）。
+const INTEGRATION_TEST_TIMEOUT = 120000;
 
 describe('Scraper Integration Tests', () => {
   test(
