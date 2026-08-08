@@ -146,4 +146,52 @@ describe('scrapeStockNews', () => {
 
     expect(closeFn).toHaveBeenCalledTimes(1);
   });
+
+  test('永不 settle 的策略被预算打断，而不是拖死整条链', async () => {
+    // 复现线上形态：page.content() 在页面持续加载时无限期挂起，策略既不返回也不抛
+    const hang = makeStrategy('Hang', () => new Promise<StockNews[]>(() => {}));
+    const { mgr, closeFn } = makeBrowserMgr();
+
+    const result = await scrapeStockNews('AAPL', false, {
+      strategies: [hang],
+      browserMgr: mgr,
+      budgetMs: 50,
+    });
+
+    expect(result).toHaveLength(0);
+    expect(closeFn).toHaveBeenCalledTimes(1);
+  });
+
+  test('预算耗尽后不再启动后续策略', async () => {
+    const later = mock(() => Promise.resolve(NEWS_B));
+    const { mgr } = makeBrowserMgr();
+
+    const result = await scrapeStockNews('AAPL', false, {
+      strategies: [
+        makeStrategy('Hang', () => new Promise<StockNews[]>(() => {})),
+        makeStrategy('Later', later),
+      ],
+      browserMgr: mgr,
+      budgetMs: 50,
+    });
+
+    expect(result).toHaveLength(0);
+    expect(later).not.toHaveBeenCalled();
+  });
+
+  test('预算内失败的策略仍走满两次重试', async () => {
+    // 防回归：预算是给挂死用的兜底，不该顺手削掉正常的重试语义
+    let attempts = 0;
+    const strategies = [
+      makeStrategy('Flaky', () => {
+        attempts++;
+        return Promise.reject(new Error('临时失败'));
+      }),
+    ];
+    const { mgr } = makeBrowserMgr();
+
+    await scrapeStockNews('AAPL', false, { strategies, browserMgr: mgr, budgetMs: 5_000 });
+
+    expect(attempts).toBe(2);
+  });
 });

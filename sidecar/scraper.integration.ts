@@ -1,9 +1,9 @@
 import { expect, test, describe } from 'bun:test';
 import { scrapeStockNews } from './scraper';
 
-// 120s 而非 60s：无效代码那条要把 RSS + 三个 Playwright 策略全部走空才能返回，
-// CI runner 上冷启 Chromium + 三次导航实测超过 60s（本机有浏览器缓存所以看不出来）。
-const INTEGRATION_TEST_TIMEOUT = 120000;
+// 90s：策略链自身已被 TIMEOUTS.strategyChain（60s）兜底，留 30s 给冷启 Chromium 与
+// 收尾。**不要再往上调**——这条超时现在是「策略链有界」这个不变量的哨兵，调高等于把哨兵拆了。
+const INTEGRATION_TEST_TIMEOUT = 90_000;
 
 describe('Scraper Integration Tests', () => {
   test(

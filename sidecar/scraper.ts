@@ -2,7 +2,7 @@ import type { Page } from 'playwright-core';
 import type { StockNews } from '../shared/types';
 import type { ScrapeStrategy, ScrapeContext } from './strategies/base';
 import { StrategyRegistry } from './strategies/registry';
-import { DEEP_MODE_MAX_ARTICLES } from './config';
+import { DEEP_MODE_MAX_ARTICLES, TIMEOUTS } from './config';
 import { extractFullContent } from './content-extractor';
 import { toErrorMessage, logger } from './utils';
 import { BrowserManager } from './browser-manager';
@@ -12,6 +12,26 @@ export interface ScraperDeps {
   strategies?: ScrapeStrategy[];
   browserMgr?: BrowserManager;
   extractContent?: typeof extractFullContent;
+  /** 覆盖策略链总预算，仅为让超时用例秒级跑完；生产走 TIMEOUTS.strategyChain */
+  budgetMs?: number;
+}
+
+/**
+ * 给一次策略调用套上截止时间。
+ *
+ * 为什么必须在调用方划这条线：策略内部每个 Playwright 调用各自有超时，**不等于整个策略有超时**。
+ * `page.goto` 以 networkidle 超时后，紧接着的 `page.content()` 会无限期挂起——它不接受 timeout
+ * 参数，页面只要还在加载就一直等。CI 实测这一路径静默卡死 100s+ 直到测试超时才被打断
+ * （run 31260504774，Google Finance 与 Google News Search 各复现一次）。
+ *
+ * 被放弃的 promise 仍在后台跑，由 finally 里的 browserMgr.close() 连页面一起拆掉。
+ */
+function withDeadline<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const guard = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} 超出 ${ms}ms 预算，已中断`)), ms);
+  });
+  return Promise.race([work, guard]).finally(() => clearTimeout(timer));
 }
 
 /**
@@ -34,12 +54,26 @@ export async function scrapeStockNews(
 
   let news: StockNews[] = [];
 
+  // 整条链共享一份预算：每个策略拿到的是「剩余时间」而非固定配额。
+  // 后果是前面的策略卡住会挤掉后面的——但在现状里卡住是无限期的，后面的策略同样跑不到，
+  // 所以这只是把「无限等」换成「有界等」，没有牺牲任何原本可达的回退。
+  const budgetMs = deps?.budgetMs ?? TIMEOUTS.strategyChain;
+  const deadline = Date.now() + budgetMs;
+
   try {
     for (const strategy of strategies) {
+      if (Date.now() >= deadline) {
+        logger.warn(`策略链已耗尽 ${budgetMs}ms 预算，跳过剩余策略`);
+        break;
+      }
       let attempts = 0;
-      while (attempts < 2) {
+      while (attempts < 2 && Date.now() < deadline) {
         try {
-          const results = await strategy.scrape(symbol, ctx);
+          const results = await withDeadline(
+            strategy.scrape(symbol, ctx),
+            deadline - Date.now(),
+            strategy.name,
+          );
           if (results.length > 0) {
             news = results;
             logger.info(`${strategy.name} 抓取成功，获取到 ${results.length} 条新闻概要。`);
