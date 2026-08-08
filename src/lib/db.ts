@@ -11,7 +11,11 @@ import type {
 
 let dbPromise: Promise<Database> | null = null;
 
-function getDb(): Promise<Database> {
+/**
+ * 单例连接。导出给同库的其他领域模块（positions-db.ts）复用——
+ * 各自 Database.load 会开出第二条连接，SQLite 下写入相互抢锁。
+ */
+export function getDb(): Promise<Database> {
   if (!dbPromise) {
     dbPromise = Database.load('sqlite:history.db').catch((err) => {
       dbPromise = null;

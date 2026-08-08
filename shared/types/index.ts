@@ -12,3 +12,4 @@ export * from './masters'; // 投资大师多智能体与虚拟组合前向跟�
 export * from './backtest'; // 策略回测
 export * from './screener'; // 自选股扫描 + 全市场自然语言选股
 export * from './history'; // 本地分析历史（SQLite）
+export * from './portfolio'; // 用户真实持仓与组合估值

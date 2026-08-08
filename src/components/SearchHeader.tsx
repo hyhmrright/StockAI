@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Settings as SettingsIcon, SlidersHorizontal } from 'lucide-react';
+import {
+  Search,
+  Loader2,
+  Settings as SettingsIcon,
+  SlidersHorizontal,
+  Briefcase,
+} from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
 import { useStockSearch } from '../hooks/useStockSearch';
 import { formatServiceError } from '../lib/service-errors';
@@ -10,6 +16,7 @@ interface SearchHeaderProps {
   loading: boolean;
   onOpenSettings: () => void;
   onOpenScreener: () => void;
+  onOpenPortfolio: () => void;
   stepLabel: string;
 }
 
@@ -21,6 +28,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
   loading,
   onOpenSettings,
   onOpenScreener,
+  onOpenPortfolio,
   stepLabel,
 }) => {
   const { t } = useLanguage();
@@ -146,6 +154,14 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       {/* 右侧入口：智能选股 + 系统设置 */}
       <div className="flex items-center gap-1">
+        {/* 我的持仓入口 */}
+        <button
+          onClick={onOpenPortfolio}
+          className="p-2 hover:bg-white/5 rounded-full transition-colors group"
+          title={t('holdings_open')}
+        >
+          <Briefcase className="w-5 h-5 text-gray-400 group-hover:text-emerald-400 transition-colors" />
+        </button>
         {/* 智能选股入口 */}
         <button
           onClick={onOpenScreener}

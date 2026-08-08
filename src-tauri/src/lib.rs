@@ -238,6 +238,12 @@ pub fn run() {
             sql: include_str!("../migrations/003_create_master_signals.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "create positions table for user portfolio",
+            sql: include_str!("../migrations/004_create_positions.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default();
