@@ -235,10 +235,18 @@ describe('fetchFundamentals', () => {
     expect(result.roe).toBeCloseTo(15, 0);
   });
 
-  test('美股调用 Yahoo Finance 接口', async () => {
-    let calledUrl = '';
-    globalThis.fetch = mock(async (url: string | URL | Request) => {
-      calledUrl = String(url);
+  test('美股先握手取 cookie+crumb，再带着它们请求 quoteSummary', async () => {
+    let summaryUrl = '';
+    let summaryCookie: string | null = null;
+    globalThis.fetch = mock(async (url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      // 第一步：fc.yahoo.com 真实响应就是 404，产物只有 Set-Cookie
+      if (target.includes('fc.yahoo.com')) {
+        return new Response('', { status: 404, headers: { 'set-cookie': 'A3=token; Path=/' } });
+      }
+      if (target.includes('getcrumb')) return new Response('cRuMb123');
+      summaryUrl = target;
+      summaryCookie = new Headers(init?.headers).get('Cookie');
       return new Response(
         JSON.stringify({
           quoteSummary: {
@@ -262,7 +270,10 @@ describe('fetchFundamentals', () => {
     }) as typeof fetch;
 
     const result = await fetchFundamentals('AAPL', '美股');
-    expect(calledUrl).toContain('yahoo');
+    expect(summaryUrl).toContain('quoteSummary');
+    // 这两条是 401 门禁的全部要件，少任一条线上就恒失败
+    expect(summaryUrl).toContain('crumb=cRuMb123');
+    expect(summaryCookie).toBe('A3=token');
     expect(result.roe).toBeCloseTo(20, 0);
   });
 

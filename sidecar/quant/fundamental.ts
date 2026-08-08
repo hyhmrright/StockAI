@@ -2,6 +2,7 @@ import type { FinancialMetrics, FundamentalResult, SubSignal } from './types';
 import type { CheckItem } from '../../shared/types';
 import { fetchWithPolicy } from '../http';
 import { logger, toErrorMessage } from '../utils';
+import { fetchYahooSession } from '../yahoo-session';
 import { annualizeRoe } from './roe-annualize';
 
 /**
@@ -166,9 +167,11 @@ async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetric
 }
 
 async function fetchYahooFundamentals(symbol: string): Promise<FinancialMetrics> {
-  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=financialData,defaultKeyStatistics,cashflowStatementHistory,incomeStatementHistory,balanceSheetHistory`;
+  // quoteSummary 有 cookie + crumb 门禁，缺任一者恒 401，详见 yahoo-session.ts
+  const { cookie, crumb } = await fetchYahooSession();
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=financialData,defaultKeyStatistics,cashflowStatementHistory,incomeStatementHistory,balanceSheetHistory&crumb=${encodeURIComponent(crumb)}`;
 
-  const resp = await fetchWithPolicy(url);
+  const resp = await fetchWithPolicy(url, { headers: { Cookie: cookie } });
   if (!resp.ok) throw new Error(`Yahoo Finance HTTP ${resp.status}`);
   const json = await resp.json();
   return parseYahooFinancials(json);
