@@ -16,8 +16,6 @@ import { BrowserManager } from '../sidecar/browser-manager';
  * 用法：bun scripts/e2e-smoke.ts
  */
 
-const PORT = 1425; // 不用 1420，避开可能开着的 `bun tauri dev`
-const BASE_URL = `http://localhost:${PORT}`;
 const SERVER_READY_TIMEOUT_MS = 60_000;
 const PAGE_TIMEOUT_MS = 30_000;
 
@@ -30,18 +28,32 @@ const CANDLE_COLORS: number[][] = [
 /** K 线实体至少要铺开这么多像素行，否则只是根水平线或一片空图 */
 const MIN_CANDLE_ROWS = 20;
 
-async function waitForServer(): Promise<void> {
+/**
+ * 让内核分配一个空闲端口。
+ *
+ * 不写死端口号：占用时 `--strictPort` 会让 vite 直接退出，而本脚本只看得到「没就绪」，
+ * 于是把端口冲突报成 60 秒超时——排查方向完全错。
+ * 探测与 vite 真正 bind 之间仍有毫秒级窗口，但端口由内核随机分配，撞上的概率可以忽略。
+ */
+function pickFreePort(): number {
+  const probe = Bun.listen({ hostname: '127.0.0.1', port: 0, socket: { data() {} } });
+  const port = probe.port;
+  probe.stop(true);
+  return port;
+}
+
+async function waitForServer(baseUrl: string): Promise<void> {
   const deadline = Date.now() + SERVER_READY_TIMEOUT_MS;
   while (Date.now() < deadline) {
     try {
-      const resp = await fetch(BASE_URL, { signal: AbortSignal.timeout(2000) });
+      const resp = await fetch(baseUrl, { signal: AbortSignal.timeout(2000) });
       if (resp.ok) return;
     } catch {
       // 还没起来，继续轮询
     }
     await new Promise((r) => setTimeout(r, 300));
   }
-  throw new Error(`Vite 在 ${SERVER_READY_TIMEOUT_MS}ms 内没有在 ${BASE_URL} 就绪`);
+  throw new Error(`Vite 在 ${SERVER_READY_TIMEOUT_MS}ms 内没有在 ${baseUrl} 就绪`);
 }
 
 /**
@@ -94,11 +106,11 @@ function isExpectedBrowserModeError(text: string): boolean {
   );
 }
 
-async function runChecks(page: Page, pageErrors: string[]): Promise<void> {
+async function runChecks(page: Page, baseUrl: string, pageErrors: string[]): Promise<void> {
   page.setDefaultTimeout(PAGE_TIMEOUT_MS);
 
-  console.log(`阶段 1: 打开 ${BASE_URL} ...`);
-  await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+  console.log(`阶段 1: 打开 ${baseUrl} ...`);
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
   console.log('阶段 2: 等待主界面挂载...');
   const searchInput = page.locator('input[placeholder]').first();
@@ -130,18 +142,28 @@ async function runChecks(page: Page, pageErrors: string[]): Promise<void> {
 async function main() {
   console.log('🚀 前端 E2E 冒烟开始');
 
-  const vite = Bun.spawn(['bunx', 'vite', '--port', String(PORT), '--strictPort'], {
+  const port = pickFreePort();
+  const baseUrl = `http://localhost:${port}`;
+  const vite = Bun.spawn(['bunx', 'vite', '--port', String(port), '--strictPort'], {
     cwd: new URL('..', import.meta.url).pathname,
     stdout: 'inherit',
     stderr: 'inherit',
   });
+
+  // Ctrl-C 走不到下面的 finally，不收就会把 vite 留成孤儿进程占着端口
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.on(signal, () => {
+      vite.kill();
+      process.exit(130);
+    });
+  }
 
   const browserManager = new BrowserManager();
   const pageErrors: string[] = [];
   let failure: unknown = null;
 
   try {
-    await waitForServer();
+    await waitForServer(baseUrl);
 
     const page = await browserManager.getPage();
     const record = (label: string, text: string) => {
@@ -152,7 +174,7 @@ async function main() {
       if (msg.type() === 'error') record('console.error', msg.text());
     });
 
-    await runChecks(page, pageErrors);
+    await runChecks(page, baseUrl, pageErrors);
   } catch (err) {
     failure = err;
   } finally {

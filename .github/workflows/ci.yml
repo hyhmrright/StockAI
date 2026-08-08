@@ -31,6 +31,9 @@ jobs:
       - name: Check formatting (biome)
         run: bun run format:check
 
+      # 保持阻塞（不加 continue-on-error）：--audit-level=high 只对 high/critical 报警，
+      # 常年不响，真响了就是该立刻停下来看的事；非阻塞的黄字在单人维护下等于没人看。
+      # 命中暂时无补丁的传递依赖时，用 package.json 的 overrides 钉版本，而不是关掉这条。
       - name: Security audit
         run: bun audit --audit-level=high
 
