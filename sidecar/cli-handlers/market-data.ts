@@ -74,6 +74,29 @@ export function createMarketDataHandlers({ out, deps, requireSymbol }: HandlerCo
       }
     },
 
+    /**
+     * 批量拉取实时报价（逗号分隔的代码表）。
+     *
+     * 单只失败进 `failed` 不影响其余；全批失败或超出规模上限才报错——前者是数据源挂了，
+     * 后者是调用方传错，两种都不该静静返回空表。
+     */
+    async handleQuotes(symbolsCsv: string) {
+      const symbols = (symbolsCsv ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (symbols.length === 0) {
+        out(errorEnvelope('ERR_MISSING_PARAM', '批量报价缺少股票代码'));
+        return;
+      }
+      try {
+        const { getQuotes } = await import('../kline');
+        out(successEnvelope(await getQuotes(symbols)));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_QUOTE', error));
+      }
+    },
+
     async handleQuant(symbol: string) {
       if (!requireSymbol(symbol)) return;
       try {

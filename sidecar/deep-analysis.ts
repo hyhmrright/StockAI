@@ -14,26 +14,13 @@ import { synthesize } from './agents/synthesizer';
 import { cacheKey, readCache, writeCache, type CacheOptions } from './cache';
 import { computeFactors, FACTOR_HISTORY_PERIODS, VALUE_FACTOR_CONSUMER_IDS } from './quant/factors';
 import { fetchFinancialHistory } from './quant/fundamental-history';
-import { logger, toErrorMessage } from './utils';
+import { logger, toErrorMessage, runWithConcurrency } from './utils';
 
 const DEFAULT_CONCURRENCY = 4;
 
 /** 大师分析的 LLM 并发上限：本地 Ollama 单机高并发会排队/OOM，云端 provider 可高并发 */
 export function concurrencyForProvider(provider: string): number {
   return provider === 'ollama' ? 2 : 8;
-}
-
-async function runWithConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
-  const results: T[] = new Array(tasks.length);
-  let next = 0;
-  async function worker() {
-    while (next < tasks.length) {
-      const idx = next++;
-      results[idx] = await tasks[idx]();
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
-  return results;
 }
 
 export interface DeepAnalysisOptions {

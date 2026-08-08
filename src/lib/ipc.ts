@@ -4,6 +4,7 @@ import {
   KlineRequest,
   KlinePoint,
   RealtimeQuote,
+  BatchQuoteResult,
   MarketBundle,
   StockNews,
   AIAnalysisResult,
@@ -18,11 +19,13 @@ import {
 import { ServiceError } from './service-errors';
 import type { SidecarActionDef, SlotName } from '../../shared/actions';
 import { SIDECAR_ACTIONS, CONFIG_SLOT, PAYLOAD_SLOT, buildActionArgs } from '../../shared/actions';
+import { MAX_BATCH_QUOTES } from '../../shared/constants';
 import {
   MOCK_STOCKS,
   MOCK_MODELS,
   MOCK_KLINE,
   MOCK_QUOTE,
+  MOCK_QUOTES,
   MOCK_BUNDLE,
   MOCK_AI_RESULT,
   MOCK_QUANT,
@@ -277,6 +280,39 @@ export async function fetchKline(req: KlineRequest): Promise<KlinePoint[]> {
 /** 拉取实时报价 */
 export async function fetchRealtimeQuote(symbol: string): Promise<RealtimeQuote> {
   return callSidecar<RealtimeQuote>(SIDECAR_ACTIONS.quote, { actionParam: symbol }, MOCK_QUOTE);
+}
+
+/**
+ * 批量拉取实时报价——关注列表 / 持仓 / 价格告警共用。
+ *
+ * 逐只调 fetchRealtimeQuote 会按标的数放大 sidecar 进程数（spawn-per-call），
+ * 这里一次进程拉完。空列表直接短路，不必为此起进程。
+ *
+ * 超过 MAX_BATCH_QUOTES 时切批而不是报错：上限是 sidecar 的守卫，不该变成用户
+ * 「关注列表最多 50 只」的产品限制。切批后仍是 ⌈N/50⌉ 个进程，远少于逐只的 N 个。
+ */
+export async function fetchRealtimeQuotes(symbols: string[]): Promise<BatchQuoteResult> {
+  if (symbols.length === 0) return { quotes: {}, failed: [] };
+
+  const batches: string[][] = [];
+  for (let i = 0; i < symbols.length; i += MAX_BATCH_QUOTES) {
+    batches.push(symbols.slice(i, i + MAX_BATCH_QUOTES));
+  }
+
+  const results = await Promise.all(
+    batches.map((batch) =>
+      callSidecar<BatchQuoteResult>(
+        SIDECAR_ACTIONS.quotes,
+        { actionParam: batch.join(',') },
+        MOCK_QUOTES(batch),
+      ),
+    ),
+  );
+
+  return {
+    quotes: Object.assign({}, ...results.map((r) => r.quotes)),
+    failed: results.flatMap((r) => r.failed),
+  };
 }
 
 /** 运行量化回测 */

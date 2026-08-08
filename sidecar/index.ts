@@ -179,6 +179,7 @@ async function run() {
     [SIDECAR_ACTIONS.search.flag]: () => Handlers.handleSearch(actionParam),
     [SIDECAR_ACTIONS.kline.flag]: () => Handlers.handleKline(actionParam || '{}'),
     [SIDECAR_ACTIONS.quote.flag]: () => Handlers.handleQuote(actionParam),
+    [SIDECAR_ACTIONS.quotes.flag]: () => Handlers.handleQuotes(actionParam),
     [SIDECAR_ACTIONS.quant.flag]: () => Handlers.handleQuant(actionParam),
     [SIDECAR_ACTIONS.indexReports.flag]: () => Handlers.handleIndexReports(actionParam),
     [SIDECAR_ACTIONS.backtest.flag]: () => Handlers.handleBacktest(actionParam),

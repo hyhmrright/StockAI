@@ -143,3 +143,18 @@ export interface RealtimeQuote {
   currency: 'CNY' | 'USD'; // 货币
   market: Market;
 }
+
+/**
+ * 一次批量报价的结果。
+ *
+ * 为什么不直接返回 `Record<string, RealtimeQuote>`：单只失败不该让整批失败（关注列表里
+ * 一个退市代码不能把其余九只的价格一起打掉），但「静默少一只」又会让调用方分不清
+ * 「这只没数据」和「这只涨跌为 0」。所以失败的显式列在 failed 里，由 UI 决定怎么呈现。
+ *
+ * quotes 的 key 是**调用方传入的原始 symbol**，不是数据源规范化后的代码——调用方按自己
+ * 手里那个字符串查表，不必反向猜映射。
+ */
+export interface BatchQuoteResult {
+  quotes: Record<string, RealtimeQuote>;
+  failed: string[];
+}

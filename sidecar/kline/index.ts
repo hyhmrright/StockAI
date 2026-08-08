@@ -1,10 +1,17 @@
-import type { KlineRequest, KlinePoint, RealtimeQuote, Market } from '../../shared/types';
+import type {
+  KlineRequest,
+  KlinePoint,
+  RealtimeQuote,
+  BatchQuoteResult,
+  Market,
+} from '../../shared/types';
 import type { NormalizedRequest, KlineSourceDeps } from './types';
 import { detectMarket } from '../../shared/market';
+import { MAX_BATCH_QUOTES } from '../../shared/constants';
 import { fetchYahooKline, fetchYahooQuote } from './yahoo';
 import { fetchTencentKline, fetchTencentQuote } from './tencent';
 import { fetchEastmoneyKline } from './eastmoney';
-import { logger, toErrorMessage } from '../utils';
+import { logger, toErrorMessage, runWithConcurrency } from '../utils';
 
 /** 一个 K 线/报价数据源。fetchQuote 可选——并非每个源都提供报价接口（如东财此处仅接 K 线）。 */
 interface KlineSource {
@@ -71,4 +78,46 @@ export async function getKline(
 export async function getQuote(symbol: string, deps: KlineSourceDeps = {}): Promise<RealtimeQuote> {
   const market = detectMarket(symbol);
   return withFallback(KLINE_SOURCES[market], '报价', (s) => s.fetchQuote?.(symbol, deps));
+}
+
+/** 批量报价对上游的并发上限：既压住 spawn 一次要打的连接数，也避免被数据源限流 */
+const QUOTE_CONCURRENCY = 6;
+
+/**
+ * 批量拉取实时报价。
+ *
+ * 存在的理由是进程模型：sidecar 是 spawn-per-call，逐只调 `--quote` 会让一个 10 只的
+ * 关注列表每轮起 10 个进程。这里一次进程内并发拉完。
+ *
+ * 单只失败只进 `failed`，不影响其余——但整批**全军覆没时抛出**，那是数据源挂了，
+ * 不该伪装成「查无此股」静静返回空表。
+ */
+export async function getQuotes(
+  symbols: string[],
+  deps: KlineSourceDeps = {},
+): Promise<BatchQuoteResult> {
+  const unique = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
+  if (unique.length > MAX_BATCH_QUOTES) {
+    throw new Error(`批量报价一次最多 ${MAX_BATCH_QUOTES} 只，收到 ${unique.length} 只`);
+  }
+
+  const quotes: Record<string, RealtimeQuote> = {};
+  const failed: string[] = [];
+  let lastError: unknown;
+
+  await runWithConcurrency(
+    unique.map((symbol) => async () => {
+      try {
+        quotes[symbol] = await getQuote(symbol, deps);
+      } catch (err) {
+        lastError = err;
+        failed.push(symbol);
+        logger.warn(`批量报价跳过 ${symbol}：${toErrorMessage(err)}`);
+      }
+    }),
+    QUOTE_CONCURRENCY,
+  );
+
+  if (unique.length > 0 && failed.length === unique.length) throw lastError;
+  return { quotes, failed };
 }

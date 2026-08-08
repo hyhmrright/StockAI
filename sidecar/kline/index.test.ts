@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
-import { getKline, getQuote } from './index';
+import { getKline, getQuote, getQuotes } from './index';
+import { MAX_BATCH_QUOTES } from '../../shared/constants';
 
 /**
  * 多源回退编排的离线测试——KlineSourceDeps.fetchImpl 是唯一注入点，
@@ -87,5 +88,81 @@ describe('getQuote 数据源能力过滤', () => {
     ).rejects.toThrow('腾讯报价 HTTP 500');
     // 东财没有 fetchQuote，不应被尝试
     expect(calls).toHaveLength(1);
+  });
+});
+
+/** 腾讯报价的最小合法响应（字段索引见 tencent.ts parseTencentQuote） */
+function tencentQuoteBody(symbol: string, price: string) {
+  const f = new Array(47).fill('0');
+  f[1] = `名称${symbol}`;
+  f[3] = price;
+  f[4] = '100';
+  return `v_${symbol}="${f.join('~')}";`;
+}
+
+describe('getQuotes 批量报价', () => {
+  /** 按 url 里的代码回不同响应；failFor 中的代码返回 500 */
+  function quoteFetch(failFor: string[] = []) {
+    return (async (url: string) => {
+      const code = String(url).match(/q=(\w+)/)?.[1] ?? '';
+      if (failFor.some((f) => code.includes(f))) return new Response('', { status: 500 });
+      return new Response(tencentQuoteBody(code, '1683.50'));
+    }) as unknown as typeof fetch;
+  }
+
+  test('结果按调用方传入的原始代码建索引，而非数据源规范化后的代码', async () => {
+    // 传入裸代码 600519，腾讯内部会转成 sh600519；调用方手里只有前者
+    const { quotes } = await getQuotes(['600519'], { fetchImpl: quoteFetch() });
+    expect(Object.keys(quotes)).toEqual(['600519']);
+    expect(quotes['600519'].price).toBe(1683.5);
+  });
+
+  test('单只失败只进 failed，不影响其余', async () => {
+    const { quotes, failed } = await getQuotes(['600519', '000001'], {
+      fetchImpl: quoteFetch(['000001']),
+    });
+    expect(failed).toEqual(['000001']);
+    expect(Object.keys(quotes)).toEqual(['600519']);
+  });
+
+  test('全批失败时抛出，而不是静静返回空表', async () => {
+    // 数据源整体挂掉与"这些代码都查无此股"必须可区分：返回 {} 会让上层把它当成正常空结果
+    await expect(
+      getQuotes(['600519', '000001'], { fetchImpl: quoteFetch(['600519', '000001']) }),
+    ).rejects.toThrow('腾讯报价 HTTP 500');
+  });
+
+  test('去重后只对每个代码请求一次', async () => {
+    const calls: string[] = [];
+    await getQuotes(['600519', '600519', ' 600519 ', ''], {
+      fetchImpl: (async (url: string) => {
+        calls.push(String(url));
+        return new Response(tencentQuoteBody('sh600519', '1683.50'));
+      }) as unknown as typeof fetch,
+    });
+    expect(calls).toHaveLength(1);
+  });
+
+  test('超出规模上限直接抛错，而不是截断', async () => {
+    // 截断会让持仓组合少算几只，总市值却照样显示成完整数字——比报错更坏
+    const many = Array.from(
+      { length: MAX_BATCH_QUOTES + 1 },
+      (_, i) => `60${String(i).padStart(4, '0')}`,
+    );
+    await expect(getQuotes(many, { fetchImpl: quoteFetch() })).rejects.toThrow(
+      `最多 ${MAX_BATCH_QUOTES} 只`,
+    );
+  });
+
+  test('空列表是空操作，不发请求也不抛', async () => {
+    const calls: string[] = [];
+    const result = await getQuotes([], {
+      fetchImpl: (async () => {
+        calls.push('x');
+        return new Response('');
+      }) as unknown as typeof fetch,
+    });
+    expect(result).toEqual({ quotes: {}, failed: [] });
+    expect(calls).toHaveLength(0);
   });
 });

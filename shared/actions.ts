@@ -41,6 +41,9 @@ export const SIDECAR_ACTIONS = {
   search: { flag: '--search', slots: ['actionParam'], ipc: true },
   kline: { flag: '--kline', slots: ['actionParam'], ipc: true },
   quote: { flag: '--quote', slots: ['actionParam'], ipc: true },
+  // 批量报价：actionParam 是逗号分隔的代码表。sidecar 是 spawn-per-call，逐只调 --quote
+  // 会让一个 10 只的关注列表每轮起 10 个进程，故单开一个动作一次拉完。
+  quotes: { flag: '--quotes', slots: ['actionParam'], ipc: true },
   bundle: { flag: '--bundle', slots: ['configStr', 'actionParam'], ipc: true },
   analyzeOnly: {
     flag: '--analyze-only',

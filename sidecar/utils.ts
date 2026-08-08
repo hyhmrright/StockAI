@@ -136,6 +136,29 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, message: string)
 }
 
 /**
+ * 定量并发地跑一批任务，结果按入参顺序返回。
+ *
+ * 语义与 `Promise.all` 一致：**任何一个任务抛出，整体就抛出**。需要「单个失败不拖垮整批」
+ * 的调用方（如批量报价）自己在 task 里 catch —— 把容错塞进这个池子会让「一个都不能少」
+ * 的调用方（大师分析）失去失败信号。
+ */
+export async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number,
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  let next = 0;
+  async function worker() {
+    while (next < tasks.length) {
+      const idx = next++;
+      results[idx] = await tasks[idx]();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
+  return results;
+}
+
+/**
  * 列模型错误码（与前端 ProviderForm 显示提示对齐）
  * - TIMEOUT：请求超时
  * - AUTH：401/403，鉴权失败

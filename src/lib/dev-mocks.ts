@@ -3,6 +3,7 @@ import type {
   StockSearchResult,
   KlinePoint,
   RealtimeQuote,
+  BatchQuoteResult,
   MarketBundle,
   StockNews,
   AIAnalysisResult,
@@ -98,6 +99,21 @@ export const MOCK_QUOTE: RealtimeQuote = {
   currency: 'USD',
   market: '美股',
 };
+
+/**
+ * 批量报价 mock。做成函数而非常量：调用方按自己传入的代码查表，返回固定的 AAPL 一条
+ * 会让浏览器模式下的关注列表/持仓整列查不到值，看起来像"功能没做"。
+ * 价格按代码散列微扰，好让多行不至于是同一个数字。
+ */
+export const MOCK_QUOTES = (symbols: string[]): BatchQuoteResult => ({
+  quotes: Object.fromEntries(
+    symbols.map((symbol) => {
+      const jitter = ([...symbol].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 40) - 20;
+      return [symbol, { ...MOCK_QUOTE, symbol, name: symbol, price: MOCK_QUOTE.price + jitter }];
+    }),
+  ),
+  failed: [],
+});
 
 export const MOCK_DEEP_ANALYSIS: DeepAnalysisResult = {
   masterSignals: [

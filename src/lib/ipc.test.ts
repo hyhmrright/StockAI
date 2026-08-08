@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { parseServiceResponse, ServiceError, toServiceError } from './ipc';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { parseServiceResponse, ServiceError, toServiceError, fetchRealtimeQuotes } from './ipc';
+import { MAX_BATCH_QUOTES } from '../../shared/constants';
 
 /** 取一次解析失败的错误码；没抛或抛的不是 ServiceError 都算失败 */
 function codeOf(raw: string): string {
@@ -77,5 +78,48 @@ describe('toServiceError', () => {
   it('已是 Error 的原样返回', () => {
     const original = new ServiceError('ERR_CHAT', 'x');
     expect(toServiceError(original)).toBe(original);
+  });
+});
+
+describe('fetchRealtimeQuotes 切批', () => {
+  /**
+   * 桩掉 fetch 让 dev bridge 判定为"不在线"，callSidecar 于是走 mock 兜底返回。
+   * 这样既不依赖本地 bridge 是否真在跑（否则测试结果取决于开发机状态），
+   * 又能从请求体里读出「切了几批、每批多大」——切批是这里唯一要守的行为。
+   */
+  function stubBridge() {
+    const batches: string[][] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation((async (_url: string, init: RequestInit) => {
+      const { args } = JSON.parse(String(init.body)) as { args: string[] };
+      // argv 形如 ['--quotes', 'A,B,C']
+      batches.push(args[1].split(','));
+      throw new Error('bridge offline');
+    }) as unknown as typeof fetch);
+    return batches;
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('空列表不发请求', async () => {
+    const batches = stubBridge();
+    expect(await fetchRealtimeQuotes([])).toEqual({ quotes: {}, failed: [] });
+    expect(batches).toHaveLength(0);
+  });
+
+  it('超过上限时切批，且合并后一只不少', async () => {
+    // 上限是 sidecar 的守卫，不该变成「关注列表最多 50 只」的产品限制
+    const batches = stubBridge();
+    const symbols = Array.from({ length: MAX_BATCH_QUOTES + 10 }, (_, i) => `SYM${i}`);
+
+    const { quotes } = await fetchRealtimeQuotes(symbols);
+
+    expect(batches.map((b) => b.length)).toEqual([MAX_BATCH_QUOTES, 10]);
+    expect(Object.keys(quotes)).toHaveLength(symbols.length);
+  });
+
+  it('刚好等于上限时不切批', async () => {
+    const batches = stubBridge();
+    await fetchRealtimeQuotes(Array.from({ length: MAX_BATCH_QUOTES }, (_, i) => `SYM${i}`));
+    expect(batches).toHaveLength(1);
   });
 });

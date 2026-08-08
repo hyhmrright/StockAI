@@ -127,3 +127,12 @@ export const TRADING_DAYS_PER_YEAR = 252;
 
 /** 年化无风险利率 */
 export const RISK_FREE_RATE = 0.045;
+
+/**
+ * 一次批量报价的标的上限。
+ *
+ * 两侧都要用，所以放 shared：Sidecar 拿它当守卫（超限抛错而非截断——截断会让持仓少算几只、
+ * 总额却照样显示成完整数字），前端拿它切批（关注列表/持仓超过这个数就分几次调用，
+ * 而不是让整批报错）。
+ */
+export const MAX_BATCH_QUOTES = 50;
