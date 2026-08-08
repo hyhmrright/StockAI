@@ -18,6 +18,9 @@ bun run test
 # 同上但额外跑 sidecar 集成测试（需要网络）
 bun run test:integration
 
+# 只跑集成测试——即每日「数据源冒烟监控」CI 任务跑的那一套
+bun run test:integration:only
+
 # 单独跑前端 vitest
 bunx vitest run
 
@@ -30,8 +33,9 @@ cd sidecar && bun test
 # Run a single Sidecar test file
 cd sidecar && bun test exchange.test.ts
 
-# Sidecar integration tests (需要网络, 较慢, 可能 flaky)
-cd sidecar && bun test scraper.integration.ts
+# 单跑某个 Sidecar 集成测试 (需要网络, 较慢, 可能 flaky)
+# `./` 前缀不可省：不带前缀时 bun test 把它当过滤器，而文件名不含 .test/.spec，匹配 0 个文件
+cd sidecar && bun test ./scraper.integration.ts
 
 # Rust tests
 cd src-tauri && cargo test
@@ -64,7 +68,7 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
 - **Code comments**: All inline logic comments must be written in Simplified Chinese.
 - **Component size**: UI component files must stay under 200 lines; extract complex logic into hooks.
-- **Test decoupling**: 解析逻辑放在 `sidecar/parsers/` 目录（`exchange.ts` / `html.ts`），与网络层分离，离线测试见 `parsers/*.test.ts`。抓取链路统一暴露 `fetchImpl` 注入点（`KlineSourceDeps` / `SearchDeps` / `QuantDeps` 同形），默认套件**必须离线可跑**；真网络断言放 `*.integration.ts`（只在 `bun run test:integration` 跑）。
+- **Test decoupling**: 解析逻辑放在 `sidecar/parsers/` 目录（`exchange.ts` / `html.ts`），与网络层分离，离线测试见 `parsers/*.test.ts`。抓取链路统一暴露 `fetchImpl` 注入点（`KlineSourceDeps` / `SearchDeps` / `QuantDeps` 同形），默认套件**必须离线可跑**；真网络断言放 `*.integration.ts`（只在 `bun run test:integration` 跑，文件由 glob 自动发现、无需登记）。离线 fixture 对上游改版是**结构性失明**的（fixture 永不变，故永远绿），所以每个外部数据源都要在 `*.integration.ts` 里有一条形状断言，由每日 CI 任务 `.github/workflows/datasource-smoke.yml` 兜底；断形状不断数值，且**结果非空是必断项**——本层多处容错把失败吞成 `{}` / `null`，只断「没抛异常」等于没监控。
 - **Outbound HTTP**: 一律经 `sidecar/http.ts` 的 `fetchWithPolicy(url, policy)`，UA 与超时的唯一来源是 `sidecar/config.ts` 的 `HTTP_DEFAULTS`。**不要在数据源模块另写 UA 字面量或 `AbortSignal.timeout(...)`**。
 - **Frontend async hooks**: 「按 symbol 取数」复用 `useSymbolFetch`，「按 symbol 缓存异步结果」复用 `useSymbolScopedAsync`（含竞态守卫 + LRI 限容），不要再手搓一份。
 - **Adding a K-line source**: 在 `sidecar/kline/index.ts` 的 `KLINE_SOURCES[市场]` 数组追加一行即可（依次尝试、首个成功即返回），不必改控制流。

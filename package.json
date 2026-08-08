@@ -13,6 +13,7 @@
     "test:ui": "vitest",
     "test": "bun scripts/test-all.ts",
     "test:integration": "bun scripts/test-all.ts --integration",
+    "test:integration:only": "bun scripts/test-all.ts --integration-only",
     "bump-version": "bun scripts/bump-version.ts",
     "format": "biome format --write .",
     "format:check": "biome format ."

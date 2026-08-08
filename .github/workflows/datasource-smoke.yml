@@ -1,0 +1,39 @@
+name: "数据源冒烟监控"
+
+# 每天定时跑一次外部数据源的真网络冒烟，回答一个问题：
+# **上游接口是否还和我们的解析假设一致**。
+#
+# 为什么必须有它：默认测试套件全部基于 checked-in 的离线 fixture。这让 PR 门禁又快又稳，
+# 但对上游改版是结构性失明的——fixture 永远不变，所以永远绿。腾讯改个字段名、东财换个
+# 参数、Yahoo 加个鉴权，仓库里没有任何一个测试会红。
+#
+# 为什么**不是** PR 门禁：抓取本身就 flaky（限流、反爬、网络抖动），拿它拦 PR 只会训练
+# 所有人用 --no-verify 绕过，最后连真门禁一起失效。这里的定位是「监控」不是「闸门」。
+on:
+  schedule:
+    # 16:00 北京时间（A 股收盘后，数据最新）
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+# 只读代码、只发请求，不写任何 GitHub 资源
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+
+      - name: Install dependencies
+        run: bun install
+
+      # 只跑集成套件：单测每个 PR 都跑过了，混进来只会稀释「数据源挂了」这个信号。
+      # 抓取策略需要浏览器时走 browser-manager 的系统 Chrome 发现，
+      # ubuntu-24.04 runner 预装了 /usr/bin/google-chrome，无需额外安装。
+      - name: 数据源冒烟
+        run: bun run test:integration:only
