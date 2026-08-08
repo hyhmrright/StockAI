@@ -1,9 +1,11 @@
 import { expect, test, describe } from 'bun:test';
 import { scrapeStockNews } from './scraper';
 
-// 90s：策略链自身已被 TIMEOUTS.strategyChain（60s）兜底，留 30s 给冷启 Chromium 与
-// 收尾。**不要再往上调**——这条超时现在是「策略链有界」这个不变量的哨兵，调高等于把哨兵拆了。
-const INTEGRATION_TEST_TIMEOUT = 90_000;
+// 75s：scrapeStockNews 整体已被 TIMEOUTS.scrapeBudget（60s）兜底——策略链与正文提取共享
+// 这份预算，只有 browserMgr.close() 在预算之外，留 15s 足够。**不要再往上调**——这条超时
+// 是「一次抓取有界」这个不变量的哨兵，调高等于把哨兵拆了。上一次它就是这么抓到正文提取
+// 逃在预算外的：600519 与 0700.HK 卡满 90s，正是 60s 策略链 + 3×10s 正文提取。
+const INTEGRATION_TEST_TIMEOUT = 75_000;
 
 describe('Scraper Integration Tests', () => {
   test(

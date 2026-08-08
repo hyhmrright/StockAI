@@ -12,7 +12,7 @@ export interface ScraperDeps {
   strategies?: ScrapeStrategy[];
   browserMgr?: BrowserManager;
   extractContent?: typeof extractFullContent;
-  /** 覆盖策略链总预算，仅为让超时用例秒级跑完；生产走 TIMEOUTS.strategyChain */
+  /** 覆盖单次抓取总预算，仅为让超时用例秒级跑完；生产走 TIMEOUTS.scrapeBudget */
   budgetMs?: number;
 }
 
@@ -54,16 +54,16 @@ export async function scrapeStockNews(
 
   let news: StockNews[] = [];
 
-  // 整条链共享一份预算：每个策略拿到的是「剩余时间」而非固定配额。
-  // 后果是前面的策略卡住会挤掉后面的——但在现状里卡住是无限期的，后面的策略同样跑不到，
+  // 整次抓取共享一份预算：每个阶段拿到的是「剩余时间」而非固定配额。
+  // 后果是前面的阶段卡住会挤掉后面的——但在现状里卡住是无限期的，后面的阶段同样跑不到，
   // 所以这只是把「无限等」换成「有界等」，没有牺牲任何原本可达的回退。
-  const budgetMs = deps?.budgetMs ?? TIMEOUTS.strategyChain;
+  const budgetMs = deps?.budgetMs ?? TIMEOUTS.scrapeBudget;
   const deadline = Date.now() + budgetMs;
 
   try {
     for (const strategy of strategies) {
       if (Date.now() >= deadline) {
-        logger.warn(`策略链已耗尽 ${budgetMs}ms 预算，跳过剩余策略`);
+        logger.warn(`已耗尽 ${budgetMs}ms 预算，跳过剩余策略`);
         break;
       }
       let attempts = 0;
@@ -77,12 +77,6 @@ export async function scrapeStockNews(
           if (results.length > 0) {
             news = results;
             logger.info(`${strategy.name} 抓取成功，获取到 ${results.length} 条新闻概要。`);
-
-            if (deepMode) {
-              await enrichWithFullContent(news, ctx.getPage, deps?.extractContent);
-            } else {
-              logger.info('深度模式已关闭，仅使用新闻摘要进行分析。');
-            }
           }
           break; // 无论结果是否为空，不再重试当前策略
         } catch (err) {
@@ -95,6 +89,24 @@ export async function scrapeStockNews(
         }
       }
       if (news.length > 0) break;
+    }
+
+    // 正文提取吃同一份预算：它同样能无限期挂起（extractFullContent 里的 page.evaluate
+    // 不接受 timeout），原先逃在预算之外，实测把一次抓取顶到 90s——「策略链有界」不等于
+    // 「scrapeStockNews 有界」。放在策略循环之外还顺带修掉一个隐患：留在 try 里的话，
+    // 提取超时会被当成策略失败而触发多余重抓。就地修改保证超时前提取到的正文不丢。
+    if (news.length > 0) {
+      if (!deepMode) {
+        logger.info('深度模式已关闭，仅使用新闻摘要进行分析。');
+      } else if (Date.now() >= deadline) {
+        logger.warn(`已耗尽 ${budgetMs}ms 预算，跳过正文提取，仅用新闻概要`);
+      } else {
+        await withDeadline(
+          enrichWithFullContent(news, ctx.getPage, deps?.extractContent),
+          deadline - Date.now(),
+          '正文提取',
+        ).catch((err) => logger.warn(toErrorMessage(err)));
+      }
     }
   } catch (error) {
     logger.error(`抓取 ${symbol} 新闻发生异常: ${toErrorMessage(error)}`);

@@ -16,10 +16,10 @@ export const TIMEOUTS = {
   pageWait: 1_000,
   contentExtraction: 10_000,
   /**
-   * 整条抓取策略链的总预算（见 scraper.ts）。
+   * `scrapeStockNews` 一次调用的总预算（见 scraper.ts），策略链与深度模式的正文提取共享。
    * 60s 而非更短：CI 实测正常回退路径最慢跑到 29.9s（688693），压到 45s 会误杀真结果。
    */
-  strategyChain: 60_000,
+  scrapeBudget: 60_000,
 } as const;
 
 /**

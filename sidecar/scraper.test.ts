@@ -179,6 +179,37 @@ describe('scrapeStockNews', () => {
     expect(later).not.toHaveBeenCalled();
   });
 
+  test('挂死的正文提取被预算打断，已抓到的新闻概要仍返回', async () => {
+    // 正文提取一度逃在预算之外，实测把总耗时顶到 90s（extractFullContent 内的
+    // page.evaluate 不接受 timeout，能无限期挂起）
+    const strategies = [makeStrategy('RSS', () => Promise.resolve([createMockNews()]))];
+    const { mgr } = makeBrowserMgr();
+
+    const result = await scrapeStockNews('AAPL', true, {
+      strategies,
+      browserMgr: mgr,
+      extractContent: mock(() => new Promise<string>(() => {})),
+      budgetMs: 50,
+    });
+
+    expect(result).toHaveLength(1);
+  });
+
+  test('正文提取失败不会导致策略被重新执行', async () => {
+    // 防回归：提取原先在策略的 try 内，抛出会被误判成策略失败而多抓一次
+    const scrape = mock(() => Promise.resolve([createMockNews()]));
+    const { mgr } = makeBrowserMgr();
+
+    await scrapeStockNews('AAPL', true, {
+      strategies: [makeStrategy('RSS', scrape)],
+      browserMgr: mgr,
+      extractContent: mock(() => new Promise<string>(() => {})),
+      budgetMs: 50,
+    });
+
+    expect(scrape).toHaveBeenCalledTimes(1);
+  });
+
   test('预算内失败的策略仍走满两次重试', async () => {
     // 防回归：预算是给挂死用的兜底，不该顺手削掉正常的重试语义
     let attempts = 0;
