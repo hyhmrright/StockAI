@@ -80,8 +80,12 @@ case "$file" in
 esac
 [ -f "$tf" ] || exit 0
 [ -n "$root" ] || exit 0
+# runner 要与 `bun run test` 的三段分组一致：sidecar 与 shared 跑 bun，src 跑 vitest。
+# 漏掉 shared 会让它落进 vitest 分支，而 vitest 的 include 只有 src/**——
+# 于是「找不到测试文件」退出 1，被当成回归失败拦下编辑（假红）。
 case "$tf" in
   */sidecar/*) out=$(cd "$root/sidecar" && bun test "$tf" 2>&1); rc=$? ;;
+  */shared/*) out=$(cd "$root" && bun test --timeout=10000 "$tf" 2>&1); rc=$? ;;
   *) out=$(cd "$root" && "$root/node_modules/.bin/vitest" run "$tf" 2>&1); rc=$? ;;
 esac
 if [ "$rc" -ne 0 ]; then
