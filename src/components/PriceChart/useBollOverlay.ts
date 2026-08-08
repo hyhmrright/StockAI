@@ -9,19 +9,22 @@ import {
 import type { KlinePoint } from '../../../shared/types';
 import { boll } from '../../lib/indicators';
 import { CHART_THEME } from './chart-theme';
+import type { Market } from './types';
 
 type BollSeries = { upper: ISeriesApi<'Line'>; mid: ISeriesApi<'Line'>; lower: ISeriesApi<'Line'> };
 
 /**
  * BOLL 上下轨叠加（主图）：按 showBoll 动态增删三条 series 并喂数据。
  * 从 ChartCanvas 抽出以收敛组件行数并隔离「布林带绘制」这一独立关注点；
- * chartRef/bollRef 为稳定 ref 不入 deps，依赖与原实现保持一致。
+ * chartRef/bollRef 为稳定 ref 不入 deps。market 必须入 deps——它变化会整体重建图表并把
+ * bollRef 置空，不重跑就会丢三条轨（与 useChartOverlays 各 effect 带 market 同理）。
  */
 export function useBollOverlay(
   chartRef: MutableRefObject<IChartApi | null>,
   bollRef: MutableRefObject<BollSeries | null>,
   showBoll: boolean | undefined,
   data: KlinePoint[],
+  market: Market,
 ): void {
   useEffect(() => {
     const chart = chartRef.current;
@@ -62,5 +65,5 @@ export function useBollOverlay(
       bollRef.current.mid.setData(toLine(mid));
       bollRef.current.lower.setData(toLine(lower));
     }
-  }, [showBoll, data]);
+  }, [showBoll, data, market]);
 }

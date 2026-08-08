@@ -8,29 +8,31 @@ import {
 } from 'lightweight-charts';
 import type { KlinePoint, PriceLevel, TradeRecord } from '../../../shared/types';
 import { upColor, downColor } from '../../lib/market-hours';
+import { useLanguage, type TFunction } from '../../hooks/useLanguage';
+import type { TranslationKey } from '../../i18n';
 import { CHART_THEME } from './chart-theme';
 import type { Market } from './types';
 
-/** PriceLevel.type → 中文短标签（与 ChartCanvas 内 昨收/现价 同层的图内微标签，沿用硬编码中文） */
-const LEVEL_TYPE_LABEL: Record<PriceLevel['type'], string> = {
-  support: '支撑',
-  resistance: '阻力',
-  target: '目标价',
-  stopLoss: '止损',
+/** PriceLevel.type → 图内短标签的译文 key */
+const LEVEL_TYPE_KEY: Record<PriceLevel['type'], TranslationKey> = {
+  support: 'level_support',
+  resistance: 'level_resistance',
+  target: 'level_target',
+  stopLoss: 'level_stoploss',
 };
 
-/** PriceLevel.source → 括注（推导来源）；未知来源不加括注 */
-const LEVEL_SOURCE_LABEL: Record<string, string> = {
-  boll_lower: 'BOLL下轨',
-  boll_upper: 'BOLL上轨',
-  valuation: 'DCF估值',
-  atr: 'ATR',
+/** PriceLevel.source → 括注（推导来源）的译文 key；未收录的来源不加括注 */
+const LEVEL_SOURCE_KEY: Record<string, TranslationKey> = {
+  boll_lower: 'level_src_boll_lower',
+  boll_upper: 'level_src_boll_upper',
+  valuation: 'level_src_valuation',
+  atr: 'level_src_atr',
 };
 
-function levelTitle(lv: PriceLevel): string {
-  const base = LEVEL_TYPE_LABEL[lv.type];
-  const src = LEVEL_SOURCE_LABEL[lv.source];
-  return src ? `${base} (${src})` : base;
+function levelTitle(lv: PriceLevel, t: TFunction): string {
+  const base = t(LEVEL_TYPE_KEY[lv.type]);
+  const srcKey = LEVEL_SOURCE_KEY[lv.source];
+  return srcKey ? `${base} (${t(srcKey)})` : base;
 }
 
 interface OverlayParams {
@@ -52,6 +54,8 @@ export function useChartOverlays(
   levelLinesRef: MutableRefObject<IPriceLine[]>,
   { data, market, levels, backtestTrades, equityCurve }: OverlayParams,
 ): void {
+  const { t } = useLanguage();
+
   // 合并「回测买卖点 + 现」为一组 marker：setMarkers 整体替换，须一次性排序后喂入
   useEffect(() => {
     const candle = candleRef.current;
@@ -70,7 +74,7 @@ export function useChartOverlays(
           position: isBuy ? 'belowBar' : 'aboveBar',
           color: isBuy ? CHART_THEME.buyMarker : CHART_THEME.sellMarker,
           shape: isBuy ? 'arrowUp' : 'arrowDown',
-          text: isBuy ? '买' : '卖',
+          text: isBuy ? t('marker_buy') : t('marker_sell'),
         });
       }
     }
@@ -84,14 +88,14 @@ export function useChartOverlays(
         position: isUp ? 'aboveBar' : 'belowBar',
         color: isUp ? upColor(market) : downColor(market),
         shape: isUp ? 'arrowDown' : 'arrowUp',
-        text: '现',
+        text: t('marker_now'),
       });
     }
 
     // lightweight-charts v4 要求 marker 按时间升序
     markers.sort((a, b) => (a.time as number) - (b.time as number));
     candle.setMarkers(markers);
-  }, [data, backtestTrades, market]);
+  }, [data, backtestTrades, market, t]);
 
   // AI 关键价位线：清旧句柄再画，防重复叠加/内存泄漏（market 变→图表重建→candleRef 刷新后重跑）
   useEffect(() => {
@@ -108,11 +112,11 @@ export function useChartOverlays(
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: levelTitle(lv),
+          title: levelTitle(lv, t),
         }),
       );
     }
-  }, [levels, market]);
+  }, [levels, market, t]);
 
   // 回测净值曲线：裁剪到当前 K 线时间窗，空数组即清除（未跑回测/切 symbol 时自动消失）
   useEffect(() => {

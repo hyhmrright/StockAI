@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { MasterSignal } from '../../../shared/types';
-import { getMasterMeta } from './master-meta';
+import { getMasterMeta, masterName, masterStyle } from './master-meta';
 import { signalColor, signalLabel } from '../../lib/signal-styles';
+import { useLanguage } from '../../hooks/useLanguage';
 
 interface MasterCardProps {
   signal: MasterSignal;
 }
 
 const MasterCard: React.FC<MasterCardProps> = ({ signal }) => {
+  const { language, t } = useLanguage();
   const meta = getMasterMeta(signal.masterId);
-  const name = meta?.nameZh ?? signal.masterId;
-  const style = meta?.styleZh ?? '';
+  const name = masterName(meta, language, signal.masterId);
+  const style = masterStyle(meta, language);
   // 默认收起为 2 行，点击展开查看完整理由
   const [expanded, setExpanded] = useState(false);
 
@@ -30,7 +32,7 @@ const MasterCard: React.FC<MasterCardProps> = ({ signal }) => {
         <span
           className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${signalColor(signal.signal)}`}
         >
-          {signalLabel(signal.signal)} {signal.confidence}%
+          {signalLabel(signal.signal, t)} {signal.confidence}%
         </span>
       </div>
       <div className="flex items-start gap-1.5">

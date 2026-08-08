@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Trophy, RefreshCw, Loader2 } from 'lucide-react';
 import { useMasterPortfolio } from '../../hooks/useMasterPortfolio';
 import { useLanguage } from '../../hooks/useLanguage';
-import { getMasterMeta } from '../DeepAnalysis/master-meta';
+import { getMasterMeta, masterName } from '../DeepAnalysis/master-meta';
 import NavSparkline from './NavSparkline';
 import type { MasterLeaderboardEntry } from '../../../shared/types';
 
@@ -24,11 +24,7 @@ const MasterPortfolioPanel: React.FC = () => {
 
   const navCurves = data?.navCurves ?? {};
 
-  function masterName(masterId: string): string {
-    const meta = getMasterMeta(masterId);
-    if (!meta) return masterId;
-    return language === 'zh' ? meta.nameZh : meta.name;
-  }
+  const displayName = (masterId: string) => masterName(getMasterMeta(masterId), language, masterId);
 
   function renderRow(e: MasterLeaderboardEntry) {
     return (
@@ -37,7 +33,7 @@ const MasterPortfolioPanel: React.FC = () => {
         className="flex items-center gap-2 py-2 border-b border-white/5 last:border-b-0"
       >
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium text-white truncate">{masterName(e.masterId)}</div>
+          <div className="text-xs font-medium text-white truncate">{displayName(e.masterId)}</div>
           <div className="text-[10px] text-gray-500">
             {t('mp_col_samples')} {e.resolved}/{e.total}
             {e.pending > 0 && ` · ${e.pending} ${t('mp_pending')}`}

@@ -1,6 +1,7 @@
 import { useEffect, type MutableRefObject } from 'react';
 import { type ISeriesApi, type IPriceLine, LineStyle } from 'lightweight-charts';
 import { upColor, downColor } from '../../lib/market-hours';
+import { useLanguage } from '../../hooks/useLanguage';
 import { CHART_THEME } from './chart-theme';
 import type { Market } from './types';
 
@@ -20,6 +21,8 @@ export function usePriceLines(
   priceLinesRef: MutableRefObject<{ prev?: IPriceLine; current?: IPriceLine }>,
   { prevClose, currentPrice, market }: PriceLineParams,
 ): void {
+  const { t } = useLanguage();
+
   useEffect(() => {
     const candle = candleRef.current;
     if (!candle) return;
@@ -41,7 +44,7 @@ export function usePriceLines(
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
-        title: '昨收',
+        title: t('quote_prev_close'),
       });
     if (currentPrice != null) {
       const color =
@@ -52,8 +55,9 @@ export function usePriceLines(
         lineWidth: 1,
         lineStyle: LineStyle.Solid,
         axisLabelVisible: true,
-        title: '现价',
+        title: t('line_current_price'),
       });
     }
-  }, [prevClose, currentPrice, market]);
+    // t 随语言稳定（useLanguage 内已 useCallback），入 deps 才能在切语言后重画标签
+  }, [prevClose, currentPrice, market, t]);
 }

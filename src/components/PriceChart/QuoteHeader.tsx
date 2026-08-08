@@ -1,34 +1,24 @@
 import React from 'react';
 import type { RealtimeQuote } from '../../../shared/types';
 import { upColor, downColor } from '../../lib/market-hours';
+import { useLanguage } from '../../hooks/useLanguage';
+import { formatBig as fmtBig, formatNumber as fmtNumber } from '../../lib/locale';
 
 interface Props {
   quote: RealtimeQuote | null;
   fallbackSymbol: string;
 }
 
-function formatNumber(n: number | undefined, digits = 2): string {
-  if (n == null || isNaN(n)) return '—';
-  return n.toLocaleString('zh-CN', {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-}
-
-function formatBig(n: number | undefined): string {
-  if (n == null || isNaN(n)) return '—';
-  if (n >= 1e12) return (n / 1e12).toFixed(2) + '万亿';
-  if (n >= 1e8) return (n / 1e8).toFixed(2) + '亿';
-  if (n >= 1e4) return (n / 1e4).toFixed(2) + '万';
-  return n.toString();
-}
-
 const QuoteHeader: React.FC<Props> = ({ quote, fallbackSymbol }) => {
+  const { language, t } = useLanguage();
+  const formatNumber = (n: number | undefined, digits = 2) => fmtNumber(n, language, digits);
+  const formatBig = (n: number | undefined) => fmtBig(n, language);
+
   if (!quote) {
     return (
       <div className="px-5 py-4 border-b border-white/5">
         <div className="font-bold text-lg">{fallbackSymbol}</div>
-        <div className="text-xs text-gray-500 mt-1">行情加载中…</div>
+        <div className="text-xs text-gray-500 mt-1">{t('quote_loading')}</div>
       </div>
     );
   }
@@ -57,14 +47,14 @@ const QuoteHeader: React.FC<Props> = ({ quote, fallbackSymbol }) => {
           </span>
           {quote.preMarket && (
             <span className="text-xs text-gray-400">
-              盘前 {formatNumber(quote.preMarket.price)} (
+              {t('quote_premarket')} {formatNumber(quote.preMarket.price)} (
               {quote.preMarket.changePercent >= 0 ? '+' : ''}
               {formatNumber(quote.preMarket.changePercent)}%)
             </span>
           )}
           {quote.postMarket && (
             <span className="text-xs text-gray-400">
-              盘后 {formatNumber(quote.postMarket.price)} (
+              {t('quote_postmarket')} {formatNumber(quote.postMarket.price)} (
               {quote.postMarket.changePercent >= 0 ? '+' : ''}
               {formatNumber(quote.postMarket.changePercent)}%)
             </span>
@@ -74,26 +64,28 @@ const QuoteHeader: React.FC<Props> = ({ quote, fallbackSymbol }) => {
 
       <div className="mt-2 grid grid-cols-3 md:grid-cols-6 gap-x-6 gap-y-1 text-xs text-gray-400 font-mono">
         <div>
-          开 <span className="text-gray-200">{formatNumber(quote.open)}</span>
+          {t('ohlc_open')} <span className="text-gray-200">{formatNumber(quote.open)}</span>
         </div>
         <div>
-          高 <span className="text-gray-200">{formatNumber(quote.high)}</span>
+          {t('ohlc_high')} <span className="text-gray-200">{formatNumber(quote.high)}</span>
         </div>
         <div>
-          低 <span className="text-gray-200">{formatNumber(quote.low)}</span>
+          {t('ohlc_low')} <span className="text-gray-200">{formatNumber(quote.low)}</span>
         </div>
         <div>
-          昨收 <span className="text-gray-200">{formatNumber(quote.prevClose)}</span>
+          {t('quote_prev_close')}{' '}
+          <span className="text-gray-200">{formatNumber(quote.prevClose)}</span>
         </div>
         <div>
-          量 <span className="text-gray-200">{formatBig(quote.volume)}</span>
+          {t('ohlc_volume')} <span className="text-gray-200">{formatBig(quote.volume)}</span>
         </div>
         <div>
-          额 <span className="text-gray-200">{formatBig(quote.amount)}</span>
+          {t('quote_amount')} <span className="text-gray-200">{formatBig(quote.amount)}</span>
         </div>
         {quote.turnoverRate != null && (
           <div>
-            换手 <span className="text-gray-200">{formatNumber(quote.turnoverRate)}%</span>
+            {t('quote_turnover_rate')}{' '}
+            <span className="text-gray-200">{formatNumber(quote.turnoverRate)}%</span>
           </div>
         )}
         {quote.pe != null && (
@@ -108,17 +100,18 @@ const QuoteHeader: React.FC<Props> = ({ quote, fallbackSymbol }) => {
         )}
         {quote.marketCap != null && (
           <div>
-            市值 <span className="text-gray-200">{formatBig(quote.marketCap)}</span>
+            {t('market_cap')} <span className="text-gray-200">{formatBig(quote.marketCap)}</span>
           </div>
         )}
         {quote.high52w != null && (
           <div>
-            52周高 <span className="text-gray-200">{formatNumber(quote.high52w)}</span>
+            {t('quote_52w_high')}{' '}
+            <span className="text-gray-200">{formatNumber(quote.high52w)}</span>
           </div>
         )}
         {quote.low52w != null && (
           <div>
-            52周低 <span className="text-gray-200">{formatNumber(quote.low52w)}</span>
+            {t('quote_52w_low')} <span className="text-gray-200">{formatNumber(quote.low52w)}</span>
           </div>
         )}
       </div>

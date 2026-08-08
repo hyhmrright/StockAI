@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { getAnalysisDetail } from '../../lib/db';
+import { useLanguage } from '../../hooks/useLanguage';
+import { localeOf } from '../../lib/locale';
 import type {
   AnalysisRecord,
   AIAnalysisResult,
@@ -23,6 +25,7 @@ interface HistoryDetailModalProps {
 const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ recordId, onClose }) => {
   const [record, setRecord] = useState<AnalysisRecord | null>(null);
   const [loading, setLoading] = useState(false);
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     if (recordId === null) {
@@ -47,12 +50,12 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ recordId, onClo
       );
     }
     if (!record) {
-      return <p className="text-sm text-gray-500 py-8 text-center">记录未找到</p>;
+      return <p className="text-sm text-gray-500 py-8 text-center">{t('history_not_found')}</p>;
     }
 
     try {
       const data = JSON.parse(record.resultJson);
-      const time = new Date(record.analyzedAt).toLocaleString('zh-CN');
+      const time = new Date(record.analyzedAt).toLocaleString(localeOf(language));
 
       switch (record.type) {
         case 'ai':
@@ -69,7 +72,7 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ recordId, onClo
           return <pre className="text-xs text-gray-400 overflow-auto">{record.resultJson}</pre>;
       }
     } catch {
-      return <p className="text-sm text-rose-400">结果解析失败</p>;
+      return <p className="text-sm text-rose-400">{t('history_parse_error')}</p>;
     }
   }
 
@@ -83,7 +86,7 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ recordId, onClo
         className="bg-panel border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto mx-4"
       >
         <div className="sticky top-0 bg-panel border-b border-white/10 px-5 py-3 flex items-center justify-between z-10">
-          <h3 className="text-sm font-bold text-gray-300">历史分析详情</h3>
+          <h3 className="text-sm font-bold text-gray-300">{t('history_detail_title')}</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -151,27 +154,36 @@ function QuantDetail({ data, time }: { data: QuantBundle; time: string }) {
 }
 
 function BacktestDetail({ data, time }: { data: BacktestResult; time: string }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-4">
       <p className="text-[10px] text-gray-500">{time}</p>
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="总收益" value={`${((data.totalReturn ?? 0) * 100).toFixed(1)}%`} />
-        <Stat label="年化收益" value={`${((data.annualizedReturn ?? 0) * 100).toFixed(1)}%`} />
-        <Stat label="最大回撤" value={`${((data.maxDrawdown ?? 0) * 100).toFixed(1)}%`} />
-        <Stat label="胜率" value={`${((data.winRate ?? 0) * 100).toFixed(0)}%`} />
+        <Stat
+          label={t('backtest_total_return')}
+          value={`${((data.totalReturn ?? 0) * 100).toFixed(1)}%`}
+        />
+        <Stat
+          label={t('backtest_annualized')}
+          value={`${((data.annualizedReturn ?? 0) * 100).toFixed(1)}%`}
+        />
+        <Stat label={t('max_drawdown')} value={`${((data.maxDrawdown ?? 0) * 100).toFixed(1)}%`} />
+        <Stat label={t('history_win_rate')} value={`${((data.winRate ?? 0) * 100).toFixed(0)}%`} />
         <Stat label="Sharpe" value={data.sharpeRatio?.toFixed(2) ?? '—'} />
-        <Stat label="交易次数" value={String(data.totalTrades ?? 0)} />
+        <Stat label={t('backtest_trades')} value={String(data.totalTrades ?? 0)} />
       </div>
     </div>
   );
 }
 
 function ScreenerDetail({ data, time }: { data: ScreenerResult[]; time: string }) {
-  if (!Array.isArray(data)) return <p className="text-sm text-gray-500">无效筛选数据</p>;
+  const { t } = useLanguage();
+  if (!Array.isArray(data))
+    return <p className="text-sm text-gray-500">{t('history_invalid_screener')}</p>;
   return (
     <div className="space-y-3">
       <p className="text-[10px] text-gray-500">
-        {time} · {data.length} 只股票
+        {time} · {data.length} {t('history_stocks')}
       </p>
       {data.map((r) => (
         <div key={r.symbol} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">

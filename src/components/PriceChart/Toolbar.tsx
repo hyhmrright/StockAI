@@ -1,5 +1,6 @@
 import React from 'react';
 import type { KlineRange } from '../../../shared/types';
+import { useLanguage } from '../../hooks/useLanguage';
 import type { ChartConfig, SubChartIndicator } from './types';
 
 interface Props {
@@ -31,6 +32,7 @@ const SUB_INDICATORS: { value: SubChartIndicator; label: string }[] = [
 
 const Toolbar: React.FC<Props> = ({ config, onChange, onScreenshot }) => {
   const update = (patch: Partial<ChartConfig>) => onChange({ ...config, ...patch });
+  const { t } = useLanguage();
 
   return (
     <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between flex-wrap gap-3">
@@ -57,7 +59,7 @@ const Toolbar: React.FC<Props> = ({ config, onChange, onScreenshot }) => {
           value={config.subIndicator}
           onChange={(e) => update({ subIndicator: e.target.value as SubChartIndicator })}
           className="bg-white/5 border border-white/10 rounded px-2 py-1 text-gray-200"
-          title="副图指标"
+          title={t('toolbar_subchart')}
         >
           {SUB_INDICATORS.map((s) => (
             <option key={s.value} value={s.value}>
@@ -73,26 +75,26 @@ const Toolbar: React.FC<Props> = ({ config, onChange, onScreenshot }) => {
               ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
               : 'border-white/10 text-gray-400 hover:text-white'
           }`}
-          title="对数坐标"
+          title={t('toolbar_logscale')}
         >
-          对数
+          {t('toolbar_log')}
         </button>
 
         <select
           value={config.adjust}
           onChange={(e) => update({ adjust: e.target.value as 'qfq' | 'hfq' | 'none' })}
           className="bg-white/5 border border-white/10 rounded px-2 py-1 text-gray-200"
-          title="复权方式"
+          title={t('toolbar_adjust')}
         >
-          <option value="qfq">前复权</option>
-          <option value="hfq">后复权</option>
-          <option value="none">不复权</option>
+          <option value="qfq">{t('adjust_qfq')}</option>
+          <option value="hfq">{t('adjust_hfq')}</option>
+          <option value="none">{t('adjust_none')}</option>
         </select>
 
         <input
           value={config.compareSymbol || ''}
           onChange={(e) => update({ compareSymbol: e.target.value || undefined })}
-          placeholder="比较 (如 SPY)"
+          placeholder={t('toolbar_compare')}
           className="bg-white/5 border border-white/10 rounded px-2 py-1 text-gray-200 w-24"
         />
 
@@ -100,9 +102,9 @@ const Toolbar: React.FC<Props> = ({ config, onChange, onScreenshot }) => {
           <button
             onClick={onScreenshot}
             className="px-2 py-1 border border-white/10 rounded text-gray-400 hover:text-white"
-            title="截图"
+            title={t('toolbar_screenshot')}
           >
-            截图
+            {t('toolbar_screenshot')}
           </button>
         )}
       </div>

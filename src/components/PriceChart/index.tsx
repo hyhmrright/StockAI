@@ -9,6 +9,7 @@ import { detectMarket } from '../../lib/market-hours';
 import { sma } from '../../lib/indicators';
 import { DEFAULT_CONFIG, rangeToPeriod, maPeriodsForMarket, type ChartConfig } from './types';
 import { useRealtimeQuote } from '../../hooks/useRealtimeQuote';
+import { useLanguage } from '../../hooks/useLanguage';
 import type { KlinePoint, PriceLevel, TradeRecord } from '../../../shared/types';
 
 interface Props {
@@ -27,6 +28,7 @@ const PriceChart: React.FC<Props> = ({ symbol, levels, backtestTrades, equityCur
 
   const market = useMemo(() => detectMarket(symbol), [symbol]);
   const quote = useRealtimeQuote(symbol);
+  const { t } = useLanguage();
 
   // 拉 K 线（symbol / range / adjust 任一变化都重拉）
   useEffect(() => {
@@ -38,8 +40,8 @@ const PriceChart: React.FC<Props> = ({ symbol, levels, backtestTrades, equityCur
       adjust: config.adjust,
     })
       .then(setData)
-      .catch((e) => setError(e?.message || 'K 线加载失败'));
-  }, [symbol, config.range, config.adjust]);
+      .catch((e) => setError(e?.message || t('kline_load_error')));
+  }, [symbol, config.range, config.adjust, t]);
 
   // 拉取比较基准的 K 线（symbol/range 变化时同步重拉）
   useEffect(() => {

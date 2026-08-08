@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { fetchRealtimeQuote } from '../lib/ipc';
 import type { PriceAlert } from './usePriceAlerts';
+import { useLanguage } from './useLanguage';
 import type { RealtimeQuote } from '../../shared/types';
 
 const POLL_MS = 10_000;
@@ -28,6 +29,7 @@ export function useAlertMonitor(
   fetcher: QuoteFetcher = fetchRealtimeQuote,
 ) {
   const firedRef = useRef<FiredState>({});
+  const { t } = useLanguage();
 
   useEffect(() => {
     const activeAlerts = Object.values(alerts).filter(
@@ -49,8 +51,12 @@ export function useAlertMonitor(
             if (!fired.upper) {
               fired.upper = true;
               sendNotification(
-                'StockAI 价格提醒',
-                `${alert.symbol} 突破上限 ${alert.upperLimit}，当前 ${quote.price.toFixed(2)}`,
+                t('alert_notify_title'),
+                t('alert_notify_above', {
+                  symbol: alert.symbol,
+                  limit: alert.upperLimit,
+                  price: quote.price.toFixed(2),
+                }),
               );
             }
           } else if (fired.upper) {
@@ -61,8 +67,12 @@ export function useAlertMonitor(
             if (!fired.lower) {
               fired.lower = true;
               sendNotification(
-                'StockAI 价格提醒',
-                `${alert.symbol} 跌破下限 ${alert.lowerLimit}，当前 ${quote.price.toFixed(2)}`,
+                t('alert_notify_title'),
+                t('alert_notify_below', {
+                  symbol: alert.symbol,
+                  limit: alert.lowerLimit,
+                  price: quote.price.toFixed(2),
+                }),
               );
             }
           } else if (fired.lower) {
@@ -83,5 +93,5 @@ export function useAlertMonitor(
       active = false;
       clearInterval(timer);
     };
-  }, [alerts, fetcher]);
+  }, [alerts, fetcher, t]);
 }

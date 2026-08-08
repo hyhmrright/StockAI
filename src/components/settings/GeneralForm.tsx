@@ -1,6 +1,6 @@
 import React from 'react';
 import { Settings } from '../../hooks/useSettings';
-import type { Language } from '../../hooks/useLanguage';
+import { useLanguage, type Language } from '../../hooks/useLanguage';
 import { UpdateChecker } from './UpdateChecker';
 
 interface GeneralFormProps {
@@ -37,14 +37,13 @@ const LANGUAGES: { value: Language; label: string }[] = [
 ];
 
 export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) => {
+  const { t } = useLanguage();
   return (
     <div className="space-y-6">
       <div className="setting-row">
         <div className="setting-label">
-          <span className="setting-title text-gray-200">切换股票时自动 AI 分析</span>
-          <span className="setting-desc text-gray-500 text-xs">
-            开启后每次切换股票都会自动调用 LLM（消耗 tokens）；默认关闭，需手动点击右侧分析按钮
-          </span>
+          <span className="setting-title text-gray-200">{t('auto_analyze_label')}</span>
+          <span className="setting-desc text-gray-500 text-xs">{t('auto_analyze_desc')}</span>
         </div>
         <Toggle
           enabled={settings.autoAnalyze}
@@ -53,10 +52,8 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
       </div>
       <div className="setting-row">
         <div className="setting-label">
-          <span className="setting-title text-gray-200">深度模式</span>
-          <span className="setting-desc text-gray-500 text-xs">
-            分析时提取新闻全文，耗时较长但准确度更高
-          </span>
+          <span className="setting-title text-gray-200">{t('deep_mode_label')}</span>
+          <span className="setting-desc text-gray-500 text-xs">{t('deep_mode_desc')}</span>
         </div>
         <Toggle
           enabled={settings.deepMode}
@@ -65,10 +62,8 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
       </div>
       <div className="setting-row">
         <div className="setting-label">
-          <span className="setting-title text-gray-200">界面语言 / Language</span>
-          <span className="setting-desc text-gray-500 text-xs">
-            UI and AI analysis output language
-          </span>
+          <span className="setting-title text-gray-200">{t('language_label')} / Language</span>
+          <span className="setting-desc text-gray-500 text-xs">{t('language_desc')}</span>
         </div>
         <div className="flex gap-2">
           {LANGUAGES.map(({ value, label }) => (

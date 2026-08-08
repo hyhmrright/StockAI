@@ -7,6 +7,7 @@ import {
   type PriceFetcher,
   type SignalsFetcher,
 } from '../lib/masterPortfolio';
+import { useLanguage } from './useLanguage';
 
 export type MasterPortfolioStep = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -37,6 +38,7 @@ export function useMasterPortfolio(
   const latestRequestId = useRef(0);
   const fns = useRef({ loadSignals, loadPrice });
   fns.current = { loadSignals, loadPrice };
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!enabled) return;
@@ -53,9 +55,10 @@ export function useMasterPortfolio(
       })
       .catch((err) => {
         if (requestId !== latestRequestId.current) return;
-        setError(err instanceof Error ? err.message : '战绩加载失败');
+        setError(err instanceof Error ? err.message : t('portfolio_load_error'));
         setStep('error');
       });
+    // t 有意不入 deps：它只用于 catch 的兜底文案，为翻译一句错误提示而重跑整个组合加载不值当
   }, [enabled, trigger]);
 
   const refetch = useCallback(() => setTrigger((t) => t + 1), []);

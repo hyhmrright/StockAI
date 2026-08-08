@@ -11,6 +11,7 @@ import {
 } from 'lightweight-charts';
 import type { KlinePoint } from '../../../shared/types';
 import { upColor, downColor } from '../../lib/market-hours';
+import { useLanguage } from '../../hooks/useLanguage';
 import { MA_COLORS, type Market } from './types';
 import { CHART_THEME } from './chart-theme';
 
@@ -54,6 +55,7 @@ export function useChartInstance(
   const priceLinesRef = useRef<{ prev?: IPriceLine; current?: IPriceLine }>({});
   const levelLinesRef = useRef<IPriceLine[]>([]);
   const crosshairCbRef = useRef(onCrosshair);
+  const { t } = useLanguage();
 
   // 让 ref 始终持有最新的 onCrosshair，避免被 effect 闭包"锁定"
   useEffect(() => {
@@ -126,7 +128,7 @@ export function useChartInstance(
       priceScaleId: 'equity',
       lastValueVisible: false,
       priceLineVisible: false,
-      title: '回测净值',
+      title: t('series_equity'),
     });
     chart
       .priceScale('equity')
@@ -170,6 +172,12 @@ export function useChartInstance(
       levelLinesRef.current = []; // 同上，清空 AI 价位线句柄
     };
   }, [market]);
+
+  // 净值 series 的标题只在建图时绑定一次，切语言后需单独刷新（与 ChartCanvas 处理 compareLabel 同理，
+  // 避免把 t 塞进建图 deps 导致整张图重建）
+  useEffect(() => {
+    equityRef.current?.applyOptions({ title: t('series_equity') });
+  }, [t]);
 
   return {
     chartRef,

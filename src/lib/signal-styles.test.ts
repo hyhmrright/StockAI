@@ -6,6 +6,7 @@ import {
   sentimentBgClass,
   sentimentBadgeClass,
 } from './signal-styles';
+import { zhT as t } from '../test/i18n';
 
 describe('signalColor', () => {
   it('bullish → emerald 样式', () => {
@@ -24,37 +25,37 @@ describe('signalColor', () => {
 
 describe('signalLabel', () => {
   it('bullish → 看涨', () => {
-    expect(signalLabel('bullish')).toBe('看涨');
+    expect(signalLabel('bullish', t)).toBe('看涨');
   });
   it('bearish → 看跌', () => {
-    expect(signalLabel('bearish')).toBe('看跌');
+    expect(signalLabel('bearish', t)).toBe('看跌');
   });
   it('neutral → 中性', () => {
-    expect(signalLabel('neutral')).toBe('中性');
+    expect(signalLabel('neutral', t)).toBe('中性');
   });
   it('未知值回退到 中性', () => {
-    expect(signalLabel('garbage')).toBe('中性');
+    expect(signalLabel('garbage', t)).toBe('中性');
   });
 });
 
 describe('signalBadge', () => {
   it('bullish 返回正确 label 和 className', () => {
-    const badge = signalBadge('bullish');
+    const badge = signalBadge('bullish', t);
     expect(badge.label).toBe('看涨');
     expect(badge.className).toContain('emerald');
   });
   it('bearish 返回正确 label 和 className', () => {
-    const badge = signalBadge('bearish');
+    const badge = signalBadge('bearish', t);
     expect(badge.label).toBe('看跌');
     expect(badge.className).toContain('rose');
   });
   it('neutral 返回正确 label 和 className', () => {
-    const badge = signalBadge('neutral');
+    const badge = signalBadge('neutral', t);
     expect(badge.label).toBe('中性');
     expect(badge.className).toContain('amber');
   });
   it('未知值回退到中性 badge', () => {
-    const badge = signalBadge('xyz');
+    const badge = signalBadge('xyz', t);
     expect(badge.label).toBe('中性');
     expect(badge.className).toContain('amber');
   });

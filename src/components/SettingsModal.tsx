@@ -39,9 +39,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   }, [settings]);
 
   useEffect(() => {
+    // 浏览器 dev 模式下无 Tauri API，读不到版本号属预期；留痕便于排查真实故障，不打断 UI
     getVersion()
       .then(setAppVersion)
-      .catch(() => {});
+      .catch((e) => console.warn('[SettingsModal] 读取应用版本号失败:', e));
   }, []);
 
   if (!isOpen) return null;

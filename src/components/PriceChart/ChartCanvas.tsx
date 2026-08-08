@@ -105,7 +105,7 @@ const ChartCanvas: React.FC<Props> = ({
     });
   }, [logScale]);
 
-  useBollOverlay(chartRef, bollRef, showBoll, data);
+  useBollOverlay(chartRef, bollRef, showBoll, data, market);
 
   useChartOverlays(candleRef, equityRef, levelLinesRef, {
     data,

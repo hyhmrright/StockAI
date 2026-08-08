@@ -1,5 +1,7 @@
 import React from 'react';
 import type { ScreenerResult } from '../../../shared/types';
+import { useLanguage, type TFunction } from '../../hooks/useLanguage';
+import type { TranslationKey } from '../../i18n';
 
 const SIGNAL_BADGE: Record<string, string> = {
   bullish: 'bg-emerald-500/20 text-emerald-400',
@@ -13,10 +15,28 @@ const SIGNAL_BADGE: Record<string, string> = {
   high: 'bg-rose-500/20 text-rose-400',
 };
 
-function Badge({ value }: { value: string | undefined }) {
+/** 信号/风险枚举 → 译文 key；未收录的值原样显示，不臆造文案 */
+const SIGNAL_LABEL_KEY: Record<string, TranslationKey> = {
+  bullish: 'bullish',
+  bearish: 'bearish',
+  neutral: 'neutral',
+  undervalued: 'undervalued',
+  overvalued: 'overvalued',
+  fair: 'fairly_valued',
+  low: 'low_risk',
+  medium: 'medium_risk',
+  high: 'high_risk',
+};
+
+function Badge({ value, t }: { value: string | undefined; t: TFunction }) {
   if (!value) return <span className="text-gray-600">—</span>;
   const cls = SIGNAL_BADGE[value] ?? 'bg-gray-500/20 text-gray-400';
-  return <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${cls}`}>{value}</span>;
+  const labelKey = SIGNAL_LABEL_KEY[value];
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${cls}`}>
+      {labelKey ? t(labelKey) : value}
+    </span>
+  );
 }
 
 interface ScreenerTableProps {
@@ -25,8 +45,10 @@ interface ScreenerTableProps {
 }
 
 const ScreenerTable: React.FC<ScreenerTableProps> = ({ results, onSelect }) => {
+  const { t } = useLanguage();
+
   if (results.length === 0) {
-    return <p className="text-xs text-gray-500 text-center py-6">暂无筛选结果</p>;
+    return <p className="text-xs text-gray-500 text-center py-6">{t('ws_no_result')}</p>;
   }
 
   return (
@@ -34,12 +56,12 @@ const ScreenerTable: React.FC<ScreenerTableProps> = ({ results, onSelect }) => {
       <table className="w-full text-xs">
         <thead>
           <tr className="text-gray-500 border-b border-white/5">
-            <th className="text-left py-2 px-2 font-medium">股票</th>
-            <th className="text-right py-2 px-2 font-medium">评分</th>
-            <th className="text-center py-2 px-2 font-medium">技术面</th>
-            <th className="text-center py-2 px-2 font-medium">基本面</th>
-            <th className="text-center py-2 px-2 font-medium">估值</th>
-            <th className="text-center py-2 px-2 font-medium">风险</th>
+            <th className="text-left py-2 px-2 font-medium">{t('screener_col_stock')}</th>
+            <th className="text-right py-2 px-2 font-medium">{t('ws_col_score')}</th>
+            <th className="text-center py-2 px-2 font-medium">{t('ws_col_technical')}</th>
+            <th className="text-center py-2 px-2 font-medium">{t('ws_col_fundamental')}</th>
+            <th className="text-center py-2 px-2 font-medium">{t('ws_col_valuation')}</th>
+            <th className="text-center py-2 px-2 font-medium">{t('ws_col_risk')}</th>
           </tr>
         </thead>
         <tbody>
@@ -59,16 +81,16 @@ const ScreenerTable: React.FC<ScreenerTableProps> = ({ results, onSelect }) => {
                 </span>
               </td>
               <td className="text-center py-2.5 px-2">
-                <Badge value={r.quant.technical.signal} />
+                <Badge value={r.quant.technical.signal} t={t} />
               </td>
               <td className="text-center py-2.5 px-2">
-                <Badge value={r.quant.fundamental.signal} />
+                <Badge value={r.quant.fundamental.signal} t={t} />
               </td>
               <td className="text-center py-2.5 px-2">
-                <Badge value={r.quant.valuation?.signal} />
+                <Badge value={r.quant.valuation?.signal} t={t} />
               </td>
               <td className="text-center py-2.5 px-2">
-                <Badge value={r.quant.risk?.riskLevel} />
+                <Badge value={r.quant.risk?.riskLevel} t={t} />
               </td>
             </tr>
           ))}

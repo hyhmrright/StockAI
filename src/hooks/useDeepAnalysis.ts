@@ -6,6 +6,7 @@ import type {
   MasterWeightInput,
 } from '../../shared/types';
 import { deepAnalyze } from '../lib/ipc';
+import { useLanguage } from './useLanguage';
 import { useSymbolScopedAsync } from './useSymbolScopedAsync';
 
 export interface UseDeepAnalysisResult {
@@ -33,6 +34,7 @@ export function useDeepAnalysis(
   runner: DeepAnalyzeFn = deepAnalyze,
 ): UseDeepAnalysisResult {
   const store = useSymbolScopedAsync<DeepAnalysisResult>();
+  const { t } = useLanguage();
   const cacheKey = `${symbol}::${configFingerprint}`;
 
   const analyze = useCallback(
@@ -40,13 +42,13 @@ export function useDeepAnalysis(
       if (!symbol) return;
       const key = `${symbol}::${configFingerprint}`;
       if (news.length === 0) {
-        store.setError(key, '尚未抓到新闻，无法分析。请等待数据加载完成后再点击。');
+        store.setError(key, t('no_news_to_analyze'));
         return;
       }
 
       await store.run(key, () => runner(symbol, news, quant, weights));
     },
-    [symbol, configFingerprint, runner, store],
+    [symbol, configFingerprint, runner, store, t],
   );
 
   return {

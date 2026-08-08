@@ -1,4 +1,4 @@
-import type { MasterMeta } from '../../../shared/types';
+import type { Language, MasterMeta } from '../../../shared/types';
 
 const MASTER_META: MasterMeta[] = [
   {
@@ -113,4 +113,22 @@ export function getAllMasterMeta(): MasterMeta[] {
 
 export function getMasterMeta(id: string): MasterMeta | undefined {
   return MASTER_META.find((m) => m.id === id);
+}
+
+/**
+ * MasterMeta 是双语数据表（name/nameZh、style/styleZh 成对），
+ * 「按语言取哪个字段」的决策收敛在这两个函数里——此前散在三个组件各写一遍。
+ */
+export function masterName(
+  meta: MasterMeta | undefined,
+  language: Language,
+  fallback = '',
+): string {
+  if (!meta) return fallback;
+  return language === 'zh' ? meta.nameZh : meta.name;
+}
+
+export function masterStyle(meta: MasterMeta | undefined, language: Language): string {
+  if (!meta) return '';
+  return language === 'zh' ? meta.styleZh : meta.style;
 }

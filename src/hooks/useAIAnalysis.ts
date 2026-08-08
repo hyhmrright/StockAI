@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { AIAnalysisResult, StockNews, QuantBundle } from '../../shared/types';
 import { analyzeNews } from '../lib/ipc';
 import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from './cache-utils';
+import { useLanguage } from './useLanguage';
 import { useSymbolScopedAsync } from './useSymbolScopedAsync';
 
 export { MAX_SYMBOLS_IN_CACHE, setWithLRI };
@@ -36,12 +37,13 @@ export function useAIAnalysis(
   runner: AnalyzeFn = analyzeNews,
 ): UseAIAnalysisResult {
   const store = useSymbolScopedAsync<AIAnalysisRecord>();
+  const { t } = useLanguage();
 
   const analyze = useCallback(
     async (news: StockNews[], quant?: QuantBundle) => {
       if (!symbol) return;
       if (news.length === 0) {
-        store.setError(symbol, '尚未抓到新闻，无法分析。请等待数据加载完成后再点击。');
+        store.setError(symbol, t('no_news_to_analyze'));
         return;
       }
 
@@ -50,7 +52,7 @@ export function useAIAnalysis(
         return { result, analyzedAt: Date.now(), newsSnapshotLength: news.length };
       });
     },
-    [symbol, runner, store],
+    [symbol, runner, store, t],
   );
 
   return {

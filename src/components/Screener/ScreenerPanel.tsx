@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Loader2, RotateCcw } from 'lucide-react';
 import ScreenerTable from './ScreenerTable';
+import { useLanguage } from '../../hooks/useLanguage';
 import type { ScreenerResult } from '../../../shared/types';
 
 interface ScreenerPanelProps {
@@ -20,11 +21,14 @@ const ScreenerPanel: React.FC<ScreenerPanelProps> = ({
 }) => {
   const hasResults = results.length > 0;
   const isDone = !scanning && hasResults;
+  const { t } = useLanguage();
 
   return (
     <div className="mt-4 mb-6 p-4 bg-white/5 rounded-2xl border border-white/5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">自选股筛选</h3>
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          {t('ws_title')}
+        </h3>
         <button
           onClick={onScan}
           disabled={scanning}
@@ -38,12 +42,12 @@ const ScreenerPanel: React.FC<ScreenerPanelProps> = ({
           ) : isDone ? (
             <>
               <RotateCcw className="w-3 h-3" />
-              重新扫描
+              {t('ws_rescan')}
             </>
           ) : (
             <>
               <Search className="w-3 h-3" />
-              开始扫描
+              {t('ws_scan')}
             </>
           )}
         </button>

@@ -1,6 +1,7 @@
 import { MarketBundle, StockInfo, StockNews } from '../../shared/types';
 import { fetchMarketBundle } from '../lib/ipc';
 import { type AsyncStep, useSymbolFetch } from './useSymbolFetch';
+import { useLanguage } from './useLanguage';
 
 export type StockDataStep = AsyncStep;
 
@@ -22,10 +23,11 @@ export function useStockData(
   symbol: string,
   fetcher: FetchFn = fetchMarketBundle,
 ): UseStockDataResult {
+  const { t } = useLanguage();
   const { step, data, error, refetch } = useSymbolFetch<MarketBundle>(
     symbol,
     fetcher,
-    '拉取股票数据失败',
+    t('data_fetch_error'),
   );
 
   return {

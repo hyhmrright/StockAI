@@ -4,28 +4,29 @@ import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import AnalysisTriggerCard, { formatRelative } from './AnalysisTriggerCard';
 import type { AIAnalysisRecord } from '../hooks/useAIAnalysis';
+import { zhT as t } from '../test/i18n';
 
 // ---- formatRelative 纯函数单测 ----
 
 describe('formatRelative', () => {
   it("不到 60 秒显示'刚刚'", () => {
-    expect(formatRelative(Date.now() - 30_000)).toBe('刚刚');
+    expect(formatRelative(Date.now() - 30_000, t)).toBe('刚刚');
   });
 
   it("60 秒到 59 分钟显示'x 分钟前'", () => {
-    expect(formatRelative(Date.now() - 5 * 60_000)).toBe('5 分钟前');
+    expect(formatRelative(Date.now() - 5 * 60_000, t)).toBe('5 分钟前');
   });
 
   it("1 小时到 23 小时显示'x 小时前'", () => {
-    expect(formatRelative(Date.now() - 3 * 3600_000)).toBe('3 小时前');
+    expect(formatRelative(Date.now() - 3 * 3600_000, t)).toBe('3 小时前');
   });
 
   it("24 小时以上显示'x 天前'", () => {
-    expect(formatRelative(Date.now() - 2 * 86400_000)).toBe('2 天前');
+    expect(formatRelative(Date.now() - 2 * 86400_000, t)).toBe('2 天前');
   });
 
   it("刚好 0 秒差显示'刚刚'", () => {
-    expect(formatRelative(Date.now())).toBe('刚刚');
+    expect(formatRelative(Date.now(), t)).toBe('刚刚');
   });
 });
 

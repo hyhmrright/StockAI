@@ -1,5 +1,6 @@
 import React from 'react';
-import { getAllMasterMeta } from '../DeepAnalysis/master-meta';
+import { getAllMasterMeta, masterName, masterStyle } from '../DeepAnalysis/master-meta';
+import { useLanguage } from '../../hooks/useLanguage';
 
 interface DeepAnalysisSettingsProps {
   masterAnalysis: boolean;
@@ -15,6 +16,7 @@ const DeepAnalysisSettings: React.FC<DeepAnalysisSettingsProps> = ({
   onSelectedMastersChange,
 }) => {
   const allMasters = getAllMasterMeta();
+  const { language, t } = useLanguage();
 
   function toggleMaster(id: string) {
     if (selectedMasters.includes(id)) {
@@ -28,7 +30,7 @@ const DeepAnalysisSettings: React.FC<DeepAnalysisSettingsProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-sm text-gray-300">启用深度大师分析</label>
+        <label className="text-sm text-gray-300">{t('deep_enable')}</label>
         <input
           type="checkbox"
           checked={masterAnalysis}
@@ -38,7 +40,7 @@ const DeepAnalysisSettings: React.FC<DeepAnalysisSettingsProps> = ({
       </div>
       {masterAnalysis && (
         <div className="space-y-2">
-          <p className="text-xs text-gray-500">选择参与分析的投资大师（每位消耗 1 次 LLM 调用）</p>
+          <p className="text-xs text-gray-500">{t('deep_select_hint')}</p>
           <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto">
             {allMasters.map((m) => (
               <label
@@ -51,14 +53,16 @@ const DeepAnalysisSettings: React.FC<DeepAnalysisSettingsProps> = ({
                   onChange={() => toggleMaster(m.id)}
                   className="rounded"
                 />
-                <span className="text-xs text-white">{m.nameZh}</span>
-                <span className="text-[10px] text-gray-500">{m.styleZh}</span>
+                <span className="text-xs text-white">{masterName(m, language)}</span>
+                <span className="text-[10px] text-gray-500">{masterStyle(m, language)}</span>
               </label>
             ))}
           </div>
           <p className="text-[10px] text-gray-600">
-            预计消耗: {selectedMasters.length + 2} 次 LLM 调用（{selectedMasters.length} 位大师 +
-            情绪 + 综合）
+            {t('deep_cost_estimate', {
+              total: selectedMasters.length + 2,
+              n: selectedMasters.length,
+            })}
           </p>
         </div>
       )}
