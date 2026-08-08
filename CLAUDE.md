@@ -56,7 +56,7 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
 `shared/` 目录是跨层唯一来源：`types/`（DTO 类型，按上下文分文件 + barrel，一律 `from '../shared/types'`）、`actions.ts`（Sidecar CLI 动作清单，三层布线的单一来源）、`market.ts`（`detectMarket` 函数）、`constants.ts`（默认大师列表等）。前端与 Sidecar 各自 re-export，**不得在各层重复定义**。
 
-新增 Sidecar 能力只需三处：`shared/actions.ts` 加一条 + `sidecar/cli-handlers.ts` 实现 handler + `sidecar/index.ts` 的 `DISPATCH` 加一行——Rust（泛化 `invoke_sidecar`）与 `src/lib/ipc.ts` 的调用管道无需改动。
+新增 Sidecar 能力只需三处：`shared/actions.ts` 加一条 + `sidecar/cli-handlers/` 对应领域文件实现 handler + `sidecar/index.ts` 的 `DISPATCH` 加一行——Rust（泛化 `invoke_sidecar`）与 `src/lib/ipc.ts` 的调用管道无需改动。
 
 详细架构说明见 `.claude/rules/architecture.md`（需要时 Read 该文件）。
 

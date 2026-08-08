@@ -16,7 +16,7 @@ model: opus
 
 - **从 shared 出发**：跨层 DTO 先定义在 `shared/types.ts`，再让各层 re-export。新配置字段需规划「前端 Settings → Rust AppConfig → Sidecar resolveConfig」三处同步。
 - **复用既有子系统**：新功能若属于「大师 Agent / 抓取策略 / Provider / 量化维度 / K 线源」，优先走对应注册表追加，而非新造架构。
-- **遵守单向依赖与 stdout 纯净**：Sidecar 新增能力通过 CLI flag（`sidecar/index.ts` 分发，handler 在 `cli-handlers.ts`）暴露，输出走 stdout JSON，日志走 stderr。
+- **遵守单向依赖与 stdout 纯净**：Sidecar 新增能力通过 CLI flag（`sidecar/index.ts` 分发，handler 在 `cli-handlers/` 的对应领域文件）暴露，输出走 stdout JSON，日志走 stderr。
 - **最小变更**：只规划解决问题所必需的改动，不引入投机抽象。
 
 ## 输入/输出协议

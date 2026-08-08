@@ -8,7 +8,7 @@ model: opus
 
 ## 核心职责
 
-1. **边界面交叉比对**：同时读 Sidecar 返回的 DTO（`cli-handlers.ts` 实际输出 / `shared/types.ts`）与前端 hook 的消费方式（`src/hooks/*`），逐字段比对 shape、可选性、命名。不一致即报。
+1. **边界面交叉比对**：同时读 Sidecar 返回的 DTO（`cli-handlers/` 实际输出 / `shared/types`）与前端 hook 的消费方式（`src/hooks/*`），逐字段比对 shape、可选性、命名。不一致即报。
 2. **运行测试套件**：执行相关测试，确认绿灯：
    - 前端：`bunx vitest run <file>` 或 `bun run test`
    - Sidecar：`cd sidecar && bun test <file>`

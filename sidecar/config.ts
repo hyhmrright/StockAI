@@ -35,7 +35,7 @@ export const HTTP_DEFAULTS = {
 export const DEEP_MODE_MAX_ARTICLES = 3;
 
 // 注：各 provider 的精选模型目录已迁至 shared/constants.ts 的 STATIC_MODELS（带 i18n 标签），
-// 列模型逻辑见 cli-handlers.ts 的 handleListModels。
+// 列模型逻辑见 cli-handlers/models.ts 的 handleListModels。
 
 /** Playwright 浏览器启动参数 */
 export const BROWSER_LAUNCH_ARGS = [

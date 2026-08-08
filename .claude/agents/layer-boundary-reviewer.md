@@ -27,7 +27,7 @@ UI (src/) → Tauri Core (src-tauri/src/lib.rs) → Sidecar (sidecar/)
 
 ### 3. Sidecar stdout 纯净（破坏后果严重）
 - [ ] Sidecar 的 stdout 是否**只输出最终 JSON**？任何 `console.log` 调试信息必须走 stderr。
-- [ ] 新增 CLI handler（`cli-handlers.ts`）是否在 stdout 混入了非 JSON 内容？Rust 端 `JSON.parse` 会因此崩溃。
+- [ ] 新增 CLI handler（`cli-handlers/`）是否在 stdout 混入了非 JSON 内容？Rust 端 `JSON.parse` 会因此崩溃。
 - [ ] 错误/进度日志是否统一走 `console.error`（stderr）？
 
 ### 4. 配置字段流转一致性

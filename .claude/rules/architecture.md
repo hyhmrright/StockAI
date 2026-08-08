@@ -65,15 +65,33 @@ Bun 进程，主流程两步：
 
 「一个能力叫什么、吃哪些参数」只在 `shared/actions.ts` 的 `SIDECAR_ACTIONS` 声明一次，三层各自派生：
 
-- **Sidecar**（`sidecar/index.ts`）：`parseArgs` 按 flag 匹配 argv、按 `slots` 逐位取参；`DISPATCH` 表把参数交给 `cli-handlers.ts` 的 handler
+- **Sidecar**（`sidecar/index.ts`）：`parseArgs` 按 flag 匹配 argv、按 `slots` 逐位取参；`DISPATCH` 表把参数交给 `cli-handlers/` 的 handler
 - **Rust**：泛化 `invoke_sidecar`，只认哨兵（见 §2）
 - **前端**（`src/lib/ipc.ts`）：`buildActionArgs` 组装 argv
 
 `ipc: false` 的 action 表示**仅 CLI 调试入口、无前端调用方**（业务链路里由 sidecar 内部直接调对应函数）。`shared/actions.test.ts` 交叉校验清单与 `ipc.ts`、`index.ts` 的一致性——防止再出现「sidecar handler + Rust command 都写好了，前端却没调用方」的半截布线。
 
-**新增一个能力 = 两处改动**：`shared/actions.ts` 加一条 + `cli-handlers.ts` 实现 handler + `sidecar/index.ts` 的 `DISPATCH` 加一行。Rust 与 ipc.ts 的调用管道不动。
+**新增一个能力 = 两处改动**：`shared/actions.ts` 加一条 + `cli-handlers/` 对应领域文件实现 handler + `sidecar/index.ts` 的 `DISPATCH` 加一行。Rust 与 ipc.ts 的调用管道不动。
 
 当前动作：`--list-models` / `--search` / `--kline` / `--quote` / `--bundle` / `--analyze-only` / `--quant` / `--index-reports` / `--backtest` / `--deep-analysis` / `--chat` / `--screen`（以上 `ipc: true`）；`--fundamentals-history` / `--market-snapshot` / `--info`（`ipc: false`，CLI 调试用）；无 flag 时为默认全流程分析模式（`<symbol> <@config>`，向后兼容）。另有 `--check` 健康自检，在参数解析前短路处理。
+
+### handler 分组（`sidecar/cli-handlers/`）
+
+handler 按领域分文件，各组是一个 `createXxxHandlers(ctx)` 工厂，由 `index.ts` 合并成单一 `Handlers` 对象。新增 handler 时按下表对号入座：
+
+| 文件 | 覆盖的 handler |
+|------|----------------|
+| `models.ts` | `handleListModels`（+ `fetchProviderModels` 真实端点拉取、`RawConfig`） |
+| `market-data.ts` | 不调 LLM 的纯数据：`handleInfo` / `handleSearch` / `handleKline` / `handleQuote` / `handleQuant` / `handleFinancialHistory` / `handleMarketSnapshot` / `handleBacktest` |
+| `analysis.ts` | LLM 分析链路：`handleAnalysis` / `handleFetchBundle` / `handleAnalyzeOnly` / `handleDeepAnalysis` |
+| `conversation.ts` | `handleChat` 及其前置的 `handleIndexReports`（财报 RAG 预热） |
+| `screener.ts` | `handleScreen`（自成一组：有独立的 `ERR_SCREEN_*` 错误码分类） |
+| `context.ts` | 共享的 `HandlerContext`（输出通道 `out` + 测试注入点 `deps` + `requireSymbol` 守卫）与 `HandlerDeps` |
+
+**两条铁律**：
+
+- **重依赖必须留在函数体内 `await import()`**。各文件顶层只准 import `utils` / `shared/constants` / 类型——`cli-handlers` 在启动路径上，顶层拖入 playwright 一系会让 Bun `--compile` 的二进制在无浏览器环境直接崩（历史事故）。
+- **每个 handler 的所有出口都要写一次且仅一次信封**（`successEnvelope` / `errorEnvelope`）。`outputJson` 有重复写入检测，会抛 `[PROTOCOL]`。
 
 ## Multi-Agent 系统（`sidecar/agents/`）
 

@@ -5,7 +5,7 @@
 //   - Tauri Core（src-tauri/src/lib.rs）：单个泛化 invoke_sidecar 命令，只认下面两个哨兵，不认具体 action
 //   - 前端（src/lib/ipc.ts）：按 flag + slots 组装 argv
 //
-// 新增一个能力 = 本文件加一条 + cli-handlers.ts 实现 handler + index.ts 的 DISPATCH 加一行。
+// 新增一个能力 = 本文件加一条 + cli-handlers/ 对应领域文件实现 handler + index.ts 的 DISPATCH 加一行。
 // Rust 与 ipc.ts 的调用管道无需改动。
 
 /**

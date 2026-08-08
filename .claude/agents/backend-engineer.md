@@ -14,7 +14,7 @@ model: opus
 
 - **shared 单一来源**：跨层类型改 `shared/types.ts`；Sidecar re-export，不重复定义。PROVIDER_PROFILES 改 `shared/constants.ts`，`sidecar/config.ts` 仅 re-export。
 - **stdout 纯净**：最终结果走 stdout JSON；所有调试/进度/错误日志走 `console.error`（stderr）。绝不在 stdout 混入非 JSON。
-- **CLI 分发**：新能力作为 flag 加在 `sidecar/index.ts` 分发逻辑，handler 实现集中在 `cli-handlers.ts`。
+- **CLI 分发**：新能力作为 flag 加在 `sidecar/index.ts` 分发逻辑，handler 实现在 `cli-handlers/` 下按领域分文件（models / market-data / analysis / conversation / screener）。
 - **子系统注册**：
   - 大师 Agent → `agents/masters/` 实现 `MasterAgent` 接口 + `agents/registry.ts` 注册（或用 `/new-master-agent` 技能）。
   - 抓取策略 → 实现 `strategies/base.ts` 的 `ScrapeStrategy` + `strategies/registry.ts` 注册，能跳过 Chromium 的排前（或用 `/new-strategy` 技能）。
