@@ -1,4 +1,6 @@
 import type { StockNews, ChatPayload } from '../shared/types';
+import type { SidecarActionDef, SlotName } from '../shared/actions';
+import { SIDECAR_ACTIONS, DEFAULT_ANALYSIS_SLOTS } from '../shared/actions';
 import type { RawConfig } from './cli-handlers';
 import {
   logger,
@@ -28,142 +30,47 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-/** 命令定义：每条命令的参数提取规则 */
-interface CommandDef {
-  flag: string;
-  /** 从 argv 中提取参数；idx 为 flag 在 argv 中的位置 */
-  extract: (args: string[], idx: number) => Omit<ParsedArgs, 'action'>;
-}
+/** 参数解析结果：槽位名 → 值，槽位布局来自 shared/actions.ts 的清单 */
+export type ParsedArgs = { action: string } & Partial<Record<SlotName, string>>;
 
-/** 参数解析结果 */
-interface ParsedArgs {
-  action: string;
-  configStr: string;
-  actionParam?: string;
-  newsJson?: string;
-  quantJson?: string;
-  weightsJson?: string;
-}
+/** flag → 定义。用于「从 argv 里认出动作标志」，与声明顺序无关。 */
+const FLAG_TO_ACTION = new Map<string, SidecarActionDef>(
+  Object.values(SIDECAR_ACTIONS).map((def) => [def.flag, def]),
+);
 
-/** 命令定义表：flag → 参数提取逻辑 */
-const COMMAND_TABLE: CommandDef[] = [
-  {
-    // --list-models：config 为内联 JSON 串或 @临时文件路径（含 apiKey，故优先走临时文件）
-    flag: '--list-models',
-    extract: (args) => ({
-      configStr: args.find((a) => a.startsWith('{') || a.startsWith('@')) || '{}',
-    }),
-  },
-  {
-    // --info config_json symbol
-    flag: '--info',
-    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 2] }),
-  },
-  {
-    // --search config_json keyword
-    flag: '--search',
-    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 2] }),
-  },
-  {
-    // --kline request_json
-    flag: '--kline',
-    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
-  },
-  {
-    // --quote symbol
-    flag: '--quote',
-    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
-  },
-  {
-    // --bundle config_json symbol
-    flag: '--bundle',
-    extract: (args, idx) => ({ configStr: args[idx + 1] || '{}', actionParam: args[idx + 2] }),
-  },
-  {
-    // --analyze-only config_json symbol news_path [quant_json]
-    // news 通过临时文件传递（Rust 写入路径），避免 argv 撞 macOS ARG_MAX
-    flag: '--analyze-only',
-    extract: (args, idx) => ({
-      configStr: args[idx + 1] || '{}',
-      actionParam: args[idx + 2],
-      newsJson: args[idx + 3],
-      quantJson: args[idx + 4],
-    }),
-  },
-  {
-    // --quant symbol
-    flag: '--quant',
-    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
-  },
-  {
-    // --index-reports symbol（#11 财报 RAG 预热，symbol-only，无 config，镜像 --quant）
-    flag: '--index-reports',
-    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
-  },
-  {
-    // --backtest symbol
-    flag: '--backtest',
-    extract: (args, idx) => ({ configStr: '{}', actionParam: args[idx + 1] }),
-  },
-  {
-    // --fundamentals-history symbol [periods]（无 config；periods 复用 newsJson 通用槽位）
-    flag: '--fundamentals-history',
-    extract: (args, idx) => ({
-      configStr: '{}',
-      actionParam: args[idx + 1],
-      newsJson: args[idx + 2],
-    }),
-  },
-  {
-    // --market-snapshot（无 config、无参数；全市场快照，筛选在下游 #14）
-    flag: '--market-snapshot',
-    extract: () => ({ configStr: '{}' }),
-  },
-  {
-    // --deep-analysis config_json symbol news_path quant_json weights_json
-    // 固定槽位：quant 缺省为 ""（tryParseQuant 视为未提供），weights 缺省为 "[]"，消除位置歧义
-    flag: '--deep-analysis',
-    extract: (args, idx) => ({
-      configStr: args[idx + 1] || '{}',
-      actionParam: args[idx + 2],
-      newsJson: args[idx + 3],
-      quantJson: args[idx + 4],
-      weightsJson: args[idx + 5],
-    }),
-  },
-  {
-    // --chat config_json payload_path（payload 经临时文件传递，含上下文+历史，避免 ARG_MAX）
-    flag: '--chat',
-    extract: (args, idx) => ({
-      configStr: args[idx + 1] || '{}',
-      actionParam: args[idx + 2],
-    }),
-  },
-  {
-    // --screen config_json nl_query（config 含 apiKey 走 @临时文件；query 明文走 argv）
-    flag: '--screen',
-    extract: (args, idx) => ({
-      configStr: args[idx + 1] || '{}',
-      actionParam: args[idx + 2],
-    }),
-  },
-];
-
-/** 解析 argv，按命令表依次匹配；均未命中时走默认分析模式 */
-function parseArgs(args: string[]): ParsedArgs {
-  for (const cmd of COMMAND_TABLE) {
-    const idx = args.indexOf(cmd.flag);
-    if (idx >= 0) {
-      return { action: cmd.flag, ...cmd.extract(args, idx) };
-    }
+/**
+ * 按 shared/actions.ts 的清单解析 argv：命中某 flag 后，其后的参数按该 action 的
+ * slots 顺序逐位取值。均未命中时走默认分析模式（`<symbol> <@config>`，无 flag）。
+ *
+ * 必须**从左到右扫 argv 取第一个已知 flag**，不能反过来「按 action 顺序去 argv 里找」——
+ * 后者会让用户传入的值抢戏：选股 query 里若含 "--quant"，`--screen` 就会按声明顺序
+ * 被误派成 `--quant`。动作标志恒在参数之前，取最左侧的即是真正的动作。
+ */
+export function parseArgs(args: string[]): ParsedArgs {
+  for (let i = 0; i < args.length; i++) {
+    const def = FLAG_TO_ACTION.get(args[i]);
+    if (!def) continue;
+    const parsed: ParsedArgs = { action: def.flag };
+    def.slots.forEach((slot, s) => {
+      parsed[slot] = args[i + 1 + s];
+    });
+    return parsed;
   }
-  // 默认为分析模式: [binary] [symbol] [config_json | @config_path]
-  const possibleConfig = args.find((a) => a.startsWith('{') || a.startsWith('@'));
-  if (possibleConfig) {
-    const idx = args.indexOf(possibleConfig);
-    return { action: idx > 0 ? args[idx - 1] : '', configStr: possibleConfig };
+
+  // 默认分析模式：config 以 '{' 或 '@' 开头，symbol 紧邻其前
+  const configStr = args.find((a) => a.startsWith('{') || a.startsWith('@'));
+  const parsed: ParsedArgs = { action: '' };
+  if (configStr) {
+    const idx = args.indexOf(configStr);
+    const values = [idx > 0 ? args[idx - 1] : '', configStr];
+    DEFAULT_ANALYSIS_SLOTS.forEach((slot, i) => {
+      parsed[slot] = values[i];
+    });
+  } else {
+    parsed.actionParam = args[args.length - 1] || '';
+    parsed.configStr = '{}';
   }
-  return { action: args[args.length - 1] || '', configStr: '{}' };
+  return parsed;
 }
 
 /** 解析 config 字符串：@ 前缀表示从临时文件读取，否则视为内联 JSON */
@@ -203,23 +110,18 @@ async function run() {
   }
 
   const { resolveConfig } = await import('./configResolver');
+  type ResolvedConfig = ReturnType<typeof resolveConfig>;
   const { Handlers } = await import('./cli-handlers');
 
-  const {
-    action,
-    configStr: rawConfigStr,
-    actionParam,
-    newsJson,
-    quantJson,
-    weightsJson,
-  } = parseArgs(args);
-  const configStr = await resolveConfigStr(rawConfigStr);
+  const parsed = parseArgs(args);
+  const { action, actionParam = '', newsJson, quantJson, weightsJson } = parsed;
+  const configStr = await resolveConfigStr(parsed.configStr ?? '{}');
 
   logger.info(
-    `Sidecar 执行: action=${action}, param=${actionParam}, config_len=${configStr.length}`,
+    `Sidecar 执行: action=${action || 'default'}, param=${actionParam}, config_len=${configStr.length}`,
   );
 
-  if (!action) {
+  if (!action && !actionParam) {
     logger.error('未提供有效 Action');
     process.exit(1);
   }
@@ -231,132 +133,89 @@ async function run() {
     rawConfig = {};
   }
 
-  switch (action) {
-    case '--list-models':
-      await Handlers.handleListModels(rawConfig as RawConfig);
-      break;
-    case '--info':
-      await Handlers.handleInfo(actionParam || '');
-      break;
-    case '--search':
-      await Handlers.handleSearch(actionParam || '');
-      break;
-    case '--kline':
-      await Handlers.handleKline(actionParam || '{}');
-      break;
-    case '--quote':
-      await Handlers.handleQuote(actionParam || '');
-      break;
-    case '--bundle':
+  /**
+   * 包装需要配置的 action：配置解析失败即写 ERR_CONFIG 信封并跳过 handler。
+   * 让 DISPATCH 里每条都不必自己重复 try/catch。
+   */
+  function withConfig(handle: (config: ResolvedConfig) => Promise<void>): () => Promise<void> {
+    return async () => {
+      let config: ResolvedConfig;
       try {
-        const config = resolveConfig(rawConfig);
-        await Handlers.handleFetchBundle(actionParam || '', config);
+        config = resolveConfig(rawConfig);
       } catch (error) {
         outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
+        return;
       }
-      break;
-    case '--analyze-only':
-      try {
-        const config = resolveConfig(rawConfig);
-        if (!newsJson) {
-          outputJson(errorEnvelope('ERR_MISSING_PARAM', '未提供 news 文件路径'));
-          return;
-        }
-        let news: StockNews[] = [];
-        try {
-          // news 始终通过临时文件传递（Rust/Bridge 写入），避免 argv 触发 ARG_MAX
-          news = JSON.parse(await Bun.file(newsJson).text());
-        } catch (err) {
-          outputJson(
-            errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`),
-          );
-          return;
-        }
-        await Handlers.handleAnalyzeOnly(actionParam || '', news, config, quantJson);
-      } catch (error) {
-        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
-      }
-      break;
-    case '--quant':
-      await Handlers.handleQuant(actionParam || '');
-      break;
-    case '--index-reports':
-      await Handlers.handleIndexReports(actionParam || '');
-      break;
-    case '--backtest':
-      await Handlers.handleBacktest(actionParam || '');
-      break;
-    case '--fundamentals-history':
-      // newsJson 复用为 periods 字符串槽位（可选，缺省默认 12 期）
-      await Handlers.handleFinancialHistory(actionParam || '', newsJson);
-      break;
-    case '--market-snapshot':
-      await Handlers.handleMarketSnapshot();
-      break;
-    case '--deep-analysis':
-      try {
-        const config = resolveConfig(rawConfig);
-        if (!newsJson) {
-          outputJson(errorEnvelope('ERR_MISSING_PARAM', '未提供 news 文件路径'));
-          return;
-        }
-        let news: StockNews[] = [];
-        try {
-          news = JSON.parse(await Bun.file(newsJson).text());
-        } catch (err) {
-          outputJson(
-            errorEnvelope('ERR_MISSING_PARAM', `读取 news 文件失败: ${toErrorMessage(err)}`),
-          );
-          return;
-        }
-        await Handlers.handleDeepAnalysis(actionParam || '', news, config, quantJson, weightsJson);
-      } catch (error) {
-        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
-      }
-      break;
-    case '--chat':
-      try {
-        const config = resolveConfig(rawConfig);
-        if (!actionParam) {
-          outputJson(errorEnvelope('ERR_MISSING_PARAM', '未提供 chat payload 文件路径'));
-          return;
-        }
-        let payload: ChatPayload;
-        try {
-          // payload 始终通过临时文件传递（Rust 写入路径），避免 argv 撞 ARG_MAX
-          payload = JSON.parse(await Bun.file(actionParam).text());
-        } catch (err) {
-          outputJson(
-            errorEnvelope('ERR_MISSING_PARAM', `读取 chat payload 失败: ${toErrorMessage(err)}`),
-          );
-          return;
-        }
-        await Handlers.handleChat(payload, config);
-      } catch (error) {
-        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
-      }
-      break;
-    case '--screen':
-      try {
-        const config = resolveConfig(rawConfig);
-        await Handlers.handleScreen(actionParam || '', config);
-      } catch (error) {
-        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
-      }
-      break;
-    default:
-      try {
-        const config = resolveConfig(rawConfig);
-        await Handlers.handleAnalysis(action || '', config);
-      } catch (error) {
-        outputJson(errorEnvelopeFromUnknown('ERR_CONFIG', error));
-      }
-      break;
+      await handle(config);
+    };
   }
+
+  /**
+   * 读取经临时文件转移的 JSON payload（news / chat payload）——它们体积可能超过
+   * macOS ARG_MAX，故由 Rust/桥接器写盘后只传路径。失败写 ERR_MISSING_PARAM 并返回 null。
+   */
+  async function readPayload<T>(path: string | undefined, label: string): Promise<T | null> {
+    if (!path) {
+      outputJson(errorEnvelope('ERR_MISSING_PARAM', `未提供 ${label} 文件路径`));
+      return null;
+    }
+    try {
+      return JSON.parse(await Bun.file(path).text()) as T;
+    } catch (err) {
+      outputJson(
+        errorEnvelope('ERR_MISSING_PARAM', `读取 ${label} 文件失败: ${toErrorMessage(err)}`),
+      );
+      return null;
+    }
+  }
+
+  /**
+   * flag → handler 调用。与 shared/actions.ts 的清单一一对应：清单声明「参数怎么排」，
+   * 此表声明「参数怎么交给 handler」。新增 action 时两处各加一行即可。
+   */
+  const DISPATCH: Record<string, () => Promise<void>> = {
+    [SIDECAR_ACTIONS.listModels.flag]: () => Handlers.handleListModels(rawConfig as RawConfig),
+    [SIDECAR_ACTIONS.info.flag]: () => Handlers.handleInfo(actionParam),
+    [SIDECAR_ACTIONS.search.flag]: () => Handlers.handleSearch(actionParam),
+    [SIDECAR_ACTIONS.kline.flag]: () => Handlers.handleKline(actionParam || '{}'),
+    [SIDECAR_ACTIONS.quote.flag]: () => Handlers.handleQuote(actionParam),
+    [SIDECAR_ACTIONS.quant.flag]: () => Handlers.handleQuant(actionParam),
+    [SIDECAR_ACTIONS.indexReports.flag]: () => Handlers.handleIndexReports(actionParam),
+    [SIDECAR_ACTIONS.backtest.flag]: () => Handlers.handleBacktest(actionParam),
+    [SIDECAR_ACTIONS.marketSnapshot.flag]: () => Handlers.handleMarketSnapshot(),
+    // newsJson 槽位在此复用为 periods 字符串（可选，缺省默认 12 期）
+    [SIDECAR_ACTIONS.fundamentalsHistory.flag]: () =>
+      Handlers.handleFinancialHistory(actionParam, newsJson),
+
+    [SIDECAR_ACTIONS.bundle.flag]: withConfig((cfg) =>
+      Handlers.handleFetchBundle(actionParam, cfg),
+    ),
+    [SIDECAR_ACTIONS.screen.flag]: withConfig((cfg) => Handlers.handleScreen(actionParam, cfg)),
+    [SIDECAR_ACTIONS.analyzeOnly.flag]: withConfig(async (cfg) => {
+      const news = await readPayload<StockNews[]>(newsJson, 'news');
+      if (news) await Handlers.handleAnalyzeOnly(actionParam, news, cfg, quantJson);
+    }),
+    [SIDECAR_ACTIONS.deepAnalysis.flag]: withConfig(async (cfg) => {
+      const news = await readPayload<StockNews[]>(newsJson, 'news');
+      if (news) await Handlers.handleDeepAnalysis(actionParam, news, cfg, quantJson, weightsJson);
+    }),
+    [SIDECAR_ACTIONS.chat.flag]: withConfig(async (cfg) => {
+      const payload = await readPayload<ChatPayload>(actionParam, 'chat payload');
+      if (payload) await Handlers.handleChat(payload, cfg);
+    }),
+  };
+
+  // 默认分析模式（向后兼容；新交互流程走 --bundle + --analyze-only）
+  const dispatch =
+    DISPATCH[action] ?? withConfig((cfg) => Handlers.handleAnalysis(actionParam, cfg));
+  await dispatch();
 }
 
-run().catch((err) => {
-  logger.error(`执行流异常: ${toErrorMessage(err)}`);
-  outputJson(errorEnvelopeFromUnknown('ERR_FATAL', err));
-  process.exit(1);
-});
+// 仅作为 CLI 入口被直接执行时才跑；被 import（如 parseArgs 的单测）时不启动业务流程
+if (import.meta.main) {
+  run().catch((err) => {
+    logger.error(`执行流异常: ${toErrorMessage(err)}`);
+    outputJson(errorEnvelopeFromUnknown('ERR_FATAL', err));
+    process.exit(1);
+  });
+}

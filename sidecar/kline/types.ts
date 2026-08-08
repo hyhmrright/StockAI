@@ -8,8 +8,13 @@ import type {
 
 export type { KlinePoint, RealtimeQuote, KlinePeriod, KlineRange, AdjustMode };
 
-/** K 线/报价各数据源 fetch 的超时（毫秒）：超时即中止，由多源回退兜底 */
-export const KLINE_FETCH_TIMEOUT_MS = 8000;
+/**
+ * 各数据源共用的注入点：替换真实网络，让「A 源失败→回退 B 源」这条容错逻辑可离线测试。
+ * 超时/UA 不在此定义——统一由 sidecar/http.ts 的 fetchWithPolicy 应用 HTTP_DEFAULTS。
+ */
+export interface KlineSourceDeps {
+  fetchImpl?: typeof fetch;
+}
 
 /**
  * Sidecar 内部规范化的参数：路由层把用户原始 symbol 转成各源能识别的形式

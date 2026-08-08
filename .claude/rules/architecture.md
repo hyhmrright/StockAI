@@ -2,43 +2,78 @@
 
 Three-layer architecture with strictly unidirectional dependencies: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
+## 0. 跨层契约（`shared/`）
+
+`shared/` 是三层唯一的共享来源，四个入口：
+
+| 文件 | 内容 |
+|------|------|
+| `shared/types/` | 全部 DTO，按界限上下文分文件（`envelope` / `provider` / `stock` / `quant` / `chat` / `masters` / `backtest` / `screener` / `history`），`shared/types/index.ts` 是 barrel。**调用方一律 `from '../shared/types'`，不要直接 import 子文件**——子文件划分是内部组织，barrel 才是对外契约。 |
+| `shared/actions.ts` | Sidecar CLI 动作清单（见 §4），三层布线的单一来源 |
+| `shared/constants.ts` | `PROVIDER_PROFILES` / `STATIC_MODELS` / 默认大师列表等 |
+| `shared/market.ts` | `detectMarket` 函数 |
+
+前端与 Sidecar 各自 re-export，**不得在各层重复定义**。
+
 ## 1. Frontend (`src/`)
 
-React + TypeScript + Vite. The sole IPC entry point is `src/lib/ipc.ts`, which calls `invoke("start_analysis")`。Dev-only mock 数据集中在 `src/lib/dev-mocks.ts`，仅在浏览器模式且 sidecar-bridge 未启动时使用。Cross-layer DTO 类型定义在 `shared/types.ts`（唯一来源），跨层共享的市场识别函数 `detectMarket` 在 `shared/market.ts`（前端与 Sidecar 各自 re-export）。全局 Store 单例在 `src/lib/store.ts`，所有 Hook 共享同一实例。Core logic lives in `src/hooks/useAnalysis.ts`, which manages the `AnalysisStep` state machine (`idle → scraping → completed | error`).
+React + TypeScript + Vite。唯一 IPC 入口是 `src/lib/ipc.ts`，它按 `shared/actions.ts` 的清单组装 argv 后调用 Rust 的单个 `invoke_sidecar` 命令。Dev-only mock 数据集中在 `src/lib/dev-mocks.ts`，仅在浏览器模式且 sidecar-bridge 未启动时使用。全局 Store 单例在 `src/lib/store.ts`。
+
+**Hook 分层**（避免各自手搓重复的异步状态机）：
+
+| Hook | 职责 |
+|------|------|
+| `useSymbolFetch` | 按 symbol 自动抓取的通用四态机（`idle→fetching→ready\|error`）+ requestId 竞态守卫。`useStockData` / `useQuantData` 是它的薄封装。 |
+| `useSymbolScopedAsync` | 按 key（symbol，或 symbol+配置指纹）分桶的异步结果仓库：结果 / error / in-flight 全部隔离，LRI 限容。`useAIAnalysis` / `useDeepAnalysis` / `useChat` 共用。 |
+| `useAnalysisSuite` | 一只股票的完整分析套件——组合上述 hook + 大师权重 + RAG 预热，向 UI 暴露一个 `AnalysisSuite` 对象。`Dashboard` 只传这一个 prop 给 `AnalysisPanel`。 |
+| `useReportIndexWarmup` | 切标的时 fire-and-forget 触发财报 RAG 建索引，把交易所平台抓取挪出 chat 首答关键路径。 |
+
+新增「按 symbol 取数」或「按 symbol 缓存异步结果」的能力时，复用上面两个基础 hook，不要再抄一份竞态守卫。
 
 ## 2. Tauri Core (`src-tauri/src/lib.rs`)
 
-The Rust layer does three things:
-- Reads config from `settings.json` (`tauri-plugin-store`) and produces an `AppConfig` via the pure function `resolve_config()`
-- Spawns the Sidecar subprocess, injects config as CLI args, captures stdout, and returns it to the frontend
-- 桌面端（`#[cfg(desktop)]`）注册 `tauri-plugin-updater` + `tauri-plugin-process`，支撑应用内自动更新（前端 `src/hooks/useUpdater.ts` + `UpdateBanner`/`settings/UpdateChecker`，启动静默检查 + 设置页手动按钮）。更新源与签名运维见 `release-checklist.md`。
+Rust 层做三件事：
 
-**Config field mapping** (frontend → Rust → Sidecar):
-Rust 层将 `AppConfig` 序列化为 JSON 字符串，作为 Sidecar 的第二个 CLI 参数传递。
-Sidecar 通过 `args.find(a => a.startsWith('{'))` 灵活定位 JSON 配置参数，经 `configResolver.ts` 的 `resolveConfig()` 解析和版本校验（`_version` 字段不匹配时抛出，提示用户重新保存配置）。字段为 camelCase：
-`{ provider, apiKey, baseUrl, modelName, deepMode }`
-前端 Settings 字段 `provider` 类型定义在 `shared/types.ts` 的 `ProviderType`：
-`"openai" | "ollama" | "anthropic" | "deepseek" | "glm"`。
-`deepseek` 与 `glm` 均走 OpenAI 兼容协议，在 `providers/registry.ts` 的工厂表中复用 `OpenAIProvider`，仅 `baseUrl`/`model` 默认值不同（定义在 `shared/constants.ts` 的 `PROVIDER_PROFILES`，`sidecar/config.ts` 仅 re-export）。
+- 暴露**唯一**的命令 `invoke_sidecar(args, payload, configOverride)`。它不认识任何具体 action，只做两件事：
+  - 把 argv 里的 `@config` 哨兵替换为 0o600 临时配置文件的 `@路径`（含 apiKey 的配置**永不进 argv**——`ps` / 活动监视器可见）
+  - 把 `@payload` 哨兵替换为临时 JSON 文件的裸路径（规避 macOS ARG_MAX ≈ 256KB）
+
+  两个哨兵的字面量与 `shared/actions.ts` 保持一致，由 `cargo test` 的 `test_slot_sentinels_match_shared_manifest` 守住。临时文件由 `TempFileGuard`（RAII）在 drop 时清理，覆盖 panic / 提前 return 所有退出路径。
+- 配置来源：默认取 `settings.json` 的 `app_settings`（`required_settings()`，缺失即报错）；`configOverride` 非空时改用它（列模型要用表单当前编辑值，可能尚未保存）。**Settings schema 由 Sidecar 的 `resolveConfig` 校验，Rust 不重复定义。**
+- 桌面端（`#[cfg(desktop)]`）注册 `tauri-plugin-updater` + `tauri-plugin-process`，支撑应用内自动更新（前端 `src/hooks/useUpdater.ts` + `UpdateBanner`/`settings/UpdateChecker`）。更新源与签名运维见 `release-checklist.md`。
+
+**因此新增 Sidecar 能力时本文件无需改动。**
+
+配置解析结果的权威定义是 `sidecar/configResolver.ts` 的 `ResolvedConfig`（含 `roles` 角色分级模型、`selectedMasters`、`language`、`deepMode` 等）。`_version` 与 `CONFIG_VERSION` 不匹配时抛出，提示用户重新保存配置。`ProviderType` 定义在 `shared/types`：`"openai" | "ollama" | "anthropic" | "deepseek" | "glm"`；`deepseek` 与 `glm` 走 OpenAI 兼容协议，在 `providers/registry.ts` 的工厂表中复用 `OpenAIProvider`，仅默认值不同（`shared/constants.ts` 的 `PROVIDER_PROFILES`，`sidecar/config.ts` 仅 re-export）。
 
 ## 3. Sidecar (`sidecar/`)
 
-A Bun process that reads JSON config from `process.argv[3]` and runs a two-step pipeline:
-1. **Scrape** (`scraper.ts`): 按 `StrategyRegistry.getStrategies()` 顺序尝试策略，首个返回非空结果即停止。顺序为 RSS 优先（`strategies/google-news-rss.ts` 原生覆盖 A 股、绕过 reCAPTCHA），其次 Playwright 策略（`google-news.ts` / `google.ts` / `yahoo.ts`）。Chromium 懒启动——仅 Playwright 策略或深度正文提取才触发，纯 RSS 路径可节省 1–3 秒。`deepMode=true`（默认）时对前 3 条抽取正文。纯解析助手（HTML / 交易所识别）在 `sidecar/parsers/{html,exchange}.ts`，与网络层解耦。
-2. **Analyze** (`analysis.ts`): Delegates provider creation to `providers/registry.ts` factory, then calls `provider.analyze()`. Prompt 构建逻辑统一在 `prompts.ts`，所有 Provider 共用。
+Bun 进程，主流程两步：
 
-The result is written as a JSON string to stdout, captured by Tauri, and returned to the frontend where it is parsed into `FullAnalysisResponse`.
+1. **Scrape** (`scraper.ts`)：按 `StrategyRegistry.getStrategies()` 顺序尝试策略，首个返回非空结果即停止。顺序为 RSS 优先（`strategies/google-news-rss.ts` 原生覆盖 A 股、绕过 reCAPTCHA），其次 Playwright 策略（`google-news.ts` / `google.ts` / `yahoo.ts`）。Chromium 懒启动——仅 Playwright 策略或深度正文提取才触发，纯 RSS 路径可节省 1–3 秒。`deepMode=true`（默认）时对前 3 条抽取正文。纯解析助手（HTML / 交易所识别）在 `sidecar/parsers/{html,exchange}.ts`，与网络层解耦。
+2. **Analyze** (`analysis.ts`)：委托 `providers/registry.ts` 工厂创建 provider，再调 `provider.analyze()`。Prompt 构建统一在 `prompts.ts`。
 
-**Sidecar CLI actions**（`sidecar/index.ts` 按 `process.argv` 分发，所有 handler 集中在 `cli-handlers.ts`）：
-- 无标志（默认）：`<symbol> <config-json>` → 完整 scrape+analyze pipeline
-- `--bundle <config-json> <symbol>`：仅抓取新闻，将结果写入临时文件并返回路径；供 `--analyze-only` 读取（Rust 两阶段调用，规避 macOS ARG_MAX 限制）
-- `--analyze-only <config-json> <symbol> <news_tmp_path> [quant_json]`：读取临时文件中的新闻直接进入 AI 分析，不重新抓取
-- `--quant <symbol>`：仅执行量化评分（技术面/基本面/估值/波动率），返回 QuantResult JSON
-- `--backtest <symbol>`：执行策略回测，返回 BacktestResult JSON
-- `--kline <request-json>`：拉取 K 线，多源容错（`sidecar/kline/` 下 eastmoney / tencent / yahoo 顺序回退）
-- `--quote <symbol>`：拉取实时报价
-- `--info <config-json> <symbol>` / `--search <config-json> <keyword>` / `--list-models <config-json>`：辅助查询
-- `--check`：健康自检（仅触发 BrowserManager 启动验证）
+结果以 JSON 字符串写 stdout，由 Tauri 捕获返回前端。**stdout 只允许有最终 JSON，调试日志一律走 stderr。**
+
+### HTTP 抓取策略（`sidecar/http.ts`）
+
+所有对外部数据源的请求**一律经 `fetchWithPolicy(url, policy)`**，它统一注入 `HTTP_DEFAULTS`（`sidecar/config.ts`）的 User-Agent 与超时。不要在数据源模块里另写 UA 字面量或 `AbortSignal.timeout(...)`——那是「同一个决策表达多次」，会在需要统一调整时漏改。
+
+`policy.fetchImpl` 是各数据源模块统一的**测试注入点**，配合 `parsers/` 的纯函数，让抓取链路可离线测试。真网络断言放 `*.integration.ts`（不进默认套件）。
+
+## 4. Sidecar CLI 动作（`shared/actions.ts`）
+
+「一个能力叫什么、吃哪些参数」只在 `shared/actions.ts` 的 `SIDECAR_ACTIONS` 声明一次，三层各自派生：
+
+- **Sidecar**（`sidecar/index.ts`）：`parseArgs` 按 flag 匹配 argv、按 `slots` 逐位取参；`DISPATCH` 表把参数交给 `cli-handlers.ts` 的 handler
+- **Rust**：泛化 `invoke_sidecar`，只认哨兵（见 §2）
+- **前端**（`src/lib/ipc.ts`）：`buildActionArgs` 组装 argv
+
+`ipc: false` 的 action 表示**仅 CLI 调试入口、无前端调用方**（业务链路里由 sidecar 内部直接调对应函数）。`shared/actions.test.ts` 交叉校验清单与 `ipc.ts`、`index.ts` 的一致性——防止再出现「sidecar handler + Rust command 都写好了，前端却没调用方」的半截布线。
+
+**新增一个能力 = 两处改动**：`shared/actions.ts` 加一条 + `cli-handlers.ts` 实现 handler + `sidecar/index.ts` 的 `DISPATCH` 加一行。Rust 与 ipc.ts 的调用管道不动。
+
+当前动作：`--list-models` / `--search` / `--kline` / `--quote` / `--bundle` / `--analyze-only` / `--quant` / `--index-reports` / `--backtest` / `--deep-analysis` / `--chat` / `--screen`（以上 `ipc: true`）；`--fundamentals-history` / `--market-snapshot` / `--info`（`ipc: false`，CLI 调试用）；无 flag 时为默认全流程分析模式（`<symbol> <@config>`，向后兼容）。另有 `--check` 健康自检，在参数解析前短路处理。
 
 ## Multi-Agent 系统（`sidecar/agents/`）
 
@@ -46,11 +81,15 @@ The result is written as a JSON string to stdout, captured by Tauri, and returne
 
 ## 量化评分子系统（`sidecar/quant/`）
 
-四个维度独立评分：`technical.ts` / `fundamental.ts` / `valuation.ts` / `volatility.ts`，由 `scoring.ts` 聚合为 `QuantResult`（类型定义在 `quant/types.ts`）。入口：`quant/index.ts`。通过 `--quant <symbol>` CLI flag 触发，前端对应 `useQuantData` hook 和 `QuantScoreCard` 组件。
+四个维度独立评分：`technical.ts` / `fundamental.ts` / `valuation.ts` / `volatility.ts`，由 `scoring.ts` 聚合为 `QuantResult`（类型定义在 `quant/types.ts`）。入口：`quant/index.ts`，通过 `QuantDeps` 提供注入点。前端对应 `useQuantData` hook 和 `QuantScoreCard` 组件。
+
+## K 线数据源（`sidecar/kline/`）
+
+`kline/index.ts` 的 `KLINE_SOURCES` 是「哪些源、按什么顺序」的唯一声明：A 股 `腾讯 → 东财`，美股 `Yahoo`。`getKline` / `getQuote` 依次尝试，首个成功即返回，全部失败抛最后一个错误；不提供该能力的源（如东财无报价接口）自动跳过。**新增数据源只需在对应市场的数组里加一行**，不必改控制流。各源统一接受 `KlineSourceDeps.fetchImpl`，回退逻辑因此可离线测试（`kline/index.test.ts`）。
 
 ## 回测引擎（`sidecar/backtest/`）
 
-`engine.ts` 实现策略回测逻辑，类型定义在 `backtest/types.ts`。通过 `--backtest <symbol>` CLI flag 触发，前端对应 `src/components/Backtest/BacktestPanel.tsx`。
+`engine.ts` 实现策略回测，导出 `MIN_BACKTEST_BARS`；默认策略参数在 `backtest/types.ts` 的 `DEFAULT_BACKTEST_PARAMS`（唯一来源，调用方只补 `symbol` / `period`）。通过 `--backtest <symbol>` 触发，前端对应 `src/components/Backtest/BacktestPanel.tsx`。
 
 ## PriceChart Subsystem
 

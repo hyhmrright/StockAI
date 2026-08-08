@@ -4,14 +4,44 @@ import { tmpdir } from 'os';
 import { writeFileSync, unlinkSync } from 'fs';
 import { errorEnvelope } from '../sidecar/utils';
 import { CONFIG_VERSION } from '../shared/constants';
+import { CONFIG_SLOT, PAYLOAD_SLOT } from '../shared/actions';
 
 /**
- * Sidecar 桥接服务器 (增强版)
+ * Sidecar 开发桥接器 — 浏览器 dev 模式下替代 Tauri Core。
+ *
+ * 与 src-tauri/src/lib.rs 的 invoke_sidecar 同构：只认 shared/actions.ts 的两个哨兵，
+ * 不认识任何具体 action。所以新增 sidecar 能力时本文件无需改动（旧版按 cmd 名逐条 if
+ * 分支，永远只覆盖一部分命令，这正是要消除的漂移面）。
  */
-const SIDECAR_PATH = join(process.cwd(), 'sidecar', 'stockai-backend-aarch64-apple-darwin');
 const SIDECAR_ENTRY = join(process.cwd(), 'sidecar', 'index.ts');
-
 const CORS_ORIGIN = 'http://localhost:1420';
+
+/** 开发用配置：从环境变量拼出 sidecar 期望的 raw config 形态（参考 configResolver.ts） */
+function devSettings() {
+  const provider = process.env.AI_PROVIDER || 'openai';
+  return {
+    _version: CONFIG_VERSION,
+    activeProvider: provider,
+    providerConfigs: {
+      [provider]: {
+        apiKey: process.env.OPENAI_API_KEY || '',
+        baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+        model: process.env.AI_MODEL || 'gpt-4o-mini',
+      },
+    },
+    deepMode: true,
+  };
+}
+
+/** 写临时 JSON（配置用 0o600），返回路径 */
+function writeTemp(label: string, value: unknown, mode?: number): string {
+  const path = join(
+    tmpdir(),
+    `stockai-${label}-bridge-${process.pid}-${process.hrtime.bigint()}.json`,
+  );
+  writeFileSync(path, JSON.stringify(value), mode ? { mode } : undefined);
+  return path;
+}
 
 const server = Bun.serve({
   port: 3001,
@@ -29,125 +59,54 @@ const server = Bun.serve({
       });
     }
 
-    if (url.pathname === '/invoke' && req.method === 'POST') {
-      const { cmd, args } = await req.json();
-      console.log(`[Bridge] 执行指令: ${cmd}, 目标股票: ${args.symbol}`);
+    if (url.pathname !== '/invoke' || req.method !== 'POST') {
+      return new Response('Not Found', { status: 404 });
+    }
 
-      // K 线 / 实时报价：用 bun 跑源码而非二进制，避免旧版本二进制不识别新 action
-      const corsHeaders = {
-        'Access-Control-Allow-Origin': CORS_ORIGIN,
-        'Content-Type': 'application/json',
-      };
-      const runAndRespond = (sidecarArgs: string[], label: string) => {
-        const result = spawnSync('bun', [SIDECAR_ENTRY, ...sidecarArgs], {
-          encoding: 'utf-8',
-          env: { ...process.env },
-        });
-        if (result.stderr) console.error(`[Bridge][${label}] ${result.stderr}`);
-        const fallback = JSON.stringify(
-          errorEnvelope('ERR_BRIDGE', result.error?.message || 'no stdout'),
-        );
-        return new Response(result.stdout || fallback, { headers: corsHeaders });
-      };
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': CORS_ORIGIN,
+      'Content-Type': 'application/json',
+    };
+    const { args = [], payload, configOverride } = await req.json();
+    console.log(`[Bridge] argv: ${JSON.stringify(args)}`);
 
-      if (cmd === 'fetch_kline')
-        return runAndRespond(['--kline', JSON.stringify(args.request)], 'kline');
-      if (cmd === 'fetch_realtime_quote') return runAndRespond(['--quote', args.symbol], 'quote');
-      if (cmd === 'fetch_quant_bundle') return runAndRespond(['--quant', args.symbol], 'quant');
-
-      // sidecar 期望的 raw config 形态：需要 _version + providerConfigs 结构（参考 configResolver.ts）
-      const buildSettingsJson = () => {
-        const provider = process.env.AI_PROVIDER || 'openai';
-        return JSON.stringify({
-          _version: CONFIG_VERSION,
-          activeProvider: provider,
-          providerConfigs: {
-            [provider]: {
-              apiKey: process.env.OPENAI_API_KEY || '',
-              baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-              model: process.env.AI_MODEL || 'gpt-4o-mini',
-            },
-          },
-          deepMode: true,
-        });
-      };
-
-      if (cmd === 'fetch_market_bundle') {
-        return runAndRespond(['--bundle', buildSettingsJson(), args.symbol], 'bundle');
+    // 哨兵替换：与 Rust 侧逐字对应
+    const tempPaths: string[] = [];
+    const resolved: string[] = args.map((arg: string) => {
+      if (arg === CONFIG_SLOT) {
+        const path = writeTemp('config', configOverride ?? devSettings(), 0o600);
+        tempPaths.push(path);
+        return `@${path}`;
       }
-      if (cmd === 'analyze_news') {
-        // 与 Rust 端保持一致：news 走临时文件而非 argv，避免 ARG_MAX。
-        // 用 hrtime.bigint() 取纳秒精度文件名，避免同毫秒内并发碰撞（Date.now() 仅 ms）。
-        const tempPath = join(
-          tmpdir(),
-          `stockai-news-bridge-${process.pid}-${process.hrtime.bigint()}.json`,
-        );
-        writeFileSync(tempPath, JSON.stringify(args.news ?? []), 'utf-8');
-        try {
-          return runAndRespond(
-            ['--analyze-only', buildSettingsJson(), args.symbol, tempPath],
-            'analyze',
-          );
-        } finally {
-          try {
-            unlinkSync(tempPath);
-          } catch {
-            /* ignore */
-          }
-        }
+      if (arg === PAYLOAD_SLOT) {
+        const path = writeTemp('payload', payload ?? null);
+        tempPaths.push(path);
+        return path;
       }
+      return arg;
+    });
 
-      if (cmd === 'start_analysis') {
-        const config = {
-          provider: process.env.AI_PROVIDER || 'openai',
-          apiKey: process.env.OPENAI_API_KEY || '',
-          baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-          modelName: process.env.AI_MODEL || 'gpt-4o-mini',
-          deepMode: true,
-        };
-
-        console.log(`[Bridge] 使用配置: Provider=${config.provider}, Model=${config.modelName}`);
-
-        const tempPath = join(
-          tmpdir(),
-          `stockai-config-bridge-${process.pid}-${process.hrtime.bigint()}.json`,
-        );
-        writeFileSync(tempPath, JSON.stringify(config), { mode: 0o600 });
+    try {
+      // 跑源码而非二进制，避免旧二进制不识别新 action
+      const result = spawnSync('bun', [SIDECAR_ENTRY, ...resolved], {
+        encoding: 'utf-8',
+        env: { ...process.env },
+      });
+      if (result.stderr) console.error(`[Bridge] Sidecar Stderr: ${result.stderr}`);
+      const fallback = JSON.stringify(
+        errorEnvelope('ERR_BRIDGE', result.error?.message || 'no stdout'),
+      );
+      return new Response(result.stdout || fallback, { headers: corsHeaders });
+    } finally {
+      for (const path of tempPaths) {
         try {
-          const result = spawnSync(SIDECAR_PATH, [args.symbol, `@${tempPath}`], {
-            encoding: 'utf-8',
-            env: { ...process.env },
-          });
-
-          if (result.error) {
-            console.error('[Bridge] Sidecar 运行致命错误:', result.error);
-            return Response.json(
-              { error: result.error.message },
-              { headers: { 'Access-Control-Allow-Origin': CORS_ORIGIN } },
-            );
-          }
-
-          console.log(`[Bridge] Sidecar 返回长度: ${result.stdout.length}`);
-          if (result.stderr) console.error(`[Bridge] Sidecar Stderr: ${result.stderr}`);
-
-          return new Response(result.stdout, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': CORS_ORIGIN,
-            },
-          });
-        } finally {
-          try {
-            unlinkSync(tempPath);
-          } catch {
-            /* ignore */
-          }
+          unlinkSync(path);
+        } catch {
+          /* ignore */
         }
       }
     }
-
-    return new Response('Not Found', { status: 404 });
   },
 });
 
-console.log(`🚀 增强型桥接器已启动: ${server.url}`);
+console.log(`🚀 Sidecar 开发桥接器已启动: ${server.url}`);

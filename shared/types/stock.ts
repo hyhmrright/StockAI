@@ -1,0 +1,145 @@
+// 标的与行情：新闻、基本信息、搜索、K 线、实时报价
+/**
+ * 股票新闻数据接口
+ */
+export interface StockNews {
+  title: string; // 新闻标题
+  source: string; // 新闻来源（域名或媒体名称）
+  date: string; // 发布日期，格式为 YYYY-MM-DD（无法解析时为原始字符串）
+  content: string; // 新闻内容（Markdown 格式；深度模式下为完整正文，否则为摘要或空字符串）
+  url: string; // 新闻原文链接
+}
+
+/**
+ * AI 分析结果接口
+ */
+export interface AIAnalysisResult {
+  rating: number; // 综合评分，范围 1-100（50 为中性基准）
+  sentiment: 'bullish' | 'bearish' | 'neutral'; // 情绪：看涨、看跌、中性
+  summary: string; // 简要总结
+  pros: string[]; // 利多理由
+  cons: string[]; // 利空/风险因素
+  sector?: string; // 所属板块
+  industry?: string; // 所属行业
+  description?: string; // 公司业务描述
+  technicalView?: string; // LLM 对技术面的文字解读
+  fundamentalView?: string; // LLM 对基本面的文字解读
+}
+
+/**
+ * 股票基本信息（来自 Sina Finance / Yahoo Finance）
+ */
+export interface StockInfo {
+  name: string; // 股票全称
+  code: string; // 标准化代码（如 688693）
+  exchange: string; // 交易所名称（科创板 / 上交所 / 深交所 / 北交所 / NASDAQ / NYSE）
+  market: string; // 市场（A股 / 美股）
+  price?: number; // 最新价
+  change?: number; // 涨跌额
+  changePercent?: number; // 涨跌幅 %
+  currency: string; // 货币（CNY / USD）
+}
+
+/**
+ * 股票搜索结果
+ */
+export interface StockSearchResult {
+  name: string;
+  code: string;
+  type: string; // 股票类型：A股、美股、港股等
+  fullCode: string; // 完整带市场前缀的代码（用于新浪接口，如 sh601012, gb_aapl）
+  price?: number; // 最新价
+  change?: number; // 涨跌额
+  changePercent?: number; // 涨跌幅 %
+}
+
+/**
+ * 完整的股票分析响应
+ */
+export interface FullAnalysisResponse {
+  symbol: string;
+  stockInfo?: StockInfo;
+  news: StockNews[];
+  analysis: AIAnalysisResult;
+}
+
+/**
+ * 只抓数据、不调 LLM 的数据包；用户点 "AI 分析" 按钮前先展示这部分
+ */
+export interface MarketBundle {
+  symbol: string;
+  stockInfo?: StockInfo;
+  news: StockNews[];
+}
+
+/**
+ * K 线粒度
+ */
+export type KlinePeriod = '1m' | '5m' | '15m' | '30m' | '60m' | '1d' | '1w' | '1mo';
+
+/**
+ * 时间范围（UI 选择器）
+ * 注意：此处的 "1m" 表示 1 个月，与 KlinePeriod 的 "1m"（1 分钟）含义不同。
+ */
+export type KlineRange = '1d' | '5d' | '1m' | '3m' | '6m' | 'ytd' | '1y' | '5y' | 'all';
+
+/**
+ * 市场归属（按 symbol 自动识别）
+ */
+export type Market = 'A股' | '美股';
+
+/**
+ * 复权方式
+ */
+export type AdjustMode = 'qfq' | 'hfq' | 'none';
+
+/**
+ * 一根 K 线
+ */
+export interface KlinePoint {
+  time: number; // Unix 秒 (UTC)，对齐到周期起点
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number; // 股数；A 股原始是手数，已 × 100
+  amount?: number; // 成交额（人民币 / 美元）
+}
+
+/**
+ * 一次 K 线拉取请求
+ */
+export interface KlineRequest {
+  symbol: string; // 原始用户输入（"600519" / "AAPL" / "sh600519"）
+  period: KlinePeriod;
+  range: KlineRange;
+  adjust?: AdjustMode; // 默认 "qfq"
+}
+
+/**
+ * 实时报价
+ */
+export interface RealtimeQuote {
+  symbol: string;
+  name: string; // 显示名（A 股中文名 / 美股英文短名）
+  price: number;
+  change: number;
+  changePercent: number;
+  open: number;
+  high: number;
+  low: number;
+  prevClose: number;
+  volume: number; // 股数
+  amount: number; // 成交额
+  turnoverRate?: number; // 换手率 %（A 股）
+  marketCap?: number; // 总市值
+  pe?: number;
+  pb?: number;
+  high52w?: number;
+  low52w?: number;
+  preMarket?: { price: number; change: number; changePercent: number };
+  postMarket?: { price: number; change: number; changePercent: number };
+  timestamp: number; // 报价时间 Unix 秒
+  currency: 'CNY' | 'USD'; // 货币
+  market: Market;
+}

@@ -3,7 +3,8 @@ import type { BacktestConfig, BacktestResult, TradeRecord } from './types';
 import { analyzeTechnical } from '../quant/technical';
 import { TRADING_DAYS_PER_YEAR, RISK_FREE_RATE } from '../../shared/constants';
 
-const MIN_LOOKBACK = 60;
+/** 回测所需的最少 K 线根数：不足则技术评分的回看窗口填不满，直接拒绝回测 */
+export const MIN_BACKTEST_BARS = 60;
 
 /** 四舍五入到 4 位小数 */
 const r4 = (n: number) => Math.round(n * 10000) / 10000;
@@ -57,7 +58,7 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   const { symbol, buyThreshold, sellThreshold, initialCapital, transactionCost } = config;
 
   // 数据不足时返回空回测结果
-  if (sorted.length < MIN_LOOKBACK) {
+  if (sorted.length < MIN_BACKTEST_BARS) {
     const bah =
       sorted.length >= 2
         ? (sorted[sorted.length - 1].close - sorted[0].close) / sorted[0].close
@@ -83,7 +84,7 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   let position: 'none' | 'long' = 'none';
 
   // 滑动窗口逐 bar 计算技术分，生成买卖信号
-  for (let i = MIN_LOOKBACK; i < sorted.length; i++) {
+  for (let i = MIN_BACKTEST_BARS; i < sorted.length; i++) {
     const window = sorted.slice(Math.max(0, i - 250), i + 1);
     const { composite } = analyzeTechnical(window);
     const score = toScore(composite.signal, composite.confidence);
@@ -141,7 +142,7 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   }
 
   const totalReturn = (cash - initialCapital) / initialCapital;
-  const years = (sorted.length - MIN_LOOKBACK) / TRADING_DAYS_PER_YEAR;
+  const years = (sorted.length - MIN_BACKTEST_BARS) / TRADING_DAYS_PER_YEAR;
   const annualizedReturn = years > 0 ? (cash / initialCapital) ** (1 / years) - 1 : 0;
 
   // 胜率：按买卖配对计算
@@ -161,7 +162,8 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
     totalTrades: trades.length,
     sharpeRatio: r2(computeSharpe(returns)),
     buyAndHoldReturn: r4(
-      (sorted[sorted.length - 1].close - sorted[MIN_LOOKBACK].close) / sorted[MIN_LOOKBACK].close,
+      (sorted[sorted.length - 1].close - sorted[MIN_BACKTEST_BARS].close) /
+        sorted[MIN_BACKTEST_BARS].close,
     ),
     trades,
     equityCurve,

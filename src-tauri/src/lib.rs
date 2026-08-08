@@ -1,7 +1,14 @@
-use serde::{Deserialize, Serialize};
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::StoreExt;
+
+/**
+ * argv 槽位哨兵——必须与 shared/actions.ts 的 CONFIG_SLOT / PAYLOAD_SLOT 保持一致。
+ * Rust 层不认识任何具体 action，只负责把这两个哨兵替换成临时文件路径，
+ * 因此新增 sidecar 能力时本文件无需改动（见 shared/actions.ts 顶部说明）。
+ */
+const CONFIG_SLOT: &str = "@config";
+const PAYLOAD_SLOT: &str = "@payload";
 
 /**
  * RAII 临时文件守卫：drop 时自动删文件，覆盖 panic / async cancel / 提前 return 等所有退出路径。
@@ -19,18 +26,6 @@ impl Drop for TempFileGuard {
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.0);
     }
-}
-
-/**
- * 模型列表查询配置
- */
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ModelListConfig {
-    provider: String,
-    base_url: String,
-    // 列模型对非 ollama provider 需真打 /models，故需 apiKey；取自前端表单当前编辑值（可能尚未保存到 store）
-    api_key: String,
 }
 
 /**
@@ -109,110 +104,6 @@ impl SidecarManager {
         }
     }
 
-    // Settings schema 由 Sidecar 的 resolveConfig 负责校验——避免 Rust/TS/Sidecar 三处重复定义。
-    async fn run_analysis(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-        config: serde_json::Value,
-    ) -> Result<String, String> {
-        let guard = Self::write_temp_config(&config)?;
-        let config_arg = format!("@{}", guard.path().to_string_lossy());
-        Self::run(app_handle, vec![symbol, config_arg]).await
-    }
-
-    async fn list_models(
-        app_handle: &tauri::AppHandle,
-        config: ModelListConfig,
-    ) -> Result<String, String> {
-        // 含 apiKey 的 config 走 0o600 临时文件 + @path（与 analyze/deep/chat 等一致），
-        // 避免 key 出现在进程 argv（ps/Activity Monitor 可见）。
-        let config_val =
-            serde_json::to_value(&config).map_err(|e| format!("列表配置序列化失败: {}", e))?;
-        let guard = Self::write_temp_config(&config_val)?;
-        let config_arg = format!("@{}", guard.path().to_string_lossy());
-        Self::run(app_handle, vec!["--list-models".to_string(), config_arg]).await
-    }
-
-    async fn get_stock_info(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-        _config: serde_json::Value,
-    ) -> Result<String, String> {
-        Self::run(
-            app_handle,
-            vec!["--info".to_string(), "{}".to_string(), symbol],
-        )
-        .await
-    }
-
-    async fn search_stocks(
-        app_handle: &tauri::AppHandle,
-        keyword: String,
-        _config: serde_json::Value,
-    ) -> Result<String, String> {
-        Self::run(
-            app_handle,
-            vec!["--search".to_string(), "{}".to_string(), keyword],
-        )
-        .await
-    }
-
-    async fn fetch_kline(
-        app_handle: &tauri::AppHandle,
-        request: serde_json::Value,
-    ) -> Result<String, String> {
-        let request_json =
-            serde_json::to_string(&request).map_err(|e| format!("K 线参数序列化失败: {}", e))?;
-        Self::run(app_handle, vec!["--kline".to_string(), request_json]).await
-    }
-
-    async fn fetch_quote(app_handle: &tauri::AppHandle, symbol: String) -> Result<String, String> {
-        Self::run(app_handle, vec!["--quote".to_string(), symbol]).await
-    }
-
-    async fn fetch_quant_bundle(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-    ) -> Result<String, String> {
-        Self::run(app_handle, vec!["--quant".to_string(), symbol]).await
-    }
-
-    // #11 财报 RAG 预热：提前建索引（symbol-only，无 config），把交易所互动平台抓取挪出 chat 首答关键路径
-    async fn index_reports(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-    ) -> Result<String, String> {
-        Self::run(app_handle, vec!["--index-reports".to_string(), symbol]).await
-    }
-
-    // 历史财务时序：payload 小，走 argv 即可（无 config、无临时文件）。periods 缺省时不传，Sidecar 默认 12 期。
-    async fn fetch_financial_history(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-        periods: Option<u32>,
-    ) -> Result<String, String> {
-        let mut args = vec!["--fundamentals-history".to_string(), symbol];
-        if let Some(p) = periods {
-            args.push(p.to_string());
-        }
-        Self::run(app_handle, args).await
-    }
-
-    // 全市场基本面快照：无参数（筛选在下游 #14）
-    async fn fetch_market_snapshot(app_handle: &tauri::AppHandle) -> Result<String, String> {
-        Self::run(app_handle, vec!["--market-snapshot".to_string()]).await
-    }
-
-    async fn fetch_market_bundle(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-        config: serde_json::Value,
-    ) -> Result<String, String> {
-        let guard = Self::write_temp_config(&config)?;
-        let config_arg = format!("@{}", guard.path().to_string_lossy());
-        Self::run(app_handle, vec!["--bundle".to_string(), config_arg, symbol]).await
-    }
-
     // 安全写入临时文件（Unix 下 0o600 权限，仅所有者可读写），返回 TempFileGuard（drop 时自动清理）。
     // 文件名含 pid + 纳秒时间戳，跨进程并发不冲突。
     fn write_temp_file(label: &str, content: &str) -> Result<TempFileGuard, String> {
@@ -245,401 +136,70 @@ impl SidecarManager {
         Ok(TempFileGuard(temp_path))
     }
 
-    fn write_temp_news(news: &serde_json::Value) -> Result<TempFileGuard, String> {
-        let news_json =
-            serde_json::to_string(news).map_err(|e| format!("新闻序列化失败: {}", e))?;
-        Self::write_temp_file("news", &news_json)
+    fn write_temp_json(label: &str, value: &serde_json::Value) -> Result<TempFileGuard, String> {
+        let json =
+            serde_json::to_string(value).map_err(|e| format!("{}序列化失败: {}", label, e))?;
+        Self::write_temp_file(label, &json)
     }
+}
 
-    fn write_temp_config(config: &serde_json::Value) -> Result<TempFileGuard, String> {
-        let config_json =
-            serde_json::to_string(config).map_err(|e| format!("配置序列化失败: {}", e))?;
-        Self::write_temp_file("config", &config_json)
-    }
+/**
+ * 读取 settings.json 的 app_settings。缺失/为 null 时报错——所有需要 AI 凭证的能力
+ * 都必须先有配置，与其让 Sidecar 收到空配置再报难懂的错，不如在此early return。
+ * Settings schema 由 Sidecar 的 resolveConfig 负责校验，避免 Rust/TS/Sidecar 三处重复定义。
+ */
+fn required_settings(app_handle: &tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let store = app_handle
+        .store("settings.json")
+        .map_err(|e| format!("无法打开配置存储: {}", e))?;
 
-    async fn analyze_news(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-        news: serde_json::Value,
-        config: serde_json::Value,
-        quant: Option<String>,
-    ) -> Result<String, String> {
-        let config_guard = Self::write_temp_config(&config)?;
-        let config_arg = format!("@{}", config_guard.path().to_string_lossy());
-        let news_guard = Self::write_temp_news(&news)?;
-        let news_arg = news_guard.path().to_string_lossy().into_owned();
-        let mut args = vec!["--analyze-only".to_string(), config_arg, symbol, news_arg];
-        if let Some(q) = quant {
-            args.push(q);
+    store
+        .get("app_settings")
+        .filter(|v| !v.is_null())
+        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())
+}
+
+/**
+ * 唯一的 Sidecar 调用入口：前端按 shared/actions.ts 的清单组装好 argv，此处只做两件事——
+ *   1. `@config` → 写 0o600 临时配置文件，替换为 `@路径`（apiKey 永不进 argv，`ps` 不可见）
+ *   2. `@payload` → 写临时 JSON 文件，替换为裸路径（规避 macOS ARG_MAX ~256KB）
+ *
+ * config_override 用于列模型这类「用表单当前编辑值而非已保存配置」的场景；
+ * 缺省时取 settings.json 的 app_settings。
+ */
+#[tauri::command]
+async fn invoke_sidecar(
+    app_handle: tauri::AppHandle,
+    args: Vec<String>,
+    payload: Option<serde_json::Value>,
+    config_override: Option<serde_json::Value>,
+) -> Result<String, String> {
+    // guards 必须活到 Sidecar 跑完：drop 时才删临时文件
+    let mut guards: Vec<TempFileGuard> = Vec::new();
+    let mut resolved: Vec<String> = Vec::with_capacity(args.len());
+
+    for arg in args {
+        match arg.as_str() {
+            CONFIG_SLOT => {
+                let config = match config_override.clone() {
+                    Some(v) => v,
+                    None => required_settings(&app_handle)?,
+                };
+                let guard = SidecarManager::write_temp_json("config", &config)?;
+                resolved.push(format!("@{}", guard.path().to_string_lossy()));
+                guards.push(guard);
+            }
+            PAYLOAD_SLOT => {
+                let value = payload.clone().unwrap_or(serde_json::Value::Null);
+                let guard = SidecarManager::write_temp_json("payload", &value)?;
+                resolved.push(guard.path().to_string_lossy().into_owned());
+                guards.push(guard);
+            }
+            _ => resolved.push(arg),
         }
-        Self::run(app_handle, args).await
     }
 
-    async fn deep_analyze(
-        app_handle: &tauri::AppHandle,
-        symbol: String,
-        news: serde_json::Value,
-        config: serde_json::Value,
-        quant: Option<String>,
-        weights: Option<String>,
-    ) -> Result<String, String> {
-        let config_guard = Self::write_temp_config(&config)?;
-        let config_arg = format!("@{}", config_guard.path().to_string_lossy());
-        let news_guard = Self::write_temp_news(&news)?;
-        let news_arg = news_guard.path().to_string_lossy().into_owned();
-        // 固定槽位消除位置歧义：quant 缺省填 ""（sidecar 视为未提供、自行拉取），
-        // weights 缺省填 "[]"（空摘要 → 聚合层按默认权重）。weights 仅含 masterId+两个整数、
-        // 无 API key/PII，可安全内联 argv，无需像 config/news 那样走 0o600 临时文件。
-        let args = vec![
-            "--deep-analysis".to_string(),
-            config_arg,
-            symbol,
-            news_arg,
-            quant.unwrap_or_default(),
-            weights.unwrap_or_else(|| "[]".to_string()),
-        ];
-        Self::run(app_handle, args).await
-    }
-
-    async fn chat(
-        app_handle: &tauri::AppHandle,
-        payload: serde_json::Value,
-        config: serde_json::Value,
-    ) -> Result<String, String> {
-        let config_guard = Self::write_temp_config(&config)?;
-        let config_arg = format!("@{}", config_guard.path().to_string_lossy());
-        // payload（含上下文+多轮历史）复用临时文件写入，避免 argv 撞 ARG_MAX
-        let payload_guard = Self::write_temp_news(&payload)?;
-        let payload_arg = payload_guard.path().to_string_lossy().into_owned();
-        Self::run(
-            app_handle,
-            vec!["--chat".to_string(), config_arg, payload_arg],
-        )
-        .await
-    }
-
-    // #14 自然语言选股：config（含 apiKey）走 0o600 临时文件；query 明文无敏感数据，走 argv 即可。
-    async fn screen(
-        app_handle: &tauri::AppHandle,
-        query: String,
-        config: serde_json::Value,
-    ) -> Result<String, String> {
-        let guard = Self::write_temp_config(&config)?;
-        let config_arg = format!("@{}", guard.path().to_string_lossy());
-        Self::run(app_handle, vec!["--screen".to_string(), config_arg, query]).await
-    }
-}
-
-/**
- * 搜索股票建议
- */
-#[tauri::command]
-async fn search_stocks(app_handle: tauri::AppHandle, keyword: String) -> Result<String, String> {
-    let store = app_handle
-        .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
-
-    let settings_val = store.get("app_settings").unwrap_or(serde_json::json!({}));
-
-    SidecarManager::search_stocks(&app_handle, keyword, settings_val).await
-}
-
-/**
- * 获取股票基本信息
- */
-#[tauri::command]
-async fn get_stock_info(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
-    let store = app_handle
-        .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
-
-    let settings_val = store.get("app_settings").unwrap_or(serde_json::json!({}));
-
-    SidecarManager::get_stock_info(&app_handle, symbol, settings_val).await
-}
-
-/**
- * 获取可用模型列表
- */
-#[tauri::command]
-async fn list_models(
-    app_handle: tauri::AppHandle,
-    provider: String,
-    base_url: String,
-    api_key: String,
-) -> Result<String, String> {
-    let config = ModelListConfig {
-        provider,
-        base_url,
-        api_key,
-    };
-    SidecarManager::list_models(&app_handle, config).await
-}
-
-/**
- * 拉取 K 线
- */
-#[tauri::command]
-async fn fetch_kline(
-    app_handle: tauri::AppHandle,
-    request: serde_json::Value,
-) -> Result<String, String> {
-    SidecarManager::fetch_kline(&app_handle, request).await
-}
-
-/**
- * 拉取实时报价
- */
-#[tauri::command]
-async fn fetch_realtime_quote(
-    app_handle: tauri::AppHandle,
-    symbol: String,
-) -> Result<String, String> {
-    SidecarManager::fetch_quote(&app_handle, symbol).await
-}
-
-/**
- * 启动股票分析（向后兼容；新交互流程走 fetch_market_bundle + analyze_news）
- */
-#[tauri::command]
-async fn start_analysis(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
-    let store = app_handle
-        .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
-
-    let settings_val = store
-        .get("app_settings")
-        .filter(|v| !v.is_null())
-        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
-
-    SidecarManager::run_analysis(&app_handle, symbol, settings_val).await
-}
-
-/**
- * 仅抓数据（StockInfo + News）— 新交互流程第一步
- */
-#[tauri::command]
-async fn fetch_market_bundle(
-    app_handle: tauri::AppHandle,
-    symbol: String,
-) -> Result<String, String> {
-    let store = app_handle
-        .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
-
-    let settings_val = store
-        .get("app_settings")
-        .filter(|v| !v.is_null())
-        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
-
-    SidecarManager::fetch_market_bundle(&app_handle, symbol, settings_val).await
-}
-
-/**
- * 仅调 LLM 分析已抓到的新闻 — 新交互流程第二步（用户显式触发）
- */
-#[tauri::command]
-async fn analyze_news(
-    app_handle: tauri::AppHandle,
-    symbol: String,
-    news: serde_json::Value,
-    quant: Option<String>,
-) -> Result<String, String> {
-    let store = app_handle
-        .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
-
-    let settings_val = store
-        .get("app_settings")
-        .filter(|v| !v.is_null())
-        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
-
-    SidecarManager::analyze_news(&app_handle, symbol, news, settings_val, quant).await
-}
-
-/**
- * 深度多智能体分析 — 调用 Sidecar --deep-analysis 流程
- */
-#[tauri::command]
-async fn deep_analyze(
-    app_handle: tauri::AppHandle,
-    symbol: String,
-    news: serde_json::Value,
-    quant: Option<String>,
-    weights: Option<String>,
-) -> Result<String, String> {
-    let store = app_handle
-        .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
-
-    let settings_val = store
-        .get("app_settings")
-        .filter(|v| !v.is_null())
-        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
-
-    SidecarManager::deep_analyze(&app_handle, symbol, news, settings_val, quant, weights).await
-}
-
-/**
- * 对话式追问 — 调用 Sidecar --chat 流程
- */
-#[tauri::command]
-async fn chat(app_handle: tauri::AppHandle, payload: serde_json::Value) -> Result<String, String> {
-    let store = app_handle
-        .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
-
-    let settings_val = store
-        .get("app_settings")
-        .filter(|v| !v.is_null())
-        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
-
-    SidecarManager::chat(&app_handle, payload, settings_val).await
-}
-
-#[tauri::command]
-async fn fetch_quant_bundle(
-    app_handle: tauri::AppHandle,
-    symbol: String,
-) -> Result<String, String> {
-    SidecarManager::fetch_quant_bundle(&app_handle, symbol).await
-}
-
-/**
- * #11 财报 RAG 预热：fire-and-forget 提前建索引（前端在打开股票后调用）
- */
-#[tauri::command]
-async fn index_reports(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
-    SidecarManager::index_reports(&app_handle, symbol).await
-}
-
-/**
- * 运行量化回测
- */
-#[tauri::command]
-async fn run_backtest(app_handle: tauri::AppHandle, symbol: String) -> Result<String, String> {
-    SidecarManager::run(&app_handle, vec!["--backtest".to_string(), symbol]).await
-}
-
-/**
- * 拉取历史财务时序（近 N 期 F10 主要财务指标）
- */
-#[tauri::command]
-async fn fetch_financial_history(
-    app_handle: tauri::AppHandle,
-    symbol: String,
-    periods: Option<u32>,
-) -> Result<String, String> {
-    SidecarManager::fetch_financial_history(&app_handle, symbol, periods).await
-}
-
-/**
- * 拉取全市场基本面快照（横截面粗筛用）
- */
-#[tauri::command]
-async fn fetch_market_snapshot(app_handle: tauri::AppHandle) -> Result<String, String> {
-    SidecarManager::fetch_market_snapshot(&app_handle).await
-}
-
-/**
- * #14 自然语言选股 — 调用 Sidecar --screen 流程
- */
-#[tauri::command]
-async fn screen_stocks(app_handle: tauri::AppHandle, query: String) -> Result<String, String> {
-    let store = app_handle
-        .store("settings.json")
-        .map_err(|e| format!("无法打开配置存储: {}", e))?;
-
-    let settings_val = store
-        .get("app_settings")
-        .filter(|v| !v.is_null())
-        .ok_or_else(|| "未找到应用设置，请先在设置界面保存配置。".to_string())?;
-
-    SidecarManager::screen(&app_handle, query, settings_val).await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const EMPTY_STDOUT_RESPONSE: &str = r#"{"error":{"code":"ERR_SIDECAR","message":"分析服务无响应 (ExitCode: None)。请尝试重新构建 Sidecar。"}}"#;
-
-    #[test]
-    fn test_empty_stdout_fallback_is_valid_json_with_error_field() {
-        let v: serde_json::Value = serde_json::from_str(EMPTY_STDOUT_RESPONSE)
-            .expect("EMPTY_STDOUT_RESPONSE 必须是合法 JSON");
-        let err = v.get("error").expect("fallback 必须包含 error 字段");
-        assert!(err.get("code").is_some(), "error 必须包含 code 字段");
-        assert!(err.get("message").is_some(), "error 必须包含 message 字段");
-    }
-
-    #[test]
-    fn test_model_list_config_serializes_to_camel_case() {
-        let cfg = ModelListConfig {
-            provider: "openai".to_string(),
-            base_url: "https://api.openai.com/v1".to_string(),
-            api_key: "test-key".to_string(),
-        };
-        let json = serde_json::to_string(&cfg).unwrap();
-        assert!(
-            json.contains("baseUrl"),
-            "serde 应序列化为 camelCase baseUrl"
-        );
-        assert!(!json.contains("base_url"), "不应出现 snake_case base_url");
-    }
-
-    // 回归保护：news payload 走临时文件而非 argv，确保超过 macOS ARG_MAX (~256KB) 的大 payload
-    // 也能安全转移。用 TempFileGuard 保证 assert 失败 panic 时文件也能清理。
-    #[test]
-    fn test_large_news_payload_roundtrips_via_temp_file() {
-        let large_news = serde_json::json!([{
-            "title": "stress",
-            "source": "test",
-            "date": "2026-05-23",
-            "content": "x".repeat(400_000),
-            "url": "https://example.com"
-        }]);
-        let news_json = serde_json::to_string(&large_news).unwrap();
-        assert!(
-            news_json.len() > 300_000,
-            "构造样本必须超过 ARG_MAX 阈值才有意义"
-        );
-
-        let temp_path = std::env::temp_dir().join(format!(
-            "stockai-news-roundtrip-{}-{}.json",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::fs::write(&temp_path, &news_json).expect("写入临时新闻文件应成功");
-        let guard = TempFileGuard(temp_path);
-        let read_back = std::fs::read_to_string(guard.path()).expect("读取临时新闻文件应成功");
-        assert_eq!(
-            read_back, news_json,
-            "临时文件应能完整 roundtrip 任意大小 news payload"
-        );
-        // guard.drop() here cleans up；上面 assert 失败也照样清理
-    }
-
-    #[test]
-    fn test_temp_file_guard_removes_file_on_drop() {
-        let p = std::env::temp_dir().join(format!(
-            "stockai-guard-test-{}-{}.txt",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::fs::write(&p, b"x").unwrap();
-        assert!(p.exists(), "前置：文件应存在");
-        {
-            let _g = TempFileGuard(p.clone());
-        } // guard drops here
-        assert!(!p.exists(), "Drop 后文件应被删除");
-    }
+    SidecarManager::run(&app_handle, resolved).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -685,24 +245,83 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            start_analysis,
-            fetch_market_bundle,
-            analyze_news,
-            deep_analyze,
-            chat,
-            list_models,
-            get_stock_info,
-            search_stocks,
-            fetch_kline,
-            fetch_realtime_quote,
-            fetch_quant_bundle,
-            index_reports,
-            run_backtest,
-            fetch_financial_history,
-            fetch_market_snapshot,
-            screen_stocks
-        ])
+        .invoke_handler(tauri::generate_handler![invoke_sidecar])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const EMPTY_STDOUT_RESPONSE: &str = r#"{"error":{"code":"ERR_SIDECAR","message":"分析服务无响应 (ExitCode: None)。请尝试重新构建 Sidecar。"}}"#;
+
+    #[test]
+    fn test_empty_stdout_fallback_is_valid_json_with_error_field() {
+        let v: serde_json::Value = serde_json::from_str(EMPTY_STDOUT_RESPONSE)
+            .expect("EMPTY_STDOUT_RESPONSE 必须是合法 JSON");
+        let err = v.get("error").expect("fallback 必须包含 error 字段");
+        assert!(err.get("code").is_some(), "error 必须包含 code 字段");
+        assert!(err.get("message").is_some(), "error 必须包含 message 字段");
+    }
+
+    // 回归保护：哨兵字面量必须与 shared/actions.ts 一致，改一边而忘另一边会让参数原样传给
+    // Sidecar（apiKey 泄进 argv / payload 路径变成字面量 "@payload"）。
+    #[test]
+    fn test_slot_sentinels_match_shared_manifest() {
+        let manifest = include_str!("../../shared/actions.ts");
+        assert!(
+            manifest.contains(&format!("CONFIG_SLOT = '{}'", CONFIG_SLOT)),
+            "CONFIG_SLOT 与 shared/actions.ts 不一致"
+        );
+        assert!(
+            manifest.contains(&format!("PAYLOAD_SLOT = '{}'", PAYLOAD_SLOT)),
+            "PAYLOAD_SLOT 与 shared/actions.ts 不一致"
+        );
+    }
+
+    // 回归保护：payload 走临时文件而非 argv，确保超过 macOS ARG_MAX (~256KB) 的大 payload
+    // 也能安全转移。用 TempFileGuard 保证 assert 失败 panic 时文件也能清理。
+    #[test]
+    fn test_large_payload_roundtrips_via_temp_file() {
+        let large_news = serde_json::json!([{
+            "title": "stress",
+            "source": "test",
+            "date": "2026-05-23",
+            "content": "x".repeat(400_000),
+            "url": "https://example.com"
+        }]);
+        let news_json = serde_json::to_string(&large_news).unwrap();
+        assert!(
+            news_json.len() > 300_000,
+            "构造样本必须超过 ARG_MAX 阈值才有意义"
+        );
+
+        let guard =
+            SidecarManager::write_temp_json("payload", &large_news).expect("写入临时文件应成功");
+        let read_back = std::fs::read_to_string(guard.path()).expect("读取临时文件应成功");
+        assert_eq!(
+            read_back, news_json,
+            "临时文件应能完整 roundtrip 任意大小 payload"
+        );
+        // guard.drop() here cleans up；上面 assert 失败也照样清理
+    }
+
+    #[test]
+    fn test_temp_file_guard_removes_file_on_drop() {
+        let p = std::env::temp_dir().join(format!(
+            "stockai-guard-test-{}-{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(&p, b"x").unwrap();
+        assert!(p.exists(), "前置：文件应存在");
+        {
+            let _g = TempFileGuard(p.clone());
+        } // guard drops here
+        assert!(!p.exists(), "Drop 后文件应被删除");
+    }
 }

@@ -1,5 +1,6 @@
+import { HTTP_DEFAULTS } from '../config';
+import { fetchWithPolicy } from '../http';
 import { logger, toErrorMessage } from '../utils';
-import { RAG_UA, RAG_REQ_TIMEOUT } from './http-common';
 
 /**
  * 巨潮 topSearch/query——沪深通用的股票代码→公司简称解析，免鉴权公开端点。
@@ -17,16 +18,13 @@ export async function resolveCompanyName(
   code: string,
   deps: CompanyNameDeps = {},
 ): Promise<string | null> {
-  const _fetch = deps.fetchImpl ?? fetch;
   try {
-    const resp = await _fetch('http://www.cninfo.com.cn/new/information/topSearch/query', {
+    const resp = await fetchWithPolicy('http://www.cninfo.com.cn/new/information/topSearch/query', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': RAG_UA,
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ keyWord: code, maxNum: '10' }).toString(),
-      signal: AbortSignal.timeout(RAG_REQ_TIMEOUT),
+      timeoutMs: HTTP_DEFAULTS.slowTimeoutMs,
+      fetchImpl: deps.fetchImpl,
     });
     if (!resp.ok) {
       logger.warn(`巨潮 topSearch HTTP ${resp.status} (${code})`);

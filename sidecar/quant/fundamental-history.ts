@@ -2,6 +2,7 @@ import { tmpdir } from 'os';
 import * as path from 'path';
 import type { FinancialHistory, FinancialSnapshot } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
+import { fetchWithPolicy } from '../http';
 import { detectMarket } from '../../shared/market';
 import { logger, toErrorMessage } from '../utils';
 import { annualizeRoe } from './roe-annualize';
@@ -123,7 +124,6 @@ export async function fetchFinancialHistory(
   periods = 12,
   deps: FinancialHistoryDeps = {},
 ): Promise<FinancialHistory> {
-  const _fetch = deps.fetchImpl ?? fetch;
   const _readCache = deps.readCacheImpl ?? readCache;
   const _writeCache = deps.writeCacheImpl ?? writeCache;
 
@@ -139,7 +139,7 @@ export async function fetchFinancialHistory(
   if (cached) return cached;
 
   const url = buildF10HistoryUrl(cleaned, periods);
-  const resp = await _fetch(url, { signal: AbortSignal.timeout(8000) });
+  const resp = await fetchWithPolicy(url, { fetchImpl: deps.fetchImpl });
   if (!resp.ok) throw new Error(`东财 F10 历史 HTTP ${resp.status}`);
   const json = (await resp.json()) as EastmoneyF10HistoryResponse;
   const snapshots = parseEastmoneyFinancialHistory(json);

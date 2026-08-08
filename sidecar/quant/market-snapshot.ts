@@ -2,6 +2,8 @@ import { tmpdir } from 'os';
 import * as path from 'path';
 import type { MarketSnapshot, MarketSnapshotEntry } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
+import { HTTP_DEFAULTS } from '../config';
+import { fetchWithPolicy } from '../http';
 import { logger } from '../utils';
 
 /**
@@ -99,7 +101,6 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
  * 页间加 120–300ms 随机抖动，避免高频批量触发反爬（研究风控提示）。
  */
 export async function fetchMarketSnapshot(deps: MarketSnapshotDeps = {}): Promise<MarketSnapshot> {
-  const _fetch = deps.fetchImpl ?? fetch;
   const _readCache = deps.readCacheImpl ?? readCache;
   const _writeCache = deps.writeCacheImpl ?? writeCache;
   const _sleep = deps.sleepImpl ?? sleep;
@@ -111,7 +112,11 @@ export async function fetchMarketSnapshot(deps: MarketSnapshotDeps = {}): Promis
   const entries: MarketSnapshotEntry[] = [];
   let total = 0;
   for (let pn = 1; pn <= MAX_PAGES; pn++) {
-    const resp = await _fetch(buildClistUrl(pn), { signal: AbortSignal.timeout(10000) });
+    // 分页聚合是重接口，用放宽超时
+    const resp = await fetchWithPolicy(buildClistUrl(pn), {
+      timeoutMs: HTTP_DEFAULTS.slowTimeoutMs,
+      fetchImpl: deps.fetchImpl,
+    });
     if (!resp.ok) throw new Error(`东财 clist HTTP ${resp.status}`);
     const json = (await resp.json()) as ClistResponse;
     // 首页取 total 用于判断是否已拉全（东财声明的全市场标的总数）

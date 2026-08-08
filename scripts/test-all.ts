@@ -59,13 +59,21 @@ function buildSuites(withIntegration: boolean): Suite[] {
       // sidecar/*.integration.ts 不带 .test 后缀，bun test 默认按 *.test.ts 匹配，天然排除集成
       args: ['test', '--timeout=10000'],
     },
+    {
+      // shared/ 的跨层契约测试（动作清单 ↔ 三层布线一致性）；必须限定路径，
+      // 否则根目录 bun test 会捞到需要 vitest/happy-dom 的 src/**.test.tsx
+      name: 'shared (bun test, 跨层契约)',
+      cwd: ROOT,
+      cmd: 'bun',
+      args: ['test', '--timeout=10000', 'shared/'],
+    },
   ];
   if (withIntegration) {
     suites.push({
       name: 'sidecar (bun test, 集成 — 需要网络)',
       cwd: resolve(ROOT, 'sidecar'),
       cmd: 'bun',
-      args: ['test', '--timeout=30000', 'scraper.integration.ts'],
+      args: ['test', '--timeout=30000', 'scraper.integration.ts', 'search.integration.ts'],
     });
   }
   return suites;

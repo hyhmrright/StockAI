@@ -15,6 +15,8 @@ import {
   MasterWeightInput,
   ScreenResponse,
 } from '../../shared/types';
+import type { SidecarActionDef, SlotName } from '../../shared/actions';
+import { SIDECAR_ACTIONS, CONFIG_SLOT, PAYLOAD_SLOT, buildActionArgs } from '../../shared/actions';
 import {
   MOCK_STOCKS,
   MOCK_MODELS,
@@ -78,61 +80,22 @@ export function parseServiceResponse<T>(raw: string): T {
   return envelope.data;
 }
 
-/**
- * 搜索股票建议
- */
-export async function searchStocks(keyword: string): Promise<StockSearchResult[]> {
-  if (!isTauri()) return MOCK_STOCKS;
-
-  try {
-    const raw = await invoke<string>('search_stocks', { keyword });
-    return parseServiceResponse<StockSearchResult[]>(raw);
-  } catch (error) {
-    console.error('IPC 调用失败 (search_stocks):', error);
-    return [];
-  }
-}
-
-/**
- * 获取可用模型列表
- * apiKey 用于对非 ollama provider 真打 /models 端点；取自表单当前编辑值（可能尚未保存）
- */
-export async function listModels(
-  provider: string,
-  baseUrl: string,
-  apiKey?: string,
-): Promise<string[]> {
-  if (!isTauri()) return MOCK_MODELS;
-
-  try {
-    const raw = await invoke<string>('list_models', { provider, baseUrl, apiKey: apiKey ?? '' });
-    const data = parseServiceResponse<{ models: string[] }>(raw);
-    return data.models || [];
-  } catch (error) {
-    console.error(`IPC 调用失败 (list_models) [provider=${provider}, baseUrl=${baseUrl}]:`, error);
-    // 重新抛出错误，让 UI 能够捕获并显示具体的失败原因，而不是由于返回 [] 导致的"未发现可用模型"掩盖
-    throw error;
-  }
-}
-
-/** 将非 Error 类型的 IPC 异常统一包装成 Error 后重新抛出 */
-function rethrow(error: unknown): never {
-  if (error instanceof Error) throw error;
-  throw new Error(typeof error === 'string' ? error : String(error));
+/** 一次 Sidecar 调用的可选负载：大 payload 与临时配置覆盖，均由 Rust 落成临时文件 */
+interface CallOptions {
+  /** 对应 argv 中的 PAYLOAD_SLOT（news 数组 / chat payload） */
+  payload?: unknown;
+  /** 对应 CONFIG_SLOT，但用它替代 settings.json（列模型用表单当前编辑值） */
+  configOverride?: unknown;
 }
 
 /** 通过开发桥接器（3001）尝试拉真实数据；bridge 不在线时退回 mock，避免阻塞浏览器调试 */
 let bridgeWarnLogged = false;
-async function devBridgeInvoke<T>(
-  cmd: string,
-  args: Record<string, unknown>,
-  fallback: T,
-): Promise<T> {
+async function devBridgeInvoke<T>(args: string[], opts: CallOptions, fallback: T): Promise<T> {
   try {
     const resp = await fetch('http://localhost:3001/invoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cmd, args }),
+      body: JSON.stringify({ args, ...opts }),
     });
     return parseServiceResponse<T>(await resp.text());
   } catch {
@@ -148,18 +111,80 @@ async function devBridgeInvoke<T>(
 }
 
 /**
+ * 唯一的 Sidecar 调用管道：按 shared/actions.ts 的清单组装 argv，交给 Rust 的
+ * invoke_sidecar。因此新增能力时本文件只需加一个薄封装，不必碰 Rust。
+ *
+ * 浏览器模式（非 Tauri）走开发桥接器，桥接器不在线时返回传入的 mock。
+ * 抛出的一律是 Error（Tauri 的 invoke 会把 Rust 的 Err(String) 抛成裸字符串），
+ * 调用方因此无需各自包一层 try/catch 转换。
+ */
+async function callSidecar<T>(
+  action: SidecarActionDef,
+  values: Partial<Record<SlotName, string>>,
+  devFallback: T,
+  opts: CallOptions = {},
+): Promise<T> {
+  const args = buildActionArgs(action, values);
+  try {
+    if (!isTauri()) return await devBridgeInvoke<T>(args, opts, devFallback);
+    return parseServiceResponse<T>(await invoke<string>('invoke_sidecar', { args, ...opts }));
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error(typeof error === 'string' ? error : String(error));
+  }
+}
+
+/**
+ * 搜索股票建议
+ */
+export async function searchStocks(keyword: string): Promise<StockSearchResult[]> {
+  try {
+    return await callSidecar<StockSearchResult[]>(
+      SIDECAR_ACTIONS.search,
+      { actionParam: keyword },
+      MOCK_STOCKS,
+    );
+  } catch (error) {
+    // 搜索是辅助功能，失败退化为空建议列表而非打断输入
+    console.error('IPC 调用失败 (search):', error);
+    return [];
+  }
+}
+
+/**
+ * 获取可用模型列表
+ * apiKey 用于对非 ollama provider 真打 /models 端点；取自表单当前编辑值（可能尚未保存），
+ * 故走 configOverride 而非 settings.json——仍经 0o600 临时文件转移，不进 argv。
+ */
+export async function listModels(
+  provider: string,
+  baseUrl: string,
+  apiKey?: string,
+): Promise<string[]> {
+  try {
+    const data = await callSidecar<{ models: string[] }>(
+      SIDECAR_ACTIONS.listModels,
+      { configStr: CONFIG_SLOT },
+      { models: MOCK_MODELS },
+      { configOverride: { provider, baseUrl, apiKey: apiKey ?? '' } },
+    );
+    return data.models || [];
+  } catch (error) {
+    // 不吞错误：返回 [] 会被 UI 显示成"未发现可用模型"，掩盖真正的失败原因
+    console.error(`IPC 调用失败 (listModels) [provider=${provider}, baseUrl=${baseUrl}]:`, error);
+    throw error;
+  }
+}
+
+/**
  * 仅拉取 StockInfo + News（不调 LLM）— 新交互流程第一步
  */
-export async function fetchMarketBundle(symbol: string): Promise<MarketBundle> {
-  if (!isTauri())
-    return devBridgeInvoke<MarketBundle>('fetch_market_bundle', { symbol }, MOCK_BUNDLE);
-
-  try {
-    const raw = await invoke<string>('fetch_market_bundle', { symbol });
-    return parseServiceResponse<MarketBundle>(raw);
-  } catch (error) {
-    rethrow(error);
-  }
+export function fetchMarketBundle(symbol: string): Promise<MarketBundle> {
+  return callSidecar<MarketBundle>(
+    SIDECAR_ACTIONS.bundle,
+    { configStr: CONFIG_SLOT, actionParam: symbol },
+    MOCK_BUNDLE,
+  );
 }
 
 /**
@@ -170,20 +195,17 @@ export async function analyzeNews(
   news: StockNews[],
   quant?: QuantBundle,
 ): Promise<AIAnalysisResult> {
-  const quantJson = quant ? JSON.stringify(quant) : undefined;
-  if (!isTauri())
-    return devBridgeInvoke<AIAnalysisResult>(
-      'analyze_news',
-      { symbol, news, quant: quantJson },
-      MOCK_AI_RESULT,
-    );
-
-  try {
-    const raw = await invoke<string>('analyze_news', { symbol, news, quant: quantJson });
-    return parseServiceResponse<AIAnalysisResult>(raw);
-  } catch (error) {
-    rethrow(error);
-  }
+  return callSidecar<AIAnalysisResult>(
+    SIDECAR_ACTIONS.analyzeOnly,
+    {
+      configStr: CONFIG_SLOT,
+      actionParam: symbol,
+      newsJson: PAYLOAD_SLOT,
+      quantJson: quant ? JSON.stringify(quant) : '',
+    },
+    MOCK_AI_RESULT,
+    { payload: news },
+  );
 }
 
 export async function deepAnalyze(
@@ -192,99 +214,83 @@ export async function deepAnalyze(
   quant?: QuantBundle,
   weights?: MasterWeightInput[],
 ): Promise<DeepAnalysisResult> {
-  const quantJson = quant ? JSON.stringify(quant) : undefined;
-  // 权重摘要序列化为 JSON 字符串经 argv 内联传递（无敏感数据）；空/缺省 → Rust 侧填 "[]" 退化默认权重
-  const weightsJson = weights && weights.length > 0 ? JSON.stringify(weights) : undefined;
-  if (!isTauri())
-    return devBridgeInvoke<DeepAnalysisResult>(
-      'deep_analyze',
-      { symbol, news, quant: quantJson, weights: weightsJson },
-      MOCK_DEEP_ANALYSIS,
-    );
-
-  try {
-    const raw = await invoke<string>('deep_analyze', {
-      symbol,
-      news,
-      quant: quantJson,
-      weights: weightsJson,
-    });
-    return parseServiceResponse<DeepAnalysisResult>(raw);
-  } catch (error) {
-    rethrow(error);
-  }
+  return callSidecar<DeepAnalysisResult>(
+    SIDECAR_ACTIONS.deepAnalysis,
+    {
+      configStr: CONFIG_SLOT,
+      actionParam: symbol,
+      newsJson: PAYLOAD_SLOT,
+      quantJson: quant ? JSON.stringify(quant) : '',
+      // 权重摘要无敏感数据，直接内联 argv；空/缺省 → sidecar 退化默认权重
+      weightsJson: weights?.length ? JSON.stringify(weights) : '',
+    },
+    MOCK_DEEP_ANALYSIS,
+    { payload: news },
+  );
 }
 
 /** 对话式追问：基于已抓上下文做多轮自然语言问答 */
 export async function chat(payload: ChatPayload): Promise<ChatResponse> {
-  if (!isTauri()) return devBridgeInvoke<ChatResponse>('chat', { payload }, MOCK_CHAT);
-
-  try {
-    const raw = await invoke<string>('chat', { payload });
-    return parseServiceResponse<ChatResponse>(raw);
-  } catch (error) {
-    rethrow(error);
-  }
+  return callSidecar<ChatResponse>(
+    SIDECAR_ACTIONS.chat,
+    { configStr: CONFIG_SLOT, actionParam: PAYLOAD_SLOT },
+    MOCK_CHAT,
+    { payload },
+  );
 }
 
 export async function fetchQuantBundle(symbol: string): Promise<QuantBundle> {
-  if (!isTauri()) return devBridgeInvoke<QuantBundle>('fetch_quant_bundle', { symbol }, MOCK_QUANT);
+  return callSidecar<QuantBundle>(SIDECAR_ACTIONS.quant, { actionParam: symbol }, MOCK_QUANT);
+}
 
+/**
+ * 财报 RAG 预热：提前建索引，把交易所互动平台抓取挪出 chat 首答关键路径。
+ * 调用方 fire-and-forget（失败不影响任何主流程），故此处吞掉异常只留日志。
+ */
+export async function indexReports(symbol: string): Promise<void> {
   try {
-    const raw = await invoke<string>('fetch_quant_bundle', { symbol });
-    return parseServiceResponse<QuantBundle>(raw);
+    await callSidecar<{ indexed: boolean; docCount: number }>(
+      SIDECAR_ACTIONS.indexReports,
+      { actionParam: symbol },
+      { indexed: false, docCount: 0 },
+    );
   } catch (error) {
-    rethrow(error);
+    console.warn(`财报 RAG 预热失败（不影响主流程） [${symbol}]:`, error);
   }
 }
 
 /** 拉取 K 线 */
 export async function fetchKline(req: KlineRequest): Promise<KlinePoint[]> {
-  if (!isTauri()) return devBridgeInvoke<KlinePoint[]>('fetch_kline', { request: req }, MOCK_KLINE);
-  try {
-    const raw = await invoke<string>('fetch_kline', { request: req });
-    return parseServiceResponse<KlinePoint[]>(raw);
-  } catch (error) {
-    rethrow(error);
-  }
+  return callSidecar<KlinePoint[]>(
+    SIDECAR_ACTIONS.kline,
+    { actionParam: JSON.stringify(req) },
+    MOCK_KLINE,
+  );
 }
 
 /** 拉取实时报价 */
 export async function fetchRealtimeQuote(symbol: string): Promise<RealtimeQuote> {
-  if (!isTauri())
-    return devBridgeInvoke<RealtimeQuote>('fetch_realtime_quote', { symbol }, MOCK_QUOTE);
-  try {
-    const raw = await invoke<string>('fetch_realtime_quote', { symbol });
-    return parseServiceResponse<RealtimeQuote>(raw);
-  } catch (error) {
-    rethrow(error);
-  }
+  return callSidecar<RealtimeQuote>(SIDECAR_ACTIONS.quote, { actionParam: symbol }, MOCK_QUOTE);
 }
 
 /** 运行量化回测 */
 export async function runBacktest(symbol: string): Promise<BacktestResult> {
-  if (!isTauri()) return devBridgeInvoke<BacktestResult>('run_backtest', { symbol }, MOCK_BACKTEST);
-
-  try {
-    const raw = await invoke<string>('run_backtest', { symbol });
-    return parseServiceResponse<BacktestResult>(raw);
-  } catch (error) {
-    rethrow(error);
-  }
+  return callSidecar<BacktestResult>(
+    SIDECAR_ACTIONS.backtest,
+    { actionParam: symbol },
+    MOCK_BACKTEST,
+  );
 }
 
 /**
- * #14 自然语言选股：把用户自然语言查询交给 sidecar 两阶段全市场筛选。
+ * 自然语言选股：把用户自然语言查询交给 sidecar 两阶段全市场筛选。
  * ServiceError（含 code，如 ERR_SCREEN_PARSE / ERR_SCREEN_NO_CONDITIONS）原样透传，
  * 供 useNlScreener 按 code 映射差异化降级文案。
  */
 export async function screenStocks(query: string): Promise<ScreenResponse> {
-  if (!isTauri()) return devBridgeInvoke<ScreenResponse>('screen_stocks', { query }, MOCK_SCREEN);
-
-  try {
-    const raw = await invoke<string>('screen_stocks', { query });
-    return parseServiceResponse<ScreenResponse>(raw);
-  } catch (error) {
-    rethrow(error);
-  }
+  return callSidecar<ScreenResponse>(
+    SIDECAR_ACTIONS.screen,
+    { configStr: CONFIG_SLOT, actionParam: query },
+    MOCK_SCREEN,
+  );
 }

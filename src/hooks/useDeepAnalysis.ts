@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import type {
   DeepAnalysisResult,
   StockNews,
@@ -6,7 +6,7 @@ import type {
   MasterWeightInput,
 } from '../../shared/types';
 import { deepAnalyze } from '../lib/ipc';
-import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from './cache-utils';
+import { useSymbolScopedAsync } from './useSymbolScopedAsync';
 
 export interface UseDeepAnalysisResult {
   result: DeepAnalysisResult | null;
@@ -32,12 +32,7 @@ export function useDeepAnalysis(
   configFingerprint = '',
   runner: DeepAnalyzeFn = deepAnalyze,
 ): UseDeepAnalysisResult {
-  const cacheRef = useRef<Map<string, DeepAnalysisResult>>(new Map());
-  const errorRef = useRef<Map<string, string>>(new Map());
-  const inFlightRef = useRef<Set<string>>(new Set());
-  const reqIdRef = useRef<Map<string, number>>(new Map());
-  const [, force] = useState(0);
-
+  const store = useSymbolScopedAsync<DeepAnalysisResult>();
   const cacheKey = `${symbol}::${configFingerprint}`;
 
   const analyze = useCallback(
@@ -45,49 +40,19 @@ export function useDeepAnalysis(
       if (!symbol) return;
       const key = `${symbol}::${configFingerprint}`;
       if (news.length === 0) {
-        setWithLRI(
-          errorRef.current,
-          key,
-          '尚未抓到新闻，无法分析。请等待数据加载完成后再点击。',
-          MAX_SYMBOLS_IN_CACHE,
-        );
-        force((n) => n + 1);
+        store.setError(key, '尚未抓到新闻，无法分析。请等待数据加载完成后再点击。');
         return;
       }
 
-      const myReqId = (reqIdRef.current.get(key) ?? 0) + 1;
-      reqIdRef.current.set(key, myReqId);
-
-      inFlightRef.current.add(key);
-      errorRef.current.delete(key);
-      force((n) => n + 1);
-
-      try {
-        const data = await runner(symbol, news, quant, weights);
-        if (reqIdRef.current.get(key) !== myReqId) return;
-        setWithLRI(cacheRef.current, key, data, MAX_SYMBOLS_IN_CACHE);
-      } catch (err) {
-        if (reqIdRef.current.get(key) !== myReqId) return;
-        setWithLRI(
-          errorRef.current,
-          key,
-          err instanceof Error ? err.message : String(err),
-          MAX_SYMBOLS_IN_CACHE,
-        );
-      } finally {
-        if (reqIdRef.current.get(key) === myReqId) {
-          inFlightRef.current.delete(key);
-          force((n) => n + 1);
-        }
-      }
+      await store.run(key, () => runner(symbol, news, quant, weights));
     },
-    [symbol, configFingerprint, runner],
+    [symbol, configFingerprint, runner, store],
   );
 
   return {
-    result: cacheRef.current.get(cacheKey) ?? null,
-    analyzing: inFlightRef.current.has(cacheKey),
-    error: errorRef.current.get(cacheKey) ?? null,
+    result: store.get(cacheKey),
+    analyzing: store.isRunning(cacheKey),
+    error: store.errorOf(cacheKey),
     analyze,
   };
 }

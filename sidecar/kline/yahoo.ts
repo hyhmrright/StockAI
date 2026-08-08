@@ -1,5 +1,6 @@
 import type { KlinePoint, RealtimeQuote, KlineRange, NormalizedRequest } from './types';
-import { KLINE_FETCH_TIMEOUT_MS } from './types';
+import type { KlineSourceDeps } from './types';
+import { fetchWithPolicy } from '../http';
 
 /**
  * 把 UI 选择的范围映射为 Yahoo Chart API 的 (range, interval)
@@ -35,15 +36,15 @@ export function mapRangeToYahoo(range: KlineRange): { range: string; interval: s
 /**
  * 拉取美股 K 线
  */
-export async function fetchYahooKline(req: NormalizedRequest): Promise<KlinePoint[]> {
+export async function fetchYahooKline(
+  req: NormalizedRequest,
+  deps: KlineSourceDeps = {},
+): Promise<KlinePoint[]> {
   const { range, interval } = mapRangeToYahoo(req.range);
   const symbol = req.rawSymbol.replace(/^gb_/i, '').toUpperCase();
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=true`;
 
-  const resp = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0' },
-    signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS),
-  });
+  const resp = await fetchWithPolicy(url, { fetchImpl: deps.fetchImpl });
   if (!resp.ok) throw new Error(`Yahoo K 线响应 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseYahooChart(json);
@@ -122,13 +123,13 @@ export function parseYahooChart(json: YahooChartResponse): KlinePoint[] {
 /**
  * 拉取美股实时报价 — 复用 Chart API meta 字段（无需额外接口）
  */
-export async function fetchYahooQuote(symbol: string): Promise<RealtimeQuote> {
+export async function fetchYahooQuote(
+  symbol: string,
+  deps: KlineSourceDeps = {},
+): Promise<RealtimeQuote> {
   const upper = symbol.replace(/^gb_/i, '').toUpperCase();
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(upper)}?range=1d&interval=1m&includePrePost=true`;
-  const resp = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0' },
-    signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS),
-  });
+  const resp = await fetchWithPolicy(url, { fetchImpl: deps.fetchImpl });
   if (!resp.ok) throw new Error(`Yahoo Quote 响应 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseYahooQuote(json, upper);

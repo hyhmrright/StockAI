@@ -6,7 +6,8 @@ import type {
   AdjustMode,
   NormalizedRequest,
 } from './types';
-import { KLINE_FETCH_TIMEOUT_MS } from './types';
+import type { KlineSourceDeps } from './types';
+import { fetchWithPolicy } from '../http';
 import { parseChinaSymbol } from './symbol';
 
 /** 把通用周期映射为腾讯 param */
@@ -41,7 +42,10 @@ function countForRange(_period: KlinePeriod, range: KlineRange): number {
   return map[range];
 }
 
-export async function fetchTencentKline(req: NormalizedRequest): Promise<KlinePoint[]> {
+export async function fetchTencentKline(
+  req: NormalizedRequest,
+  deps: KlineSourceDeps = {},
+): Promise<KlinePoint[]> {
   const { prefix, code } = parseChinaSymbol(req.rawSymbol);
   const tencentSymbol = `${prefix}${code}`;
   const period = mapPeriodToTencent(req.period);
@@ -54,7 +58,7 @@ export async function fetchTencentKline(req: NormalizedRequest): Promise<KlinePo
     ? `https://web.ifzq.gtimg.cn/appstock/app/kline/mkline?param=${tencentSymbol},${period},,${count}`
     : `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${tencentSymbol},${period},,,${count},${adjust}`;
 
-  const resp = await fetch(endpoint, { signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS) });
+  const resp = await fetchWithPolicy(endpoint, { fetchImpl: deps.fetchImpl });
   if (!resp.ok) throw new Error(`腾讯 K 线 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseTencentKline(json, tencentSymbol, req.adjust, period);
@@ -111,13 +115,16 @@ function parseAmount(v: unknown): number | undefined {
   return undefined;
 }
 
-export async function fetchTencentQuote(symbol: string): Promise<RealtimeQuote> {
+export async function fetchTencentQuote(
+  symbol: string,
+  deps: KlineSourceDeps = {},
+): Promise<RealtimeQuote> {
   const { prefix, code } = parseChinaSymbol(symbol);
   const tencentSymbol = `${prefix}${code}`;
   const url = `https://web.sqt.gtimg.cn/q=${tencentSymbol}`;
-  const resp = await fetch(url, {
+  const resp = await fetchWithPolicy(url, {
     headers: { Referer: 'https://gu.qq.com' },
-    signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS),
+    fetchImpl: deps.fetchImpl,
   });
   if (!resp.ok) throw new Error(`腾讯报价 HTTP ${resp.status}`);
   const buf = await resp.arrayBuffer();

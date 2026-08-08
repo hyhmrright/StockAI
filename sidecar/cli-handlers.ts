@@ -395,23 +395,21 @@ export function createHandlers(deps: HandlerDeps = {}) {
       try {
         const { getKline } = await import('./kline');
         const kline = await getKline({ symbol, period: '1d', range: '1y' });
-        if (kline.length < 60) {
+        const { runBacktest, MIN_BACKTEST_BARS } = await import('./backtest/engine');
+        if (kline.length < MIN_BACKTEST_BARS) {
           out(
             errorEnvelope(
               'ERR_INSUFFICIENT_DATA',
-              `K 线数据不足（${kline.length} 天），需要至少 60 天`,
+              `K 线数据不足（${kline.length} 天），需要至少 ${MIN_BACKTEST_BARS} 天`,
             ),
           );
           return;
         }
-        const { runBacktest } = await import('./backtest/engine');
+        const { DEFAULT_BACKTEST_PARAMS } = await import('./backtest/types');
         const result = runBacktest(kline, {
+          ...DEFAULT_BACKTEST_PARAMS,
           symbol,
           period: kline.length,
-          buyThreshold: 65,
-          sellThreshold: 40,
-          initialCapital: 100000,
-          transactionCost: 0.001,
         });
         out(successEnvelope(result));
       } catch (error) {

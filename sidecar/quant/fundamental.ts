@@ -1,5 +1,6 @@
 import type { FinancialMetrics, FundamentalResult, SubSignal } from './types';
 import type { CheckItem } from '../../shared/types';
+import { fetchWithPolicy } from '../http';
 import { logger, toErrorMessage } from '../utils';
 import { annualizeRoe } from './roe-annualize';
 
@@ -156,9 +157,8 @@ async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetric
   if (!/^\d{6}$/.test(cleaned)) throw new Error(`无效的 A 股代码: ${code}`);
   const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=REPORT_TYPE,ROEJQ,XSJLL,XSMLL,ZCFZL,LD,TOTALOPERATEREVETZ,PARENTNETPROFITTZ,MGJYXJJE&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
 
-  const resp = await fetch(url, {
+  const resp = await fetchWithPolicy(url, {
     headers: { Referer: 'https://emweb.securities.eastmoney.com' },
-    signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
   });
   if (!resp.ok) throw new Error(`东财财务 HTTP ${resp.status}`);
   const json = await resp.json();
@@ -168,10 +168,7 @@ async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetric
 async function fetchYahooFundamentals(symbol: string): Promise<FinancialMetrics> {
   const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=financialData,defaultKeyStatistics,cashflowStatementHistory,incomeStatementHistory,balanceSheetHistory`;
 
-  const resp = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0' },
-    signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
-  });
+  const resp = await fetchWithPolicy(url);
   if (!resp.ok) throw new Error(`Yahoo Finance HTTP ${resp.status}`);
   const json = await resp.json();
   return parseYahooFinancials(json);

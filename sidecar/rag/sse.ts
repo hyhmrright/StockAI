@@ -1,6 +1,8 @@
 import type { ReportChunk } from '../../shared/types';
+import { HTTP_DEFAULTS } from '../config';
+import { fetchWithPolicy } from '../http';
 import { logger, toErrorMessage } from '../utils';
-import { RAG_UA, RAG_REQ_TIMEOUT, truncateChunkText } from './http-common';
+import { truncateChunkText } from './http-common';
 
 /**
  * 上证e互动（sns.sseinfo.com）——沪市专属投资者互动问答，官方免鉴权公开端点。
@@ -23,11 +25,10 @@ export interface SseDeps {
  * 取第一个即可）。非沪市 / 该平台无此公司（303/空响应）/ 网络异常 → 返回 null（上层优雅退化）。
  */
 export async function resolveSseUid(code: string, deps: SseDeps = {}): Promise<string | null> {
-  const _fetch = deps.fetchImpl ?? fetch;
   try {
-    const resp = await _fetch(`https://sns.sseinfo.com/company.do?stockcode=${code}`, {
-      headers: { 'User-Agent': RAG_UA },
-      signal: AbortSignal.timeout(RAG_REQ_TIMEOUT),
+    const resp = await fetchWithPolicy(`https://sns.sseinfo.com/company.do?stockcode=${code}`, {
+      timeoutMs: HTTP_DEFAULTS.slowTimeoutMs,
+      fetchImpl: deps.fetchImpl,
     });
     if (!resp.ok) {
       logger.warn(`上证e互动 company.do HTTP ${resp.status} (${code})`);
@@ -118,11 +119,10 @@ export async function fetchSseFeeds(
   pageSize = 10,
   deps: SseDeps = {},
 ): Promise<ReportChunk[]> {
-  const _fetch = deps.fetchImpl ?? fetch;
   const url = `https://sns.sseinfo.com/ajax/userfeeds.do?typeCode=company&type=11&pageSize=${pageSize}&uid=${uid}&page=1`;
-  const resp = await _fetch(url, {
-    headers: { 'User-Agent': RAG_UA },
-    signal: AbortSignal.timeout(RAG_REQ_TIMEOUT),
+  const resp = await fetchWithPolicy(url, {
+    timeoutMs: HTTP_DEFAULTS.slowTimeoutMs,
+    fetchImpl: deps.fetchImpl,
   });
   if (!resp.ok) throw new Error(`上证e互动 userfeeds HTTP ${resp.status}: ${code}`);
   const html = await resp.text();

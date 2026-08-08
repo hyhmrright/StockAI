@@ -54,7 +54,9 @@ bun run format:check
 
 Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
-`shared/` 目录是跨层唯一来源：`types.ts`（DTO 类型）、`market.ts`（`detectMarket` 函数）、`constants.ts`（默认大师列表等）。前端与 Sidecar 各自 re-export，**不得在各层重复定义**。
+`shared/` 目录是跨层唯一来源：`types/`（DTO 类型，按上下文分文件 + barrel，一律 `from '../shared/types'`）、`actions.ts`（Sidecar CLI 动作清单，三层布线的单一来源）、`market.ts`（`detectMarket` 函数）、`constants.ts`（默认大师列表等）。前端与 Sidecar 各自 re-export，**不得在各层重复定义**。
+
+新增 Sidecar 能力只需三处：`shared/actions.ts` 加一条 + `sidecar/cli-handlers.ts` 实现 handler + `sidecar/index.ts` 的 `DISPATCH` 加一行——Rust（泛化 `invoke_sidecar`）与 `src/lib/ipc.ts` 的调用管道无需改动。
 
 详细架构说明见 `.claude/rules/architecture.md`（需要时 Read 该文件）。
 
@@ -62,10 +64,13 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
 - **Code comments**: All inline logic comments must be written in Simplified Chinese.
 - **Component size**: UI component files must stay under 200 lines; extract complex logic into hooks.
-- **Test decoupling**: 解析逻辑放在 `sidecar/parsers/` 目录（`exchange.ts` / `html.ts`），与网络层分离，离线测试见 `parsers/*.test.ts`。
+- **Test decoupling**: 解析逻辑放在 `sidecar/parsers/` 目录（`exchange.ts` / `html.ts`），与网络层分离，离线测试见 `parsers/*.test.ts`。抓取链路统一暴露 `fetchImpl` 注入点（`KlineSourceDeps` / `SearchDeps` / `QuantDeps` 同形），默认套件**必须离线可跑**；真网络断言放 `*.integration.ts`（只在 `bun run test:integration` 跑）。
+- **Outbound HTTP**: 一律经 `sidecar/http.ts` 的 `fetchWithPolicy(url, policy)`，UA 与超时的唯一来源是 `sidecar/config.ts` 的 `HTTP_DEFAULTS`。**不要在数据源模块另写 UA 字面量或 `AbortSignal.timeout(...)`**。
+- **Frontend async hooks**: 「按 symbol 取数」复用 `useSymbolFetch`，「按 symbol 缓存异步结果」复用 `useSymbolScopedAsync`（含竞态守卫 + LRI 限容），不要再手搓一份。
+- **Adding a K-line source**: 在 `sidecar/kline/index.ts` 的 `KLINE_SOURCES[市场]` 数组追加一行即可（依次尝试、首个成功即返回），不必改控制流。
 - **Adding a scrape strategy**: 实现 `sidecar/strategies/base.ts` 的 `ScrapeStrategy`，然后在 `sidecar/strategies/registry.ts` 的 `StrategyRegistry.strategies` 追加一行。能跳过 Chromium 的策略尽量排前。
-- **Adding an AI provider**: 兼容 OpenAI 协议时，在 `shared/constants.ts` 的 `PROVIDER_PROFILES` 加默认值（`sidecar/config.ts` 仅 re-export，勿在此加）+ `providers/registry.ts` 的 `PROVIDER_FACTORIES` 追加一行；协议不兼容时在 `sidecar/providers/` 实现 `AIProvider` 接口（`sidecar/ai.ts`）。最后同步 `shared/types.ts` 的 `ProviderType`。
-- **i18n**: 多语言通过 `Language` 类型（`shared/types.ts`）传递；前端用 `useLanguage()` hook 获取翻译函数；`src/i18n/zh.json` 是翻译 key 的 TypeScript 类型来源（编译期校验），新增 UI 文字须先在此文件加 key。
+- **Adding an AI provider**: 兼容 OpenAI 协议时，在 `shared/constants.ts` 的 `PROVIDER_PROFILES` 加默认值（`sidecar/config.ts` 仅 re-export，勿在此加）+ `providers/registry.ts` 的 `PROVIDER_FACTORIES` 追加一行；协议不兼容时在 `sidecar/providers/` 实现 `AIProvider` 接口（`sidecar/ai.ts`）。最后同步 `shared/types/provider.ts` 的 `ProviderType`。
+- **i18n**: 多语言通过 `Language` 类型（`shared/types`）传递；前端用 `useLanguage()` hook 获取翻译函数；`src/i18n/zh.json` 是翻译 key 的 TypeScript 类型来源（编译期校验），新增 UI 文字须先在此文件加 key。
 - Sidecar stderr is for debug logging; stdout must only contain the final JSON output.
 - **Formatting**: biome 统一格式（单引号 / 2 空格 / lineWidth 100，配置见 `biome.json`，仅 formatter 不开 linter）。改完跑 `bun run format`；用 Claude Code 时 `.claude/hooks/` 会在编辑时自动 format + 跑相关测试 + 拦截硬编码 API key。
 

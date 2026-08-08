@@ -1,5 +1,6 @@
 import type { KlinePoint, KlinePeriod, AdjustMode, NormalizedRequest } from './types';
-import { KLINE_FETCH_TIMEOUT_MS } from './types';
+import type { KlineSourceDeps } from './types';
+import { fetchWithPolicy } from '../http';
 import { parseChinaSymbol, chinaPrefixToEastmoneyMarket } from './symbol';
 
 export function mapPeriodToEastmoney(p: KlinePeriod): number {
@@ -12,7 +13,10 @@ export function mapAdjustToEastmoney(a: AdjustMode): number {
   return a === 'qfq' ? 1 : a === 'hfq' ? 2 : 0;
 }
 
-export async function fetchEastmoneyKline(req: NormalizedRequest): Promise<KlinePoint[]> {
+export async function fetchEastmoneyKline(
+  req: NormalizedRequest,
+  deps: KlineSourceDeps = {},
+): Promise<KlinePoint[]> {
   const { prefix, code } = parseChinaSymbol(req.rawSymbol);
   const market = chinaPrefixToEastmoneyMarket(prefix);
   const klt = mapPeriodToEastmoney(req.period);
@@ -20,7 +24,7 @@ export async function fetchEastmoneyKline(req: NormalizedRequest): Promise<Kline
 
   const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${market}.${code}&klt=${klt}&fqt=${fqt}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&end=20500101&lmt=1000`;
 
-  const resp = await fetch(url, { signal: AbortSignal.timeout(KLINE_FETCH_TIMEOUT_MS) });
+  const resp = await fetchWithPolicy(url, { fetchImpl: deps.fetchImpl });
   if (!resp.ok) throw new Error(`东财 K 线 HTTP ${resp.status}`);
   const json = await resp.json();
   return parseEastmoneyKline(json);

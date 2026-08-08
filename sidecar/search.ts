@@ -1,5 +1,9 @@
 import type { StockSearchResult } from '../shared/types';
+import { fetchWithPolicy } from './http';
 import { logger } from './utils';
+
+/** 新浪财经行情接口的防盗链要求 */
+const SINA_HEADERS = { Referer: 'https://finance.sina.com.cn' };
 
 /**
  * 股票类型映射表
@@ -11,11 +15,19 @@ const TYPE_MAP: Record<string, { label: string; prefix: string }> = {
   '41': { label: '美股', prefix: 'gb_' },
 };
 
+/** 测试注入点：替换真实网络，让搜索链路离线可测（与 KlineSourceDeps 同形） */
+export interface SearchDeps {
+  fetchImpl?: typeof fetch;
+}
+
 /**
  * 搜索股票建议并附带实时行情
  * @param keyword 关键词（代码或拼音/名称）
  */
-export async function searchStocks(keyword: string): Promise<StockSearchResult[]> {
+export async function searchStocks(
+  keyword: string,
+  deps: SearchDeps = {},
+): Promise<StockSearchResult[]> {
   const trimmed = keyword.trim();
   // 单个 CJK 字符是有意义的搜索词（如"苹"→苹果），但单个 ASCII 字符噪声太大
   const isSingleCJK = trimmed.length === 1 && /[一-鿿㐀-䶿]/.test(trimmed);
@@ -25,12 +37,7 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
   const url = `https://suggest3.sinajs.cn/suggest/type=11,12,31,41&key=${encodeURIComponent(keyword)}`;
 
   try {
-    const resp = await fetch(url, {
-      headers: {
-        Referer: 'https://finance.sina.com.cn',
-      },
-      signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
-    });
+    const resp = await fetchWithPolicy(url, { headers: SINA_HEADERS, fetchImpl: deps.fetchImpl });
 
     if (!resp.ok) return [];
 
@@ -76,7 +83,7 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
 
     // 批量抓取行情
     if (results.length > 0) {
-      await enrichWithQuotes(results);
+      await enrichWithQuotes(results, deps);
     }
 
     return results;
@@ -89,7 +96,10 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
 /**
  * 为搜索结果批量补充行情数据
  */
-async function enrichWithQuotes(results: StockSearchResult[]): Promise<void> {
+async function enrichWithQuotes(
+  results: StockSearchResult[],
+  deps: SearchDeps = {},
+): Promise<void> {
   // 构造新浪批量行情 URL (A股使用 s_ 前缀获取简易行情)
   const sinaCodes = results
     .map((r) => {
@@ -101,10 +111,7 @@ async function enrichWithQuotes(results: StockSearchResult[]): Promise<void> {
   const url = `https://hq.sinajs.cn/list=${sinaCodes}`;
 
   try {
-    const resp = await fetch(url, {
-      headers: { Referer: 'https://finance.sina.com.cn' },
-      signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
-    });
+    const resp = await fetchWithPolicy(url, { headers: SINA_HEADERS, fetchImpl: deps.fetchImpl });
 
     if (!resp.ok) {
       throw new Error(`HTTP 错误! 状态码: ${resp.status}`);

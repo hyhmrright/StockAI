@@ -1,5 +1,7 @@
 import type { ReportChunk } from '../../shared/types';
-import { RAG_UA, RAG_REQ_TIMEOUT, truncateChunkText } from './http-common';
+import { HTTP_DEFAULTS } from '../config';
+import { fetchWithPolicy } from '../http';
+import { truncateChunkText } from './http-common';
 
 /**
  * 深交所互动易（irm.cninfo.com.cn）——深市专属投资者互动问答，官方免鉴权公开端点。
@@ -79,16 +81,15 @@ export async function searchIrmQa(
   pageSize = 10,
   deps: IrmDeps = {},
 ): Promise<ReportChunk[]> {
-  const _fetch = deps.fetchImpl ?? fetch;
   const form = new FormData();
   form.set('pageNo', '1');
   form.set('pageSize', String(pageSize));
   form.set('keyWord', companyName);
-  const resp = await _fetch('http://irm.cninfo.com.cn/newircs/index/search', {
+  const resp = await fetchWithPolicy('http://irm.cninfo.com.cn/newircs/index/search', {
     method: 'POST',
-    headers: { 'User-Agent': RAG_UA },
     body: form,
-    signal: AbortSignal.timeout(RAG_REQ_TIMEOUT),
+    timeoutMs: HTTP_DEFAULTS.slowTimeoutMs,
+    fetchImpl: deps.fetchImpl,
   });
   if (!resp.ok) throw new Error(`深交所互动易 search HTTP ${resp.status}: ${code}`);
   const json = (await resp.json()) as IrmSearchResponse;

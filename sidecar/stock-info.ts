@@ -1,6 +1,7 @@
 import type { StockInfo } from '../shared/types';
 import { type ParsedSymbol, parseSymbol } from './parsers/exchange';
 import { searchStocks } from './search';
+import { fetchWithPolicy } from './http';
 import { toErrorMessage, logger } from './utils';
 
 // 代码前缀 → 交易所名称
@@ -126,11 +127,8 @@ async function fetchUSStockInfo(parsed: ParsedSymbol): Promise<StockInfo | null>
  */
 async function fetchWithSinaReferer(url: string): Promise<string | null> {
   try {
-    const resp = await fetch(url, {
-      headers: {
-        Referer: 'https://finance.sina.com.cn',
-      },
-      signal: AbortSignal.timeout(8000), // 防网络卡顿挂起
+    const resp = await fetchWithPolicy(url, {
+      headers: { Referer: 'https://finance.sina.com.cn' },
     });
     if (!resp.ok) return null;
     const buffer = await resp.arrayBuffer();

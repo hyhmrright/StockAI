@@ -1,10 +1,29 @@
-import type { KlineRequest, KlinePoint, RealtimeQuote } from '../../shared/types';
-import type { NormalizedRequest } from './types';
+import type { KlineRequest, KlinePoint, RealtimeQuote, Market } from '../../shared/types';
+import type { NormalizedRequest, KlineSourceDeps } from './types';
 import { detectMarket } from '../../shared/market';
 import { fetchYahooKline, fetchYahooQuote } from './yahoo';
 import { fetchTencentKline, fetchTencentQuote } from './tencent';
 import { fetchEastmoneyKline } from './eastmoney';
 import { logger, toErrorMessage } from '../utils';
+
+/** 一个 K 线/报价数据源。fetchQuote 可选——并非每个源都提供报价接口（如东财此处仅接 K 线）。 */
+interface KlineSource {
+  name: string;
+  fetchKline: (req: NormalizedRequest, deps: KlineSourceDeps) => Promise<KlinePoint[]>;
+  fetchQuote?: (symbol: string, deps: KlineSourceDeps) => Promise<RealtimeQuote>;
+}
+
+/**
+ * 按市场的数据源优先级表——「哪些源、按什么顺序」的唯一声明。
+ * 新增数据源只需在对应市场的数组里加一行，不必改控制流。
+ */
+const KLINE_SOURCES: Record<Market, KlineSource[]> = {
+  A股: [
+    { name: '腾讯', fetchKline: fetchTencentKline, fetchQuote: fetchTencentQuote },
+    { name: '东财', fetchKline: fetchEastmoneyKline },
+  ],
+  美股: [{ name: 'Yahoo', fetchKline: fetchYahooKline, fetchQuote: fetchYahooQuote }],
+};
 
 function normalize(req: KlineRequest): NormalizedRequest {
   return {
@@ -17,24 +36,39 @@ function normalize(req: KlineRequest): NormalizedRequest {
 }
 
 /**
- * 拉取 K 线 — A 股先腾讯，失败回退东财；美股 Yahoo
+ * 依次尝试各数据源，首个成功即返回；全部失败则抛最后一个错误（保留原始失败原因）。
+ * run 返回 undefined 表示该源不支持此能力，直接跳过。
  */
-export async function getKline(req: KlineRequest): Promise<KlinePoint[]> {
-  const n = normalize(req);
-  if (n.market === '美股') return fetchYahooKline(n);
-
-  try {
-    return await fetchTencentKline(n);
-  } catch (err) {
-    logger.warn(`腾讯 K 线失败，回退东财：${toErrorMessage(err)}`);
-    return fetchEastmoneyKline(n);
+async function withFallback<T>(
+  sources: KlineSource[],
+  label: string,
+  run: (source: KlineSource) => Promise<T> | undefined,
+): Promise<T> {
+  let lastError: unknown = new Error(`${label}：无可用数据源`);
+  for (const source of sources) {
+    const attempt = run(source);
+    if (!attempt) continue;
+    try {
+      return await attempt;
+    } catch (err) {
+      lastError = err;
+      logger.warn(`${source.name} ${label}拉取失败，尝试下一数据源：${toErrorMessage(err)}`);
+    }
   }
+  throw lastError;
 }
 
-/**
- * 拉取实时报价
- */
-export async function getQuote(symbol: string): Promise<RealtimeQuote> {
+/** 拉取 K 线 — 按 KLINE_SOURCES 的市场优先级顺序回退 */
+export async function getKline(
+  req: KlineRequest,
+  deps: KlineSourceDeps = {},
+): Promise<KlinePoint[]> {
+  const n = normalize(req);
+  return withFallback(KLINE_SOURCES[n.market], 'K 线', (s) => s.fetchKline(n, deps));
+}
+
+/** 拉取实时报价 — 同上，跳过不提供报价接口的源 */
+export async function getQuote(symbol: string, deps: KlineSourceDeps = {}): Promise<RealtimeQuote> {
   const market = detectMarket(symbol);
-  return market === '美股' ? fetchYahooQuote(symbol) : fetchTencentQuote(symbol);
+  return withFallback(KLINE_SOURCES[market], '报价', (s) => s.fetchQuote?.(symbol, deps));
 }
