@@ -77,7 +77,7 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
 ## Workflow
 
-- **Claude Skills**：`/new-master-agent`（引导新增投资大师 Agent）、`/add-provider`（引导新增 AI Provider）、`/new-strategy`（引导新增抓取策略）。`.mcp.json` 已提交，重启 Claude Code 后 context7 MCP 生效（对话中说 `use context7` 查实时库文档）；`sqlite-history` MCP 的 db 路径写死为 macOS 的 `~/Library/Application Support/com.hyh.stockai/`，**仅 macOS 可用**，Linux/Windows 贡献者可忽略该 server。
+- **Claude Skills**：`/new-master-agent`（引导新增投资大师 Agent）、`/add-provider`（引导新增 AI Provider）、`/new-strategy`（引导新增抓取策略）、`/release-notes`（生成双语 Release Notes 并写入 `docs/release-notes/`）。`.mcp.json` 已提交，重启 Claude Code 后 context7 MCP 生效（对话中说 `use context7` 查实时库文档）；`sqlite-history` MCP 的 db 路径写死为 macOS 的 `~/Library/Application Support/com.hyh.stockai/`，**仅 macOS 可用**，Linux/Windows 贡献者可忽略该 server。
 - **提交前流程**：非纯文档改动 commit 前先跑 `agent-skills:code-simplification` → `agent-skills:code-review-and-quality`（有问题修完再回简化）。维护者本地由全局 hook（`~/.claude/hooks/commit-gate.sh`）强制——拦未声明审查的代码提交，审查后用 `REVIEWED=1 git commit ...` 放行，纯文档自动豁免。
 - Pre-push 钩子 (`lefthook.yml`) 并行跑 `tsc --noEmit`、`cargo check`、`bun run format:check`（biome 格式门禁）。
 - 开发期若想跳过 Tauri 外壳直接调 Sidecar，可运行 `bun scripts/sidecar-bridge.ts`（:3001 HTTP 端点）。浏览器 dev 模式下 `src/lib/ipc.ts` 自动走该桥接器，bridge 未启动时退回 mock 数据并 `console.warn` 一次。
@@ -88,15 +88,16 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
 版本号需同步 3 个文件：`src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml` / `package.json`，一键同步：`bun run bump-version <x.y.z> --write`。
 
-## 하네스：StockAI 开发编排
+## `.claude/` 目录
 
-**目标：** 把「审查 / 跨三层功能开发 / 发布」三类反复工作流交给专家 Agent 团队编排执行。
+| 路径 | 内容 |
+|------|------|
+| `rules/architecture.md` | 三层架构契约（需要时 Read） |
+| `rules/release-checklist.md` | 发版全流程 + 双语 Release Notes 模板（发版时 Read） |
+| `skills/` | 四个引导技能：`/add-provider`、`/new-master-agent`、`/new-strategy`、`/release-notes` |
+| `agents/` | 五个专职 Agent，按需单独调用，**不自动起团队** |
+| `hooks/` | `pre-edit.sh`（门禁文件提醒 + 硬编码 API key 拦截）、`post-edit.sh`（stdout 纯净 / rustfmt / biome / tsc / 相关测试） |
 
-**触发：** 代码改完要审查、跨层加新功能、发版出新版本，以及对这些结果的后续修改/重跑/补充时，使用 `stockai-orchestrator` 技能（它分诊到审查/功能/发布团队）。单点问题或单文件小改可直接处理，无需起团队。加 provider/大师/策略仍走对应生成技能（`/add-provider`、`/new-master-agent`、`/new-strategy`），发版双语 notes 走 `/release-notes`。
+**五个 Agent**：四个审查维度 —— `layer-boundary-reviewer`（架构边界）、`api-key-security-reviewer`（key 传递链）、`code-quality-reviewer`（逻辑 bug 与项目硬约束）、`i18n-consistency-reviewer`（三语一致性）；外加 `release-manager`（发版门禁编排）。
 
-**Agent**（`.claude/agents/`）：审查团队 = api-key-security-reviewer · i18n-consistency-reviewer · layer-boundary-reviewer · code-quality-reviewer；功能团队 = feature-architect · backend-engineer · frontend-engineer · integration-qa；发布 = release-manager。
-
-**变更历史：**
-| 日期 | 变更内容 | 对象 | 事由 |
-|------|----------|------|------|
-| 2026-06-01 | 初始构建（综合：审查 + 功能开发 + 发布团队 + 总编排分诊） | 全体 | 复用既有 2 审查员 + 4 生成技能，补齐编排层 |
+各 Agent 的清单彼此不重叠，可并行调用后自行汇总；日常单点改动直接处理即可，不必起 Agent。

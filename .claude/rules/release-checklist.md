@@ -25,7 +25,14 @@
 
 ## 3. 写双语 Release Notes（随 tag 进仓库）
 
-双语 notes 写进 `docs/release-notes/vx.y.z.md`，**和版本号、CHANGELOG 一起提交进 main**——它必须存在于被打 tag 的那个 commit 里。
+双语 notes 写进 `docs/release-notes/vx.y.z.md`（首次发版需先 `mkdir -p docs/release-notes`），**和版本号、CHANGELOG 一起提交进 main**——它必须存在于被打 tag 的那个 commit 里。
+
+可用 `/release-notes` 技能从 git log 生成草稿并写盘。写完先在本地过一遍与 CI 同口径的自检，别拿 CI 当 linter：
+
+```bash
+f=docs/release-notes/vx.y.z.md
+[ -s "$f" ] && [ "$(grep -c '^## StockAI' "$f")" -ge 2 ] && echo OK || echo FAIL
+```
 
 `release.yml` 的 `verify` job 会在装依赖前校验该文件存在、且含两份 `## StockAI` 标题（中英各一），缺失即数秒内失败，不会白跑三平台构建；`release` job 再把它读进 `releaseBody` 发布。
 
@@ -70,8 +77,8 @@ Release Notes 分两块书写，中文在前、英文在后，中间用 `---` �
 打开应用 → 右上角设置 → 填入 AI 提供商（OpenAI / DeepSeek / GLM / Anthropic / Ollama）的 API Key → 保存，即可开始使用。
 
 ### 🔗 相关链接
-- [README（中文）](../blob/main/README.zh-CN.md) · [README (English)](../blob/main/README.md)
-- 问题反馈：[Issues](../issues) · 功能建议：[Discussions](../discussions)
+- [README（中文）](https://github.com/hyhmrright/StockAI/blob/main/README.zh-CN.md) · [README (English)](https://github.com/hyhmrright/StockAI/blob/main/README.md)
+- 问题反馈：[Issues](https://github.com/hyhmrright/StockAI/issues) · 功能建议：[Discussions](https://github.com/hyhmrright/StockAI/discussions)
 
 ---
 
@@ -109,8 +116,8 @@ Release Notes 分两块书写，中文在前、英文在后，中间用 `---` �
 Open the app → Settings (top-right) → enter your AI provider API Key (OpenAI / DeepSeek / GLM / Anthropic / Ollama) → Save. Done.
 
 ### 🔗 Links
-- [README (中文)](../blob/main/README.zh-CN.md) · [README (English)](../blob/main/README.md)
-- Bug reports: [Issues](../issues) · Feature requests: [Discussions](../discussions)
+- [README (中文)](https://github.com/hyhmrright/StockAI/blob/main/README.zh-CN.md) · [README (English)](https://github.com/hyhmrright/StockAI/blob/main/README.md)
+- Bug reports: [Issues](https://github.com/hyhmrright/StockAI/issues) · Feature requests: [Discussions](https://github.com/hyhmrright/StockAI/discussions)
 ```
 
 **写作要点**（每次发版对照检查）：

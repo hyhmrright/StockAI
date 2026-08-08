@@ -95,11 +95,24 @@ handler 按领域分文件，各组是一个 `createXxxHandlers(ctx)` 工厂，�
 
 ## Multi-Agent 系统（`sidecar/agents/`）
 
-13 位投资大师 Agent（巴菲特、芒格、格雷厄姆、伯里、伍德等）各自持有独立的分析视角，统一实现 `MasterAgent` 接口（`agents/types.ts`）。数据流：`agents/registry.ts`（注册表）→ `agents/synthesizer.ts`（聚合评分）→ `agents/sentiment.ts`（情绪综合）。新增大师：在 `agents/masters/` 实现接口，然后在 `agents/registry.ts` 追加一行。`agents/chat-adapter.ts` 负责适配各 AI provider 的对话格式。
+13 位投资大师 Agent（巴菲特、芒格、格雷厄姆、伯里、伍德等）各自持有独立的分析视角，统一实现 `MasterAgent` 接口（`agents/types.ts`）。数据流：`agents/registry.ts`（注册表）→ `agents/synthesizer.ts`（聚合评分）→ `agents/sentiment.ts`（情绪综合）。`agents/masters/factory.ts` 的 `createMasterAgent` 统一处理语言指令注入、响应解析与容错，各大师只提供 `meta` + `SYSTEM_PROMPT` + `buildUserPrompt`。`agents/chat-adapter.ts` 适配各 AI provider 的对话格式。
+
+新增大师要动**四处**（其中两处漏了不报错）：`agents/masters/<id>.ts` 实现、`agents/registry.ts` 注册、`agents/masters/masters-common.test.ts` 的 `ALL_MASTER_FILES`（漏了静默漏测）、`src/components/DeepAnalysis/master-meta.ts` 的 `MASTER_META`（漏了前端不显示姓名）。走 `/new-master-agent` 技能可自动覆盖。
+
+> **`MasterMeta` 是 shared 单一来源的一处已知例外**：数据在 `agents/masters/*.ts` 与 `src/components/DeepAnalysis/master-meta.ts` 各存一份。前端不能 import `sidecar/`（单向依赖），当前只能双写。**这不是待修的违规**——真要收敛，得把 `MASTER_META` 表挪进 `shared/constants.ts` 供两侧取用。
 
 ## 量化评分子系统（`sidecar/quant/`）
 
-四个维度独立评分：`technical.ts` / `fundamental.ts` / `valuation.ts` / `volatility.ts`，由 `scoring.ts` 聚合为 `QuantResult`（类型定义在 `quant/types.ts`）。入口：`quant/index.ts`，通过 `QuantDeps` 提供注入点。前端对应 `useQuantData` hook 和 `QuantScoreCard` 组件。
+入口 `quant/index.ts` 并发拉数（K 线 / 报价 / 财务 / 资金流，`Promise.allSettled` 容错），再组装为 `QuantResult`（类型在 `quant/types.ts`）；`QuantDeps.fetchImpl` 是统一注入点。
+
+| 分组 | 模块 | 说明 |
+|------|------|------|
+| 复合分入参 | `technical.ts` / `fundamental.ts` / `valuation.ts` / `volatility.ts` | 前两者产出 composite 信号，后两者分别提供估值快照与风险指标 |
+| 聚合 | `scoring.ts` | 技术 + 基本面加权为基准，blend 估值方向，按风险向中性收敛（缺估值/风险自动降级），产出 1–100 分与 bullish/bearish/neutral |
+| 派生 | `levels.ts` / `fundflow.ts` / `factors.ts` | 价位推导、资金流、给大师 Agent 用的因子集 |
+| 独立能力 | `market-snapshot.ts` / `nl-screen.ts` / `fundamental-history.ts` / `roe-annualize.ts` | 各自对应一个 CLI action 或被选股/财报链路调用，不进复合分 |
+
+前端对应 `useQuantData` hook 与 `QuantScoreCard` 组件。**新增维度先想清楚是「进复合分」还是「派生/独立」**——进复合分要改 `scoring.ts` 的权重口径，属于口径变更，不是加法。
 
 ## K 线数据源（`sidecar/kline/`）
 
@@ -111,7 +124,7 @@ handler 按领域分文件，各组是一个 `createXxxHandlers(ctx)` 工厂，�
 
 ## PriceChart Subsystem
 
-前端 `src/components/PriceChart/` 是独立子系统，封装 TradingView lightweight-charts v4 主图。职责按「实例 / 数据 / 叠加层」分开，新增图元时对号入座、不要往 `ChartCanvas` 里塞：
+前端 `src/components/PriceChart/` 是独立子系统，封装 TradingView lightweight-charts **v5** 主图。职责按「实例 / 数据 / 叠加层」分开，新增图元时对号入座、不要往 `ChartCanvas` 里塞：
 
 | 文件 | 职责 |
 |------|------|

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Claude Code PostToolUse hook（Edit|Write|MultiEdit）。
-# stdin 只解析一次，依次执行四道检查；任一需拦截即 exit 2。
+# stdin 只解析一次，依次执行五道检查；需拦截的即 exit 2。
 # 抽成脚本（而非 settings.json 内联）的收益：每次编辑仅 1 次 stdin 解析
-# （原先 4 个内联 hook 各解析一次）、可读、各 block 可独立开关。
+# （原先多个内联 hook 各解析一次）、可读、各 block 可独立开关。
 
 # 仓库根：优先 Claude Code 注入的 CLAUDE_PROJECT_DIR，回退 git。
 root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"
@@ -53,7 +53,22 @@ case "$file" in
     ;;
 esac
 
-# ④ 相关测试回归：编辑源文件若存在同名 *.test.ts(x) 则跑，失败 exit 2。
+# ④ 类型检查（ts/tsx）：全项目 tsc，约 0.4s。
+#    刻意**不 exit 2**——多文件重构中途单个文件必然报错，阻断会让人寸步难行。
+#    这里只把错误摆出来；真门禁是 lefthook pre-push 的 typecheck。
+#    顺带覆盖 i18n：locale 缺 key 会在此暴露（TRANSLATIONS 是 Record<Language, Record<TranslationKey,string>>）。
+case "$file" in
+  *.ts|*.tsx)
+    if [ -n "$root" ] && [ -x "$root/node_modules/.bin/tsc" ]; then
+      if ! out=$(cd "$root" && "$root/node_modules/.bin/tsc" --noEmit 2>&1); then
+        echo "⚠️  tsc --noEmit 有类型错误（未阻断，重构中途可忽略；pre-push 会拦）：" >&2
+        echo "$out" | head -12 >&2
+      fi
+    fi
+    ;;
+esac
+
+# ⑤ 相关测试回归：编辑源文件若存在同名 *.test.ts(x) 则跑，失败 exit 2。
 case "$file" in
   *.test.ts|*.test.tsx) tf="$file" ;;
   *.ts) tf="${file%.ts}.test.ts" ;;
