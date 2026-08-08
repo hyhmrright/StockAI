@@ -34,6 +34,23 @@ jobs:
       - name: Security audit
         run: bun audit --audit-level=high
 
+  # 前端 E2E 冒烟：默认套件跑在 happy-dom 上、没有 canvas，图表渲染断不到（见 CLAUDE.md）。
+  # 单跑 ubuntu：断的是「K 线画没画出来」这件与操作系统无关的事，进矩阵是白跑三遍。
+  # 浏览器用 runner 预装的 Chrome，走 BrowserManager 的系统浏览器回退，不额外下载 Playwright 内核。
+  e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Frontend E2E smoke
+        run: bun run test:e2e
+
   test-and-build:
     strategy:
       fail-fast: false

@@ -14,6 +14,7 @@
     "test": "bun scripts/test-all.ts",
     "test:integration": "bun scripts/test-all.ts --integration",
     "test:integration:only": "bun scripts/test-all.ts --integration-only",
+    "test:e2e": "bun scripts/e2e-smoke.ts",
     "bump-version": "bun scripts/bump-version.ts",
     "format": "biome format --write .",
     "format:check": "biome format ."

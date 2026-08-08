@@ -49,6 +49,9 @@ bun scripts/verify-bundle.ts src-tauri/bin/stockai-backend-aarch64-apple-darwin
 # Integration smoke test
 bun scripts/smoke-test.ts
 
+# 前端 E2E 冒烟：起 vite + 真浏览器，断言 K 线确实画出来了（改 PriceChart 后必跑）
+bun run test:e2e
+
 # 代码格式化（biome，仅源码 ts/tsx）；--check 版只校验不写盘（pre-push 门禁用）
 bun run format
 bun run format:check
@@ -69,6 +72,7 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 - **Code comments**: All inline logic comments must be written in Simplified Chinese.
 - **Component size**: UI component files must stay under 200 lines; extract complex logic into hooks.
 - **Test decoupling**: 解析逻辑放在 `sidecar/parsers/` 目录（`exchange.ts` / `html.ts`），与网络层分离，离线测试见 `parsers/*.test.ts`。抓取链路统一暴露 `fetchImpl` 注入点（`KlineSourceDeps` / `SearchDeps` / `QuantDeps` 同形），默认套件**必须离线可跑**；真网络断言放 `*.integration.ts`（只在 `bun run test:integration` 跑，文件由 glob 自动发现、无需登记）。离线 fixture 对上游改版是**结构性失明**的（fixture 永不变，故永远绿），所以每个外部数据源都要在 `*.integration.ts` 里有一条形状断言，由每日 CI 任务 `.github/workflows/datasource-smoke.yml` 兜底；断形状不断数值，且**结果非空是必断项**——本层多处容错把失败吞成 `{}` / `null`，只断「没抛异常」等于没监控。
+- **图表的第二块结构性失明**：vitest 跑在 happy-dom 上、没有 canvas，`PriceChart.test.tsx` 把 lightweight-charts 整个 mock 掉了——图表画不画得出来在默认套件里断不到。补位的是 `bun run test:e2e`（`scripts/e2e-smoke.ts`）：起 vite + 真浏览器，读回 canvas 像素断言 **K 线实体色覆盖 ≥ 20 条像素行**。行数而非像素数是关键：空图表照样画网格和坐标轴，现价水平线也是涨跌色且横跨整幅宽度，只有实体会沿价格轴铺开几十行。**动 `src/components/PriceChart/` 后必跑这条**。
 - **Outbound HTTP**: 一律经 `sidecar/http.ts` 的 `fetchWithPolicy(url, policy)`，UA 与超时的唯一来源是 `sidecar/config.ts` 的 `HTTP_DEFAULTS`。**不要在数据源模块另写 UA 字面量或 `AbortSignal.timeout(...)`**。
 - **Frontend async hooks**: 「按 symbol 取数」复用 `useSymbolFetch`，「按 symbol 缓存异步结果」复用 `useSymbolScopedAsync`（含竞态守卫 + LRI 限容），不要再手搓一份。
 - **Adding a K-line source**: 在 `sidecar/kline/index.ts` 的 `KLINE_SOURCES[市场]` 数组追加一行即可（依次尝试、首个成功即返回），不必改控制流。
