@@ -31,8 +31,8 @@ import type { ChatContext, BacktestResult } from '../../shared/types';
 const Dashboard: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isScreenerOpen, setIsScreenerOpen] = useState(false);
-  // 引导只在本次运行内可关：不落盘「已看过」，因为真正的退出条件是保存一次配置，
-  // 而 SettingsModal 持有自己的 useSettings 实例，保存不会回传到这里。
+  // 引导只在本次运行内可关：不落盘「已看过」，因为真正的退出条件是保存一次配置——
+  // 保存后 needsSetup 会经 useSettings 单例回落，引导自行消失。
   const [guideDismissed, setGuideDismissed] = useState(false);
   const [currentSymbol, setCurrentSymbol] = useState(DEFAULT_WATCHLIST[0].sym);
   // 回测结果提升到此：BacktestPanel（右列）跑出，PriceChart（中列）叠加买卖点/净值曲线共用
