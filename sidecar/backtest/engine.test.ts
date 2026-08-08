@@ -110,3 +110,63 @@ describe('runBacktest', () => {
     }
   });
 });
+
+/** 确定性的单调上涨序列——不掺随机数，好让下面两条断言是硬结论而非概率事件 */
+function risingKline(days: number, startPrice = 100, dailyPct = 0.01): KlinePoint[] {
+  const points: KlinePoint[] = [];
+  let price = startPrice;
+  for (let i = 0; i < days; i++) {
+    const close = price * (1 + dailyPct);
+    points.push({
+      time: 1700000000 + i * 86400,
+      open: price,
+      high: close,
+      low: price,
+      close,
+      volume: 1_000_000,
+    });
+    price = close;
+  }
+  return points;
+}
+
+describe('runBacktest 的费后口径', () => {
+  test('胜率按扣费后的实际盈亏算，不是比两端价格', () => {
+    // buyThreshold=0 / sellThreshold=100 让信号必然满足，交易被强制成逐 bar 买卖交替，
+    // 于是这条断言不依赖技术指标怎么算。价格一路上涨 ⇒ 每笔卖价都高于买价，
+    // 但 20% 的单边费率让任何一轮往返都是净亏。
+    // 比价格的旧口径会把它们全判成盈利单，胜率 100%；实际一单没赚。
+    const result = runBacktest(risingKline(300), {
+      symbol: 'TEST',
+      period: 300,
+      buyThreshold: 0,
+      sellThreshold: 100,
+      initialCapital: 100_000,
+      transactionCost: 0.2,
+    });
+
+    expect(result.totalTrades).toBeGreaterThan(2);
+    expect(result.totalReturn).toBeLessThan(0);
+    expect(result.winRate).toBe(0);
+  });
+
+  test('净值曲线终点与 totalReturn 同口径（都含平仓费）', () => {
+    // sellThreshold=-1 永不触发卖出 ⇒ 一路持有到末尾强制平仓，正好覆盖那条订正路径。
+    // 循环里压进曲线的是毛市值，不订正的话终点会比 totalReturn 高出一笔手续费，
+    // 前端把数字和曲线画在一起时对不上。
+    const initialCapital = 100_000;
+    const result = runBacktest(risingKline(300), {
+      symbol: 'TEST',
+      period: 300,
+      buyThreshold: 0,
+      sellThreshold: -1,
+      initialCapital,
+      transactionCost: 0.001,
+    });
+
+    const last = result.equityCurve[result.equityCurve.length - 1];
+    const implied = initialCapital * (1 + result.totalReturn);
+    // 容差取本金的万分之一：totalReturn 只保留 4 位小数，本身就有这个量级的舍入
+    expect(Math.abs(last.value - implied)).toBeLessThan(initialCapital * 1e-4);
+  });
+});

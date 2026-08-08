@@ -139,16 +139,25 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
     });
     cash += proceeds;
     shares = 0;
+    // 曲线最后一点是循环里按毛市值（cash + shares×close）压进去的，没扣平仓费。
+    // 不订正的话，图上的净值终点会比报告的 totalReturn 高出一笔手续费——
+    // 同一个回测的两个口径对不上，前端把两者画在一起时尤其扎眼。
+    if (equityCurve.length > 0) equityCurve[equityCurve.length - 1].value = cash;
   }
 
   const totalReturn = (cash - initialCapital) / initialCapital;
   const years = (sorted.length - MIN_BACKTEST_BARS) / TRADING_DAYS_PER_YEAR;
   const annualizedReturn = years > 0 ? (cash / initialCapital) ** (1 / years) - 1 : 0;
 
-  // 胜率：按买卖配对计算
+  // 胜率：按买卖配对，比的是**扣费后真正落袋的金额**而不是两端价格。
+  // 策略严格 买→卖→买 交替，故第 i 笔卖对应第 i 笔买。
+  // 比价格会把「涨了 0.1%、但一买一卖两道费共 0.2%」的亏损单算成盈利单——
+  // 默认费率 0.001，凡毛涨幅低于约 0.2% 的单子都会被记成胜，胜率虚高。
+  // buy.value 是真正换成股票的钱（已扣买入费），sell.value 是卖出到手的钱（已扣卖出费），
+  // 两者相比即该轮实际盈亏。
   const buyTrades = trades.filter((t) => t.type === 'buy');
   const sellTrades = trades.filter((t) => t.type === 'sell');
-  const wins = sellTrades.filter((s, i) => buyTrades[i] && s.price > buyTrades[i].price).length;
+  const wins = sellTrades.filter((s, i) => buyTrades[i] && s.value > buyTrades[i].value).length;
   const winRate = sellTrades.length > 0 ? wins / sellTrades.length : 0;
 
   const returns = dailyReturns(equityCurve);
