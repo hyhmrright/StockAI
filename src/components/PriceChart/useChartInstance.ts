@@ -8,6 +8,9 @@ import {
   type IPriceLine,
   ColorType,
   CrosshairMode,
+  CandlestickSeries,
+  HistogramSeries,
+  LineSeries,
 } from 'lightweight-charts';
 import type { KlinePoint } from '../../../shared/types';
 import { upColor, downColor } from '../../lib/market-hours';
@@ -81,7 +84,7 @@ export function useChartInstance(
 
     const up = upColor(market),
       dn = downColor(market);
-    const candle = chart.addCandlestickSeries({
+    const candle = chart.addSeries(CandlestickSeries, {
       upColor: up,
       downColor: dn,
       borderUpColor: up,
@@ -90,7 +93,7 @@ export function useChartInstance(
       wickDownColor: dn,
     });
 
-    const volume = chart.addHistogramSeries({
+    const volume = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
     });
@@ -103,13 +106,13 @@ export function useChartInstance(
       lastValueVisible: false as const,
     };
     maRef.current = {
-      short: chart.addLineSeries({ color: MA_COLORS.short, ...maOpts }),
-      mid: chart.addLineSeries({ color: MA_COLORS.mid, ...maOpts }),
-      long: chart.addLineSeries({ color: MA_COLORS.long, ...maOpts }),
+      short: chart.addSeries(LineSeries, { color: MA_COLORS.short, ...maOpts }),
+      mid: chart.addSeries(LineSeries, { color: MA_COLORS.mid, ...maOpts }),
+      long: chart.addSeries(LineSeries, { color: MA_COLORS.long, ...maOpts }),
     };
 
     // 比较基准 series — 独立坐标轴避免干扰主图刻度
-    compareRef.current = chart.addLineSeries({
+    compareRef.current = chart.addSeries(LineSeries, {
       color: CHART_THEME.compareSeries,
       lineWidth: 1,
       priceScaleId: 'compare',
@@ -122,7 +125,7 @@ export function useChartInstance(
       .applyOptions({ visible: false, scaleMargins: { top: 0.05, bottom: 0.3 } }); // 隐藏第二轴刻度
 
     // 回测净值 series — 独立隐藏坐标轴，money 量级不污染 K 线刻度（照抄 compare 轴套路）
-    equityRef.current = chart.addLineSeries({
+    equityRef.current = chart.addSeries(LineSeries, {
       color: CHART_THEME.equityLine,
       lineWidth: 2,
       priceScaleId: 'equity',

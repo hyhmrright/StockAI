@@ -8,14 +8,12 @@ vi.mock('lightweight-charts', () => {
   const noopSeries = {
     setData: vi.fn(),
     applyOptions: vi.fn(),
-    setMarkers: vi.fn(),
     createPriceLine: vi.fn(() => ({})),
     removePriceLine: vi.fn(),
   };
   const noopChart = {
-    addCandlestickSeries: vi.fn(() => noopSeries),
-    addHistogramSeries: vi.fn(() => noopSeries),
-    addLineSeries: vi.fn(() => noopSeries),
+    // v5 起所有 series 都经 addSeries(类型定义, options) 创建
+    addSeries: vi.fn(() => noopSeries),
     priceScale: vi.fn(() => ({ applyOptions: vi.fn() })),
     timeScale: vi.fn(() => ({ fitContent: vi.fn() })),
     subscribeCrosshairMove: vi.fn(),
@@ -23,6 +21,11 @@ vi.mock('lightweight-charts', () => {
   };
   return {
     createChart: vi.fn(() => noopChart),
+    // v5 的 series 类型定义只作为 addSeries 的标记参数传入，测试里无需真实实现
+    CandlestickSeries: 'Candlestick',
+    HistogramSeries: 'Histogram',
+    LineSeries: 'Line',
+    createSeriesMarkers: vi.fn(() => ({ setMarkers: vi.fn() })),
     ColorType: { Solid: 'solid' },
     CrosshairMode: { Normal: 0 },
     PriceScaleMode: { Normal: 0, Logarithmic: 1 },

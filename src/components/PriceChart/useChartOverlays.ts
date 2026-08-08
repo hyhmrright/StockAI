@@ -1,10 +1,13 @@
-import { useEffect, type MutableRefObject } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import {
   type ISeriesApi,
   type IPriceLine,
+  type ISeriesMarkersPluginApi,
   type SeriesMarker,
+  type Time,
   type UTCTimestamp,
   LineStyle,
+  createSeriesMarkers,
 } from 'lightweight-charts';
 import type { KlinePoint, PriceLevel, TradeRecord } from '../../../shared/types';
 import { upColor, downColor } from '../../lib/market-hours';
@@ -55,6 +58,12 @@ export function useChartOverlays(
   { data, market, levels, backtestTrades, equityCurve }: OverlayParams,
 ): void {
   const { t } = useLanguage();
+  // v5 起 marker 是 series 插件：同一 series 只挂一次，之后复用 setMarkers 整体替换。
+  // 记住挂载时的 series，图表重建（market 变）后 candleRef 换新，需重新挂而非往旧实例写。
+  const markersRef = useRef<{
+    series: ISeriesApi<'Candlestick'>;
+    api: ISeriesMarkersPluginApi<Time>;
+  } | null>(null);
 
   // 合并「回测买卖点 + 现」为一组 marker：setMarkers 整体替换，须一次性排序后喂入
   useEffect(() => {
@@ -92,9 +101,12 @@ export function useChartOverlays(
       });
     }
 
-    // lightweight-charts v4 要求 marker 按时间升序
+    // lightweight-charts 要求 marker 按时间升序
     markers.sort((a, b) => (a.time as number) - (b.time as number));
-    candle.setMarkers(markers);
+    if (markersRef.current?.series !== candle) {
+      markersRef.current = { series: candle, api: createSeriesMarkers(candle) };
+    }
+    markersRef.current.api.setMarkers(markers);
   }, [data, backtestTrades, market, t]);
 
   // AI 关键价位线：清旧句柄再画，防重复叠加/内存泄漏（market 变→图表重建→candleRef 刷新后重跑）

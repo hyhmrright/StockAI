@@ -7,6 +7,8 @@ import {
   type HistogramData,
   ColorType,
   CrosshairMode,
+  HistogramSeries,
+  LineSeries,
 } from 'lightweight-charts';
 import type { KlinePoint } from '../../../shared/types';
 import type { SubChartIndicator } from './types';
@@ -74,11 +76,14 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
 
     if (indicator === 'macd') {
       const { dif, dea, hist } = macd(closes);
-      const sDif = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
+      const sDif = chart.addSeries(LineSeries, { color: palette.yellow, ...lineOpts });
       sDif.setData(toLine(dif));
-      const sDea = chart.addLineSeries({ color: palette.purple, ...lineOpts });
+      const sDea = chart.addSeries(LineSeries, { color: palette.purple, ...lineOpts });
       sDea.setData(toLine(dea));
-      const sHist = chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false });
+      const sHist = chart.addSeries(HistogramSeries, {
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
       const histData: HistogramData<UTCTimestamp>[] = [];
       hist.forEach((v, i) => {
         if (v == null) return;
@@ -90,21 +95,21 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
       });
       sHist.setData(histData);
     } else if (indicator === 'rsi') {
-      const series = chart.addLineSeries({ color: palette.cyan, ...lineOpts });
+      const series = chart.addSeries(LineSeries, { color: palette.cyan, ...lineOpts });
       series.setData(toLine(rsi(closes)));
     } else if (indicator === 'kdj') {
       const { k, d, j } = kdj(highs, lows, closes);
-      const sK = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
+      const sK = chart.addSeries(LineSeries, { color: palette.yellow, ...lineOpts });
       sK.setData(toLine(k));
-      const sD = chart.addLineSeries({ color: palette.purple, ...lineOpts });
+      const sD = chart.addSeries(LineSeries, { color: palette.purple, ...lineOpts });
       sD.setData(toLine(d));
-      const sJ = chart.addLineSeries({ color: palette.pink, ...lineOpts });
+      const sJ = chart.addSeries(LineSeries, { color: palette.pink, ...lineOpts });
       sJ.setData(toLine(j));
     } else if (indicator === 'obv') {
-      const series = chart.addLineSeries({ color: palette.cyan, ...lineOpts });
+      const series = chart.addSeries(LineSeries, { color: palette.cyan, ...lineOpts });
       series.setData(obv(closes, vols).map((v, i) => ({ time: times[i], value: v })));
     } else if (indicator === 'vwap') {
-      const series = chart.addLineSeries({ color: palette.yellow, ...lineOpts });
+      const series = chart.addSeries(LineSeries, { color: palette.yellow, ...lineOpts });
       series.setData(vwap(highs, lows, closes, vols).map((v, i) => ({ time: times[i], value: v })));
     }
 

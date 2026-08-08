@@ -5,6 +5,7 @@ import {
   type LineData,
   type UTCTimestamp,
   LineStyle,
+  LineSeries,
 } from 'lightweight-charts';
 import type { KlinePoint } from '../../../shared/types';
 import { boll } from '../../lib/indicators';
@@ -33,14 +34,14 @@ export function useBollOverlay(
     const bandOpts = { priceLineVisible: false as const, lastValueVisible: false as const };
     if (showBoll && !bollRef.current) {
       bollRef.current = {
-        upper: chart.addLineSeries({
+        upper: chart.addSeries(LineSeries, {
           color: CHART_THEME.bollBand,
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
           ...bandOpts,
         }),
-        mid: chart.addLineSeries({ color: CHART_THEME.bollMid, lineWidth: 1, ...bandOpts }),
-        lower: chart.addLineSeries({
+        mid: chart.addSeries(LineSeries, { color: CHART_THEME.bollMid, lineWidth: 1, ...bandOpts }),
+        lower: chart.addSeries(LineSeries, {
           color: CHART_THEME.bollBand,
           lineWidth: 1,
           lineStyle: LineStyle.Dashed,
