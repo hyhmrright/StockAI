@@ -35,5 +35,10 @@ jobs:
       # 只跑集成套件：单测每个 PR 都跑过了，混进来只会稀释「数据源挂了」这个信号。
       # 抓取策略需要浏览器时走 browser-manager 的系统 Chrome 发现，
       # ubuntu-24.04 runner 预装了 /usr/bin/google-chrome，无需额外安装。
+      #
+      # 失败重跑一次：scraper 那组走 Playwright 策略链，实测每轮随机挂一条到超时
+      # （连续两次 CI 跑，挂的分别是「不存在的代码」和「港股 0700.HK」）。
+      # 重试把「真故障」和「抖动」分开——真故障两次都红，抖动第二次就过。
+      # 数据源契约那 12 条本身是确定性的，不靠重试。
       - name: 数据源冒烟
-        run: bun run test:integration:only
+        run: bun run test:integration:only || bun run test:integration:only
