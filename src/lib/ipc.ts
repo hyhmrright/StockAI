@@ -15,6 +15,7 @@ import {
   MasterWeightInput,
   ScreenResponse,
 } from '../../shared/types';
+import { ServiceError } from './service-errors';
 import type { SidecarActionDef, SlotName } from '../../shared/actions';
 import { SIDECAR_ACTIONS, CONFIG_SLOT, PAYLOAD_SLOT, buildActionArgs } from '../../shared/actions';
 import {
@@ -31,24 +32,18 @@ import {
   MOCK_SCREEN,
 } from './dev-mocks';
 
-/**
- * 携带服务端错误码的错误，便于 UI 按 code 做差异化提示
- */
-export class ServiceError extends Error {
-  code: string;
-  constructor(code: string, message: string) {
-    super(message);
-    this.name = 'ServiceError';
-    this.code = code;
-  }
-}
+// ServiceError 的定义已挪到 service-errors.ts（与码表同处），这里再导出保持调用方 import 不变
+export { ServiceError };
 
 /**
  * 从原始 stdout 字符串中解析响应，支持标准 ServiceResponse 信封。
+ *
+ * 传输层自身的失败也一律抛 ServiceError：UI 只能按 code 翻译文案（见
+ * lib/service-errors.ts），裸 Error 的 message 无从本地化，等于给 en / ja 用户看中文。
  */
 export function parseServiceResponse<T>(raw: string): T {
   if (!raw || raw.trim() === '') {
-    throw new Error('分析服务无响应，请检查 AI 模型配置或 Ollama 服务是否已启动。');
+    throw new ServiceError('ERR_NO_RESPONSE', '分析服务无响应');
   }
 
   // envelope 形态由 sidecar successEnvelope/errorEnvelope 保证 union 互斥；这里做宽松解构兼容旧格式
@@ -57,14 +52,12 @@ export function parseServiceResponse<T>(raw: string): T {
     envelope = JSON.parse(raw) as typeof envelope;
   } catch (e) {
     console.error('JSON 解析失败:', e, '原始数据:', raw);
-    throw new Error(
-      `分析服务响应格式错误 (非 JSON)。请检查 Sidecar 运行状态。内容: ${raw.substring(0, 50)}...`,
-    );
+    throw new ServiceError('ERR_BAD_RESPONSE', `非 JSON 响应: ${raw.substring(0, 50)}...`);
   }
 
   // 处理旧格式或直接返回错误字符串的情况
   if (typeof envelope.error === 'string') {
-    throw new Error(envelope.error);
+    throw new ServiceError('ERR_UNKNOWN', envelope.error);
   }
 
   // 处理标准信封错误 (error 为对象)：保留 code，便于 UI 显示差异化提示
@@ -74,7 +67,7 @@ export function parseServiceResponse<T>(raw: string): T {
   }
 
   if (envelope.data === undefined) {
-    throw new Error('分析服务未返回有效数据，请重试。');
+    throw new ServiceError('ERR_EMPTY_DATA', '分析服务未返回有效数据');
   }
 
   return envelope.data;

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Cpu, RefreshCw, AlertCircle } from 'lucide-react';
 import { ProviderType } from '../../hooks/useSettings';
 import { STATIC_MODELS, PROVIDER_CAPS } from '../../../shared/constants';
-import { listModels, ServiceError } from '../../lib/ipc';
+import { listModels } from '../../lib/ipc';
+import { formatServiceError } from '../../lib/service-errors';
 import { useLanguage } from '../../hooks/useLanguage';
 import type { TranslationKey } from '../../i18n';
 import { FormInput } from './FormInput';
@@ -20,29 +21,6 @@ interface ModelSelectProps {
 interface ModelOption {
   value: string;
   label: string;
-}
-
-/** 把 list-models 错误码映射成本地化提示 */
-function formatListModelsError(err: unknown, t: TFn): string {
-  if (err instanceof ServiceError) {
-    switch (err.code) {
-      case 'ERR_LIST_MODELS_TIMEOUT':
-        return t('err_list_models_timeout');
-      case 'ERR_LIST_MODELS_AUTH':
-        return t('err_list_models_auth');
-      case 'ERR_LIST_MODELS_NETWORK':
-        return t('err_list_models_network');
-      case 'ERR_LIST_MODELS_SERVER':
-        return t('err_list_models_server', { message: err.message });
-      case 'ERR_LIST_MODELS_BAD_REQUEST':
-        return t('err_list_models_bad_request', { message: err.message });
-      default:
-        return t('err_list_models_generic', { message: err.message });
-    }
-  }
-  return t('err_list_models_generic', {
-    message: err instanceof Error ? err.message : String(err),
-  });
 }
 
 /** 合并静态精选目录（带 i18n 标签）与动态拉取结果，静态在前、去重 */
@@ -96,7 +74,7 @@ export function ModelSelect({
     } catch (err) {
       if (myId !== reqIdRef.current) return;
       setDynamicModels([]);
-      setFetchError(formatListModelsError(err, t));
+      setFetchError(formatServiceError(err, t, 'err_list_models_generic'));
     } finally {
       if (myId === reqIdRef.current) setIsFetching(false);
     }

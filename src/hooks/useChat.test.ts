@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useChat } from './useChat';
+import { ServiceError } from '../lib/service-errors';
 import type { ChatContext, ChatResponse } from '../../shared/types';
 
 const CTX: ChatContext = { newsTitles: ['t1'] };
@@ -53,7 +54,7 @@ describe('useChat', () => {
 
   // 回归保护：error 曾是普通 useState（全局），A 股失败后切到 B 股仍显示 A 股的报错
   it('error 按 symbol 隔离：A 股失败后切到 B 股不残留错误', async () => {
-    const runner = vi.fn().mockRejectedValue(new Error('网络炸了'));
+    const runner = vi.fn().mockRejectedValue(new ServiceError('ERR_CHAT', '网络炸了'));
     const { result, rerender } = renderHook(({ s }) => useChat(s, CTX, runner), {
       initialProps: { s: '600519' },
     });
@@ -61,7 +62,7 @@ describe('useChat', () => {
     await act(async () => {
       await result.current.ask('问题');
     });
-    expect(result.current.error).toBe('网络炸了');
+    expect(result.current.error).toContain('网络炸了');
 
     rerender({ s: '000858' });
     expect(result.current.error).toBeNull();

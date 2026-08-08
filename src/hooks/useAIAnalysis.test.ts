@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { AIAnalysisResult, StockNews } from '../../shared/types';
 import { useAIAnalysis, MAX_SYMBOLS_IN_CACHE } from './useAIAnalysis';
+import { ServiceError } from '../lib/service-errors';
 
 function buildResult(rating: number): AIAnalysisResult {
   return {
@@ -76,7 +77,7 @@ describe('useAIAnalysis', () => {
 
   it('LLM 抛错时设 error 且不写 record', async () => {
     const runner = vi.fn(async () => {
-      throw new Error('rate limit');
+      throw new ServiceError('ERR_ANALYSIS_FAILED', 'rate limit');
     });
     const { result } = renderHook(() => useAIAnalysis('AAPL', runner));
 
@@ -112,7 +113,7 @@ describe('useAIAnalysis', () => {
 
   it('错误状态按 symbol 隔离：AAPL 出错后切 MSFT 应看不到错误', async () => {
     const runner = vi.fn(async (sym: string) => {
-      if (sym === 'AAPL') throw new Error('rate limit');
+      if (sym === 'AAPL') throw new ServiceError('ERR_ANALYSIS_FAILED', 'rate limit');
       return buildResult(60);
     });
     const { result, rerender } = renderHook(({ s }) => useAIAnalysis(s, runner), {

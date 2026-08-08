@@ -8,6 +8,7 @@ import {
   type SignalsFetcher,
 } from '../lib/masterPortfolio';
 import { useLanguage } from './useLanguage';
+import { formatServiceError } from '../lib/service-errors';
 
 export type MasterPortfolioStep = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -55,7 +56,7 @@ export function useMasterPortfolio(
       })
       .catch((err) => {
         if (requestId !== latestRequestId.current) return;
-        setError(err instanceof Error ? err.message : t('portfolio_load_error'));
+        setError(formatServiceError(err, t, 'portfolio_load_error'));
         setStep('error');
       });
     // t 有意不入 deps：它只用于 catch 的兜底文案，为翻译一句错误提示而重跑整个组合加载不值当

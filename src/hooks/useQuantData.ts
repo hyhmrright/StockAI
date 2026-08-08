@@ -1,7 +1,6 @@
 import type { QuantBundle } from '../../shared/types';
 import { fetchQuantBundle } from '../lib/ipc';
 import { type AsyncStep, useSymbolFetch } from './useSymbolFetch';
-import { useLanguage } from './useLanguage';
 
 export type QuantDataStep = AsyncStep;
 
@@ -18,8 +17,7 @@ export function useQuantData(
   symbol: string,
   fetcher: FetchFn = fetchQuantBundle,
 ): UseQuantDataResult {
-  const { t } = useLanguage();
-  const { step, data, error } = useSymbolFetch<QuantBundle>(symbol, fetcher, t('quant_error'));
+  const { step, data, error } = useSymbolFetch<QuantBundle>(symbol, fetcher, 'quant_error');
 
   return { step, quant: data, error };
 }

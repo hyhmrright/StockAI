@@ -1,13 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import type { ScreenResponse } from '../../shared/types';
 import type { TranslationKey } from '../i18n';
-import { ServiceError, screenStocks } from '../lib/ipc';
-
-/** 服务端错误码 → 前端 i18n 提示 key（见蓝图 §7）；未列出的 code 一律归通用错误 */
-const ERROR_KEY_MAP: Record<string, TranslationKey> = {
-  ERR_SCREEN_PARSE: 'screener_err_parse',
-  ERR_SCREEN_NO_CONDITIONS: 'screener_err_no_conditions',
-};
+import { screenStocks } from '../lib/ipc';
+import { serviceErrorKey } from '../lib/service-errors';
 
 type Fetcher = (query: string) => Promise<ScreenResponse>;
 
@@ -49,9 +44,8 @@ export function useNlScreener(fetcher: Fetcher = screenStocks): UseNlScreenerRes
         })
         .catch((e) => {
           if (reqIdRef.current !== myReqId) return;
-          // ServiceError 带 code → 差异化降级文案；其它异常 → 通用错误，功能不崩
-          const code = e instanceof ServiceError ? e.code : '';
-          setErrorKey(ERROR_KEY_MAP[code] ?? 'screener_err_generic');
+          // 已登记的 code → 差异化降级文案；其它异常 → 通用错误，功能不崩
+          setErrorKey(serviceErrorKey(e) ?? 'screener_err_generic');
         })
         .finally(() => {
           if (reqIdRef.current === myReqId) setLoading(false);

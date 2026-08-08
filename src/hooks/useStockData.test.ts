@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MarketBundle } from '../../shared/types';
 import { useStockData } from './useStockData';
+import zh from '../i18n/zh.json';
 
 function buildBundle(symbol: string, newsCount = 2): MarketBundle {
   return {
@@ -55,7 +56,8 @@ describe('useStockData', () => {
     const { result } = renderHook(() => useStockData('XYZ', fetcher));
 
     await waitFor(() => expect(result.current.step).toBe('error'));
-    expect(result.current.error).toMatch(/scrape boom/);
+    // 裸 Error 的 message 不上屏（无从本地化），走兜底 key
+    expect(result.current.error).toBe(zh.data_fetch_error);
     expect(result.current.news).toHaveLength(0);
     expect(result.current.stockInfo).toBeUndefined();
   });

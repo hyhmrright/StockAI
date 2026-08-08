@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { runBacktest } from '../../lib/ipc';
 import { useLanguage } from '../../hooks/useLanguage';
+import { formatServiceError } from '../../lib/service-errors';
 import type { BacktestResult } from '../../../shared/types';
 
 interface BacktestPanelProps {
@@ -52,11 +53,11 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol, result, onResult 
     try {
       onResult(await runBacktest(symbol));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatServiceError(err, t, 'err_backtest'));
     } finally {
       setLoading(false);
     }
-  }, [symbol, onResult]);
+  }, [symbol, onResult, t]);
 
   return (
     <div className="mb-6">

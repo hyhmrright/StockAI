@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
+import { formatServiceError } from '../lib/service-errors';
 import { MAX_SYMBOLS_IN_CACHE, setWithLRI } from './cache-utils';
+import { useLanguage } from './useLanguage';
 
 /**
  * 按 key（通常是 symbol，或 symbol+配置指纹）分桶的异步结果仓库。
@@ -32,6 +34,7 @@ export interface SymbolScopedStore<T> {
  * - 切到别的 symbol 时看不到上一只的 error / analyzing 状态
  * - 同一 key 并发多次请求时只有最新一次能落盘
  * - 结果与错误都按 MAX_SYMBOLS_IN_CACHE 限容，长会话不会无界增长
+ * - run 捕获的异常统一经 formatServiceError 本地化后再落盘
  */
 export function useSymbolScopedAsync<T>(capacity = MAX_SYMBOLS_IN_CACHE): SymbolScopedStore<T> {
   const dataRef = useRef<Map<string, T>>(new Map());
@@ -40,6 +43,10 @@ export function useSymbolScopedAsync<T>(capacity = MAX_SYMBOLS_IN_CACHE): Symbol
   const reqIdRef = useRef<Map<string, number>>(new Map());
   const [, force] = useState(0);
   const storeRef = useRef<SymbolScopedStore<T> | null>(null);
+  // store 只在首渲染构造一次，闭包会锁死当时的 t；用 ref 让切语言后的报错也走新译文
+  const { t } = useLanguage();
+  const tRef = useRef(t);
+  tRef.current = t;
 
   if (!storeRef.current) {
     const rerender = () => force((n) => n + 1);
@@ -73,7 +80,7 @@ export function useSymbolScopedAsync<T>(capacity = MAX_SYMBOLS_IN_CACHE): Symbol
           if (value !== undefined) setWithLRI(dataRef.current, key, value as T, capacity);
         } catch (err) {
           if (reqIdRef.current.get(key) !== myReqId) return;
-          const message = err instanceof Error ? err.message : String(err);
+          const message = formatServiceError(err, tRef.current, 'err_generic');
           setWithLRI(errorRef.current, key, message, capacity);
         } finally {
           // 仅当本次仍是该 key 的最新请求才收尾；stale 请求没写任何状态，跳过 rerender 省一次空渲染

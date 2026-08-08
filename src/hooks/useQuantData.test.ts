@@ -1,6 +1,8 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { useQuantData } from './useQuantData';
+import { ServiceError } from '../lib/ipc';
+import zh from '../i18n/zh.json';
 import { createMockQuantBundle } from '../../shared/test-utils';
 
 describe('useQuantData', () => {
@@ -21,15 +23,26 @@ describe('useQuantData', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('fetch 失败时 step 为 error', async () => {
+  it('fetch 失败时 step 为 error，错误文案取兜底 key 而非裸 message', async () => {
+    // 裸 Error 的 message 无从本地化，故不上屏（详见 lib/service-errors.ts）
     const fetcher = vi.fn(async () => {
-      throw new Error('网络错误');
+      throw new Error('raw untranslatable text');
     });
     const { result } = renderHook(() => useQuantData('AAPL', fetcher));
 
     await waitFor(() => expect(result.current.step).toBe('error'));
-    expect(result.current.error).toBe('网络错误');
+    expect(result.current.error).toBe(zh.quant_error);
     expect(result.current.quant).toBeNull();
+  });
+
+  it('ServiceError 按错误码翻成本地化文案', async () => {
+    const fetcher = vi.fn(async () => {
+      throw new ServiceError('ERR_CONFIG', 'apiKey 缺失');
+    });
+    const { result } = renderHook(() => useQuantData('AAPL', fetcher));
+
+    await waitFor(() => expect(result.current.step).toBe('error'));
+    expect(result.current.error).toBe(zh.err_config.replace('{message}', 'apiKey 缺失'));
   });
 
   it('symbol 变化时重新 fetch', async () => {

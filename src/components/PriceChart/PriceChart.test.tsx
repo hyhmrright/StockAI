@@ -1,6 +1,8 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { KlinePoint, RealtimeQuote, PriceLevel, TradeRecord } from '../../../shared/types';
+import { ServiceError } from '../../lib/service-errors';
+import zh from '../../i18n/zh.json';
 
 // 完全 mock lightweight-charts：happy-dom 没有 canvas，无法真渲染图表；
 // 我们只关心 PriceChart 协调层（数据拉取 + 状态机 + 子组件 prop）的行为。
@@ -110,9 +112,10 @@ describe('PriceChart 协调层', () => {
   });
 
   it('fetchKline 失败时渲染错误信息', async () => {
-    vi.mocked(fetchKline).mockRejectedValue(new Error('网络炸了'));
+    // ERR_KLINE 映射到无 {message} 的文案：sidecar 原文不上屏，只显示本地化提示
+    vi.mocked(fetchKline).mockRejectedValue(new ServiceError('ERR_KLINE', '所有数据源均失败'));
     render(<PriceChart symbol="AAPL" />);
-    expect(await screen.findByText(/网络炸了/)).toBeInTheDocument();
+    expect(await screen.findByText(zh.kline_load_error)).toBeInTheDocument();
   });
 
   it('没设置 compareSymbol 时不发起比较基准请求', async () => {
