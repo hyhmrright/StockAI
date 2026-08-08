@@ -8,6 +8,7 @@ import type {
   StockNews,
   AIAnalysisResult,
   QuantBundle,
+  SectorBoards,
   DeepAnalysisResult,
   BacktestResult,
   ChatResponse,
@@ -169,6 +170,50 @@ export const MOCK_QUANT: QuantBundle = {
     details: { roe: 16.5, pe: 22, net_margin: 12, pb: 2.8 },
   },
   composite: { signal: 'bullish', score: 68 },
+  fetchedAt: Date.now(),
+};
+
+/** 板块涨幅榜 mock：行业与概念各两条，够验证两栏各自渲染 */
+export const MOCK_SECTORS: SectorBoards = {
+  industry: [
+    {
+      code: 'BK1340',
+      name: '印制电路板',
+      changePercent: 8.31,
+      mainNetInflow: 12_263_356_928,
+      advancers: 48,
+      decliners: 0,
+      leader: { name: '宝鼎科技', symbol: '002552', changePercent: 10.01 },
+    },
+    {
+      code: 'BK0727',
+      name: '医疗服务',
+      changePercent: -2.19,
+      mainNetInflow: -2_539_578_624,
+      advancers: 5,
+      decliners: 46,
+    },
+  ],
+  concept: [
+    {
+      code: 'BK0899',
+      name: 'CRO',
+      changePercent: 10.84,
+      mainNetInflow: 2_823_992_576,
+      advancers: 41,
+      decliners: 0,
+      leader: { name: '百花医药', symbol: '600721', changePercent: 10.02 },
+    },
+    {
+      code: 'BK1063',
+      name: '重组蛋白',
+      changePercent: 7.9,
+      mainNetInflow: 592_276_224,
+      advancers: 18,
+      decliners: 2,
+      leader: { name: '百普赛斯', symbol: '301080', changePercent: 20.0 },
+    },
+  ],
   fetchedAt: Date.now(),
 };
 

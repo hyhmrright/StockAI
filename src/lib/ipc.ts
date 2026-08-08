@@ -9,6 +9,7 @@ import {
   StockNews,
   AIAnalysisResult,
   QuantBundle,
+  SectorBoards,
   DeepAnalysisResult,
   BacktestResult,
   ChatPayload,
@@ -29,6 +30,7 @@ import {
   MOCK_BUNDLE,
   MOCK_AI_RESULT,
   MOCK_QUANT,
+  MOCK_SECTORS,
   MOCK_DEEP_ANALYSIS,
   MOCK_BACKTEST,
   MOCK_CHAT,
@@ -246,6 +248,11 @@ export async function chat(payload: ChatPayload): Promise<ChatResponse> {
     MOCK_CHAT,
     { payload },
   );
+}
+
+/** 板块涨幅榜（行业 + 概念）；无参数，榜单是全市场的 */
+export async function fetchSectorBoards(): Promise<SectorBoards> {
+  return callSidecar<SectorBoards>(SIDECAR_ACTIONS.sectors, {}, MOCK_SECTORS);
 }
 
 export async function fetchQuantBundle(symbol: string): Promise<QuantBundle> {

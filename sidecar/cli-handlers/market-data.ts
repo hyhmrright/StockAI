@@ -108,6 +108,16 @@ export function createMarketDataHandlers({ out, deps, requireSymbol }: HandlerCo
       }
     },
 
+    /** 板块涨幅榜（行业 + 概念）。任一张拉不到即整体报错，半截的市场概览会误导。 */
+    async handleSectors() {
+      try {
+        const { fetchSectorBoards } = await import('../quant/sectors');
+        out(successEnvelope(await fetchSectorBoards()));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_SECTORS', error));
+      }
+    },
+
     /**
      * 历史财务时序（按需拉东财 F10，24h 磁盘缓存）— 供 #11 RAG 数值溯源 / #12 因子预计算。
      * periods 为字符串（CLI 传入），非法/缺省时默认 12 期。

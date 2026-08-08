@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuotes } from '../hooks/useQuotes';
+import { useLanguage } from '../hooks/useLanguage';
 import { upColor, downColor } from '../lib/market-hours';
 import type { Market } from '../../shared/types';
 
@@ -24,11 +25,21 @@ const INDICES: { symbol: string; label: string; market: Market }[] = [
 
 const SYMBOLS = INDICES.map((i) => i.symbol);
 
-const IndexBar: React.FC = () => {
+interface Props {
+  /** 点整条 → 展开市场概览（板块涨幅榜） */
+  onOpenOverview: () => void;
+}
+
+const IndexBar: React.FC<Props> = ({ onOpenOverview }) => {
   const { quotes } = useQuotes(SYMBOLS);
+  const { t } = useLanguage();
 
   return (
-    <div className="flex items-center gap-5 px-6 py-1.5 border-b border-white/5 bg-panel/60 overflow-x-auto shrink-0">
+    <button
+      onClick={onOpenOverview}
+      title={t('market_overview')}
+      className="flex items-center gap-5 px-6 py-1.5 border-b border-white/5 bg-panel/60 hover:bg-white/5 transition-colors overflow-x-auto shrink-0 w-full text-left"
+    >
       {INDICES.map(({ symbol, label, market }) => {
         const q = quotes[symbol];
         // 还没取到就留白占位，避免整条在加载时抖动
@@ -49,7 +60,7 @@ const IndexBar: React.FC = () => {
           </div>
         );
       })}
-    </div>
+    </button>
   );
 };
 

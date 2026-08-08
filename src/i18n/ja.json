@@ -370,5 +370,12 @@
   "holdings_merge_hint": "既に保有している銘柄は、株数で加重平均して取得単価を統合します",
   "holdings_invalid_input": "株数と取得単価は 0 より大きい数値を入力してください",
   "holdings_load_error": "保有銘柄の読み込みに失敗しました。再試行してください。",
-  "holdings_currency_note": "通貨ごとに分けて集計します。本アプリには為替レートのデータソースがないため、合算しても意味のない数値になります"
+  "holdings_currency_note": "通貨ごとに分けて集計します。本アプリには為替レートのデータソースがないため、合算しても意味のない数値になります",
+  "sectors_error": "セクター情報の読み込みに失敗しました。再試行してください。",
+  "market_overview": "マーケット概況",
+  "sectors_industry": "業種",
+  "sectors_concept": "テーマ",
+  "sectors_main_inflow": "主力資金純流入",
+  "sectors_leader": "主導銘柄",
+  "sectors_breadth": "上昇/下落"
 }

@@ -3,6 +3,7 @@ import { fetchFinancialHistory } from './fundamental-history';
 import { fetchFundamentals } from './fundamental';
 import { fetchFundFlow } from './fundflow';
 import { fetchMarketSnapshot } from './market-snapshot';
+import { fetchSectorBoards } from './sectors';
 
 /**
  * 量化数据源的真网络冒烟——只跑 `bun run test:integration`，默认套件不含。
@@ -58,4 +59,22 @@ describe('量化数据源（真网络）', () => {
     expect(snapshot.entries.length).toBeGreaterThan(1000);
     expect(snapshot.entries[0].symbol).toMatch(/^\d{6}$/);
   }, 60_000); // 分页串行 + 页间抖动，实测约 20s
+
+  it('东财板块涨幅榜——行业与概念各一张', async () => {
+    const boards = await fetchSectorBoards();
+
+    // 非空是必断项：漏掉 np=1 时 diff 会退化成对象，parseSectorPage 静默返回空表，
+    // 只断「没抛异常」等于完全没监控这条链路。
+    for (const list of [boards.industry, boards.concept]) {
+      expect(list.length).toBeGreaterThan(0);
+      const s = list[0];
+      expect(s.code).toMatch(/^BK\d+$/); // 板块代码形如 BK0899
+      expect(s.name.length).toBeGreaterThan(0);
+      expect(Number.isFinite(s.changePercent)).toBe(true);
+      expect(Number.isFinite(s.mainNetInflow)).toBe(true);
+    }
+
+    // 行业与概念必须是两份不同的榜单——fs 过滤写错会让两边拉回同一张
+    expect(boards.industry[0].code).not.toBe(boards.concept[0].code);
+  });
 });

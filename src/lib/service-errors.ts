@@ -61,6 +61,7 @@ const SERVICE_ERROR_KEYS: Record<string, TranslationKey> = {
   ERR_SEARCH: 'search_error',
   ERR_KLINE: 'kline_load_error',
   ERR_QUANT: 'quant_error',
+  ERR_SECTORS: 'sectors_error',
   ERR_QUOTE: 'err_quote',
   // AI 分析链路：message 常是 provider 的 401 / 配额 / 模型名错误，必须透出
   ERR_SCRAPE_EMPTY: 'err_scrape_empty',

@@ -370,5 +370,12 @@
   "holdings_merge_hint": "已持有该标的时，会按份额加权合并成本价",
   "holdings_invalid_input": "份额与成本价需为大于 0 的数字",
   "holdings_load_error": "读取持仓失败，请重试",
-  "holdings_currency_note": "不同币种分开汇总：本应用没有汇率数据源，合并计算只会得到无意义的数字"
+  "holdings_currency_note": "不同币种分开汇总：本应用没有汇率数据源，合并计算只会得到无意义的数字",
+  "sectors_error": "板块行情加载失败，请稍后重试",
+  "market_overview": "市场概览",
+  "sectors_industry": "行业板块",
+  "sectors_concept": "概念板块",
+  "sectors_main_inflow": "主力净流入",
+  "sectors_leader": "领涨",
+  "sectors_breadth": "涨/跌家数"
 }

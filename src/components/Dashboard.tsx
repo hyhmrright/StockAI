@@ -12,6 +12,7 @@ import OnboardingGuide from './OnboardingGuide';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import IndexBar from './IndexBar';
+import MarketOverviewModal from './MarketOverviewModal';
 import NlScreenerModal from './Screener/NlScreenerModal';
 import PortfolioModal from './Portfolio/PortfolioModal';
 import AnalysisPanel from './AnalysisPanel';
@@ -35,6 +36,7 @@ const Dashboard: React.FC = () => {
   const [isScreenerOpen, setIsScreenerOpen] = useState(false);
   // 持仓弹窗按需挂载：usePortfolio 会拉 SQLite 并轮询报价，不开就不该跑
   const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
+  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   // 引导只在本次运行内可关：不落盘「已看过」，因为真正的退出条件是保存一次配置——
   // 保存后 needsSetup 会经 useSettings 单例回落，引导自行消失。
   const [guideDismissed, setGuideDismissed] = useState(false);
@@ -95,7 +97,7 @@ const Dashboard: React.FC = () => {
         onOpenPortfolio={() => setIsPortfolioOpen(true)}
         stepLabel={stepLabel}
       />
-      <IndexBar />
+      <IndexBar onOpenOverview={() => setIsOverviewOpen(true)} />
 
       {/* 小屏纵向排列并整体滚动；lg 以上横向排列各区域独立滚动 */}
       <main className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
@@ -173,6 +175,11 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsScreenerOpen(false)}
         onSelect={setCurrentSymbol}
       />
+
+      {/* 市场概览：点顶部指数条展开，只在打开时拉一次板块榜 */}
+      {isOverviewOpen && (
+        <MarketOverviewModal onClose={() => setIsOverviewOpen(false)} onSelect={setCurrentSymbol} />
+      )}
 
       {/* 我的持仓：只在打开时挂载，避免不看持仓也在轮询报价 */}
       {isPortfolioOpen && (

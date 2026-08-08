@@ -51,6 +51,8 @@ export const SIDECAR_ACTIONS = {
     ipc: true,
   },
   quant: { flag: '--quant', slots: ['actionParam'], ipc: true },
+  // 板块涨幅榜（行业 + 概念）。无参数：榜单是全市场的，不针对某只标的。
+  sectors: { flag: '--sectors', slots: [], ipc: true },
   indexReports: { flag: '--index-reports', slots: ['actionParam'], ipc: true },
   backtest: { flag: '--backtest', slots: ['actionParam'], ipc: true },
   deepAnalysis: {

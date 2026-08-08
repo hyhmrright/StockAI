@@ -253,3 +253,21 @@ export interface MarketSnapshot {
   fetchedAt: number; // 拉取时刻（Unix 毫秒）
   total: number; // 东财声明的全市场标的总数（用于校验分页是否拉全）
 }
+
+/** 一个板块（行业或概念）的当日表现 */
+export interface SectorRank {
+  code: string; // 板块代码，如 BK0899
+  name: string; // 板块名，如 CRO
+  changePercent: number; // 板块涨跌幅(%)
+  mainNetInflow: number; // 主力净流入(元)
+  advancers: number; // 板块内上涨家数
+  decliners: number; // 板块内下跌家数
+  leader?: { name: string; symbol: string; changePercent: number }; // 领涨股
+}
+
+/** 板块涨幅榜：行业与概念各一份 */
+export interface SectorBoards {
+  industry: SectorRank[];
+  concept: SectorRank[];
+  fetchedAt: number; // 拉取时刻（Unix 毫秒）
+}
