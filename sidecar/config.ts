@@ -20,6 +20,11 @@ export const TIMEOUTS = {
    * 60s 而非更短：CI 实测正常回退路径最慢跑到 29.9s（688693），压到 45s 会误杀真结果。
    */
   scrapeBudget: 60_000,
+  /**
+   * 浏览器清理的上限。清理跑在 scrapeStockNews 的 finally 里，也就是**在 scrapeBudget 之外**——
+   * 不给它划线的话，一个卡住的 Chromium 就能把「有界抓取」重新变成无限期等待。
+   */
+  browserClose: 10_000,
 } as const;
 
 /**

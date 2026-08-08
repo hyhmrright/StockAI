@@ -36,8 +36,4 @@ export class GoogleNewsSearchStrategy extends PlaywrightStrategy {
   protected parse(html: string, symbol: string): StockNews[] {
     return parseGoogleNewsSearch(html, symbol);
   }
-
-  protected override getWaitUntil(): 'networkidle' {
-    return 'networkidle';
-  }
 }

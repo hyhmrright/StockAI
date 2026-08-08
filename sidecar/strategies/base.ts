@@ -44,7 +44,13 @@ export abstract class PlaywrightStrategy implements ScrapeStrategy {
       let navFailed = false;
       await page
         .goto(url, {
-          waitUntil: this.getWaitUntil(),
+          // 固定 domcontentloaded，**不要改成 networkidle**：Google 一系页面有常驻连接
+          // （分析打点、预取），networkidle 基本等不到，goto 只会走到超时。而超时意味着
+          // 导航等待器仍悬着，紧接着的 page.content() 就会无限期挂起（它不收 timeout）——
+          // 这正是 CI 里那次静默卡死 100s+ 的成因（run 31260504774）。
+          // 解析吃的是 page.content() 的 HTML，Google 的新闻列表本就是服务端渲染，
+          // 少等的那点异步渲染由下面的 waitForTimeout 补足。
+          waitUntil: 'domcontentloaded',
           timeout: TIMEOUTS.pageNavigation,
         })
         .catch((err) => {
@@ -73,9 +79,4 @@ export abstract class PlaywrightStrategy implements ScrapeStrategy {
 
   /** 解析 HTML 逻辑 */
   protected abstract parse(html: string, symbol: string): Promise<StockNews[]> | StockNews[];
-
-  /** 可选覆盖的等待条件 */
-  protected getWaitUntil(): 'domcontentloaded' | 'networkidle' | 'load' {
-    return 'domcontentloaded';
-  }
 }

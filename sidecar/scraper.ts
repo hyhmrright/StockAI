@@ -4,7 +4,7 @@ import type { ScrapeStrategy, ScrapeContext } from './strategies/base';
 import { StrategyRegistry } from './strategies/registry';
 import { DEEP_MODE_MAX_ARTICLES, TIMEOUTS } from './config';
 import { extractFullContent } from './content-extractor';
-import { toErrorMessage, logger } from './utils';
+import { toErrorMessage, logger, withTimeout } from './utils';
 import { BrowserManager } from './browser-manager';
 
 /** 测试注入点；生产不传。避开 bun:test 全局 mock.module 导致的跨文件状态泄漏。 */
@@ -17,21 +17,17 @@ export interface ScraperDeps {
 }
 
 /**
- * 给一次策略调用套上截止时间。
+ * 给一段抓取工作套上剩余预算。
  *
  * 为什么必须在调用方划这条线：策略内部每个 Playwright 调用各自有超时，**不等于整个策略有超时**。
- * `page.goto` 以 networkidle 超时后，紧接着的 `page.content()` 会无限期挂起——它不接受 timeout
- * 参数，页面只要还在加载就一直等。CI 实测这一路径静默卡死 100s+ 直到测试超时才被打断
- * （run 31260504774，Google Finance 与 Google News Search 各复现一次）。
+ * 典型例子是 `page.content()`——它不接受 timeout 参数，导航还悬着就一直等。CI 实测这一路径
+ * 静默卡死 100s+ 直到测试超时才被打断（run 31260504774，Google Finance 与 Google News Search
+ * 各复现一次；那次的引信是 networkidle，已在 strategies/base.ts 拆掉，但这条线仍是兜底）。
  *
  * 被放弃的 promise 仍在后台跑，由 finally 里的 browserMgr.close() 连页面一起拆掉。
  */
-function withDeadline<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
-  const guard = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label} 超出 ${ms}ms 预算，已中断`)), ms);
-  });
-  return Promise.race([work, guard]).finally(() => clearTimeout(timer));
+function withBudget<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+  return withTimeout(work, ms, `${label} 超出 ${ms}ms 预算，已中断`);
 }
 
 /**
@@ -69,7 +65,7 @@ export async function scrapeStockNews(
       let attempts = 0;
       while (attempts < 2 && Date.now() < deadline) {
         try {
-          const results = await withDeadline(
+          const results = await withBudget(
             strategy.scrape(symbol, ctx),
             deadline - Date.now(),
             strategy.name,
@@ -101,7 +97,7 @@ export async function scrapeStockNews(
       } else if (Date.now() >= deadline) {
         logger.warn(`已耗尽 ${budgetMs}ms 预算，跳过正文提取，仅用新闻概要`);
       } else {
-        await withDeadline(
+        await withBudget(
           enrichWithFullContent(news, ctx.getPage, deps?.extractContent),
           deadline - Date.now(),
           '正文提取',

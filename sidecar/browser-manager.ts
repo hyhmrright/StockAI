@@ -1,6 +1,6 @@
 import type { Browser, BrowserContext, Page } from 'playwright-core';
-import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS } from './config';
-import { logger, toErrorMessage, getExecutableDir } from './utils';
+import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS, TIMEOUTS } from './config';
+import { logger, toErrorMessage, getExecutableDir, withTimeout } from './utils';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -142,24 +142,34 @@ export class BrowserManager {
   }
 
   /**
-   * 关闭浏览器并清理资源
+   * 关闭浏览器并清理资源。
+   *
+   * 必须既不抛也不无限等：调用方（scraper.ts）把它放在 finally 里无条件 await，
+   * 而那已经在 scrapeStockNews 的时间预算之外。抛出会连同已抓到的新闻一起丢掉，
+   * 挂起则让整个「有界抓取」重新变成无限期等待——正是预算机制要消灭的那类故障。
+   * 因此这里吞掉异常、划上 browserClose 的线，并在 finally 里无条件清空句柄
+   * （不清空的话下次 getPage 会拿到已死的 browser）。
    */
   async close(): Promise<void> {
-    if (this.pagePromise) {
-      try {
-        await this.pagePromise;
-      } catch {
-        /* 忽略启动期间的错误 */
-      }
-    }
-    if (this.context) {
-      await this.context.close().catch(() => {});
+    try {
+      await withTimeout(
+        this.disposeAll(),
+        TIMEOUTS.browserClose,
+        `浏览器清理超出 ${TIMEOUTS.browserClose}ms`,
+      );
+    } catch (err) {
+      logger.warn(`浏览器清理未正常完成，已放弃等待: ${toErrorMessage(err)}`);
+    } finally {
       this.context = null;
-    }
-    if (this.browser) {
-      await this.browser.close();
       this.browser = null;
       this.pagePromise = null;
     }
+  }
+
+  /** 逐层拆除；每层单独兜底，前一层失败不该拦住后一层——真正要收的是 browser 这个子进程。 */
+  private async disposeAll(): Promise<void> {
+    if (this.pagePromise) await this.pagePromise.catch(() => {});
+    if (this.context) await this.context.close().catch(() => {});
+    if (this.browser) await this.browser.close().catch(() => {});
   }
 }

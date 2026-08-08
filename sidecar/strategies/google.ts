@@ -29,8 +29,4 @@ export class GoogleStrategy extends PlaywrightStrategy {
   protected async parse(html: string): Promise<StockNews[]> {
     return await parseGoogleNews(html);
   }
-
-  protected override getWaitUntil(): 'networkidle' {
-    return 'networkidle';
-  }
 }
