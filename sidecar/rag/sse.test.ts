@@ -46,6 +46,54 @@ describe('parseSseFeedHtml', () => {
     expect(parseSseFeedHtml('')).toEqual([]);
   });
 
+  describe('相对时间戳（站点对近 24h 的条目渲染"昨天 HH:MM"而非绝对日期）', () => {
+    /** 一条完整问答，两个时间戳依次为提问时间、回答时间 */
+    const qaWith = (askTs: string, answerTs: string) => `
+      <div class="m_feed_item" id="item-1">
+        <div class="m_feed_detail">
+          <div class="m_feed_cnt">
+            <div class="m_feed_txt">请问中报何时披露？</div>
+            <div class="m_feed_from"><span>${askTs}</span></div>
+          </div>
+        </div>
+        <div class="m_feed_detail m_qa">
+          <div class="m_feed_cnt">
+            <div class="m_feed_txt" id="m_feed_txt-1">预约披露时间是 8 月 15 日。</div>
+            <div class="m_feed_from"><span>${answerTs}</span></div>
+          </div>
+        </div>
+      </div>
+    `;
+    // UTC 12:00 = 北京 20:00，落在同一北京日内，不跨日
+    const now = new Date('2026-08-08T12:00:00Z');
+
+    test('回答为"昨天"、提问为绝对日期 → docDate 取回答日期，不再退化成提问日期', () => {
+      const chunks = parseSseFeedHtml(qaWith('2026年08月05日 09:27', '昨天 17:17'), now);
+      expect(chunks[0].docDate).toBe('2026-08-07');
+    });
+
+    test('提问与回答同为"昨天" → 折算出日期，不再是空串', () => {
+      const chunks = parseSseFeedHtml(qaWith('昨天 09:27', '昨天 17:17'), now);
+      expect(chunks[0].docDate).toBe('2026-08-07');
+    });
+
+    test('"今天" → 折算为当日', () => {
+      const chunks = parseSseFeedHtml(qaWith('今天 09:27', '今天 17:17'), now);
+      expect(chunks[0].docDate).toBe('2026-08-08');
+    });
+
+    test('北京时间凌晨（UTC 前一日）折算仍按北京日历，不早算一天', () => {
+      const beijingEarlyMorning = new Date('2026-08-08T17:00:00Z'); // 北京 08-09 01:00
+      const chunks = parseSseFeedHtml(qaWith('今天 00:10', '今天 01:00'), beijingEarlyMorning);
+      expect(chunks[0].docDate).toBe('2026-08-09');
+    });
+
+    test('绝对日期不受 now 影响（原行为保持）', () => {
+      const chunks = parseSseFeedHtml(qaWith('2026年06月30日 09:27', '2026年06月30日 13:50'), now);
+      expect(chunks[0].docDate).toBe('2026-06-30');
+    });
+  });
+
   test('超长回答按 600 字符截断', () => {
     const longAnswer = 'A'.repeat(1000);
     const html = `
