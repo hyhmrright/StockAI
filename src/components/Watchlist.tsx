@@ -4,6 +4,8 @@ import { useWatchlist } from '../hooks/useWatchlist';
 import { useScreener } from '../hooks/useScreener';
 import { usePriceAlerts } from '../hooks/usePriceAlerts';
 import { useAlertMonitor } from '../hooks/useAlertMonitor';
+import { useQuotes } from '../hooks/useQuotes';
+import WatchlistQuote from './WatchlistQuote';
 import { saveAnalysisRecord } from '../lib/db';
 import ScreenerPanel from './Screener/ScreenerPanel';
 import AlertConfig from './AlertConfig';
@@ -24,7 +26,11 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
   const [alertSymbol, setAlertSymbol] = useState<string | null>(null);
   const screener = useScreener();
   const { alerts, setAlert, removeAlert } = usePriceAlerts();
-  useAlertMonitor(alerts);
+  // 关注列表与告警共用一次批量取价：告警标的可能已被移出关注列表，故取并集。
+  // useQuotes 内部按排序去重后的字符串做 key，这里每次渲染新建数组不会导致重复轮询。
+  const watched = [...new Set([...items.map((i) => i.sym), ...Object.keys(alerts)])];
+  const { quotes, failed } = useQuotes(watched);
+  useAlertMonitor(alerts, quotes);
   const savedScreenerCount = useRef(0);
   const { t } = useLanguage();
 
@@ -95,7 +101,8 @@ const Watchlist: React.FC<WatchlistProps> = ({ currentSymbol, onSelect }) => {
                 >
                   {item.sym}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  <WatchlistQuote quote={quotes[item.sym]} failed={failed.includes(item.sym)} />
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

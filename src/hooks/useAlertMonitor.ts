@@ -1,11 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
-import { fetchRealtimeQuote } from '../lib/ipc';
 import type { PriceAlert } from './usePriceAlerts';
 import { useLanguage } from './useLanguage';
 import type { RealtimeQuote } from '../../shared/types';
-
-const POLL_MS = 10_000;
 
 type FiredState = Record<string, { upper?: boolean; lower?: boolean }>;
 
@@ -22,76 +19,64 @@ async function sendNotification(title: string, body: string) {
   }
 }
 
-export type QuoteFetcher = (symbol: string) => Promise<RealtimeQuote>;
-
+/**
+ * 价格告警：对已有报价的纯反应，**自己不取数**。
+ *
+ * 原先它持有一套独立的 10s 轮询，且逐个标的串行取价——sidecar 是 spawn-per-call，
+ * 5 条告警就是每 10 秒 5 个进程，而且不看交易时段、通宵不停。取数改由调用方的
+ * useQuotes 统一负责（一次进程拉完、只在交易时段轮询），这里只管「越界了没有」。
+ *
+ * 边沿触发：越界只在**首次**越界时通知一次，价格回到区间内才重新武装。
+ * 否则一根横在上限之上的价格会每个轮询周期弹一次通知。
+ */
 export function useAlertMonitor(
   alerts: Record<string, PriceAlert>,
-  fetcher: QuoteFetcher = fetchRealtimeQuote,
+  quotes: Record<string, RealtimeQuote>,
 ) {
   const firedRef = useRef<FiredState>({});
   const { t } = useLanguage();
 
   useEffect(() => {
-    const activeAlerts = Object.values(alerts).filter(
-      (a) => a.enabled && (a.upperLimit != null || a.lowerLimit != null),
-    );
-    if (activeAlerts.length === 0) return;
+    for (const alert of Object.values(alerts)) {
+      if (!alert.enabled) continue;
+      const quote = quotes[alert.symbol];
+      if (!quote) continue;
 
-    let active = true;
+      const fired = firedRef.current[alert.symbol] ?? {};
 
-    async function check() {
-      for (const alert of activeAlerts) {
-        if (!active) return;
-        try {
-          const quote = await fetcher(alert.symbol);
-          if (!active) return;
-          const fired = firedRef.current[alert.symbol] ?? {};
-
-          if (alert.upperLimit != null && quote.price >= alert.upperLimit) {
-            if (!fired.upper) {
-              fired.upper = true;
-              sendNotification(
-                t('alert_notify_title'),
-                t('alert_notify_above', {
-                  symbol: alert.symbol,
-                  limit: alert.upperLimit,
-                  price: quote.price.toFixed(2),
-                }),
-              );
-            }
-          } else if (fired.upper) {
-            fired.upper = false;
-          }
-
-          if (alert.lowerLimit != null && quote.price <= alert.lowerLimit) {
-            if (!fired.lower) {
-              fired.lower = true;
-              sendNotification(
-                t('alert_notify_title'),
-                t('alert_notify_below', {
-                  symbol: alert.symbol,
-                  limit: alert.lowerLimit,
-                  price: quote.price.toFixed(2),
-                }),
-              );
-            }
-          } else if (fired.lower) {
-            fired.lower = false;
-          }
-
-          firedRef.current[alert.symbol] = fired;
-        } catch {
-          // 静默失败
+      if (alert.upperLimit != null && quote.price >= alert.upperLimit) {
+        if (!fired.upper) {
+          fired.upper = true;
+          sendNotification(
+            t('alert_notify_title'),
+            t('alert_notify_above', {
+              symbol: alert.symbol,
+              limit: alert.upperLimit,
+              price: quote.price.toFixed(2),
+            }),
+          );
         }
+      } else if (fired.upper) {
+        fired.upper = false;
       }
+
+      if (alert.lowerLimit != null && quote.price <= alert.lowerLimit) {
+        if (!fired.lower) {
+          fired.lower = true;
+          sendNotification(
+            t('alert_notify_title'),
+            t('alert_notify_below', {
+              symbol: alert.symbol,
+              limit: alert.lowerLimit,
+              price: quote.price.toFixed(2),
+            }),
+          );
+        }
+      } else if (fired.lower) {
+        fired.lower = false;
+      }
+
+      firedRef.current[alert.symbol] = fired;
     }
-
-    check();
-    const timer = setInterval(check, POLL_MS);
-
-    return () => {
-      active = false;
-      clearInterval(timer);
-    };
-  }, [alerts, fetcher, t]);
+  }, [alerts, quotes, t]);
 }
