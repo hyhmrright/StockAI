@@ -328,5 +328,16 @@
   "alert_notify_title": "StockAI 价格提醒",
   "alert_notify_above": "{symbol} 突破上限 {limit}，当前 {price}",
   "alert_notify_below": "{symbol} 跌破下限 {limit}，当前 {price}",
-  "language_desc": "UI 与 AI 分析输出所用的语言"
+  "language_desc": "UI 与 AI 分析输出所用的语言",
+  "onboarding_title": "欢迎使用 StockAI",
+  "onboarding_subtitle": "还差一步就能开始：选一个 AI 提供商并保存配置。",
+  "onboarding_step1_title": "配置 AI 提供商",
+  "onboarding_step1_desc": "支持 OpenAI / DeepSeek / GLM / Anthropic，填入对应的 API Key；也可选本地运行的 Ollama，无需 Key。",
+  "onboarding_step2_title": "选一只股票",
+  "onboarding_step2_desc": "左侧自选股已预置常见标的，也可在顶部搜索 A 股 / 港股 / 美股的代码或名称。",
+  "onboarding_step3_title": "点「开始 AI 分析」",
+  "onboarding_step3_desc": "行情、新闻与量化评分会自动加载；AI 分析需手动点击触发，避免无谓消耗 tokens。",
+  "onboarding_note": "在设置里保存一次之前，行情与量化同样取不到数据——不只是 AI 功能不可用。",
+  "onboarding_configure": "去配置",
+  "onboarding_later": "稍后再说"
 }

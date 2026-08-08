@@ -7,6 +7,8 @@ import { useChat } from '../hooks/useChat';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import { usePersistAnalysisResults } from '../hooks/usePersistAnalysisResults';
 import { useLanguage } from '../hooks/useLanguage';
+import { useSettings } from '../hooks/useSettings';
+import OnboardingGuide from './OnboardingGuide';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import NlScreenerModal from './Screener/NlScreenerModal';
@@ -29,6 +31,9 @@ import type { ChatContext, BacktestResult } from '../../shared/types';
 const Dashboard: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isScreenerOpen, setIsScreenerOpen] = useState(false);
+  // 引导只在本次运行内可关：不落盘「已看过」，因为真正的退出条件是保存一次配置，
+  // 而 SettingsModal 持有自己的 useSettings 实例，保存不会回传到这里。
+  const [guideDismissed, setGuideDismissed] = useState(false);
   const [currentSymbol, setCurrentSymbol] = useState(DEFAULT_WATCHLIST[0].sym);
   // 回测结果提升到此：BacktestPanel（右列）跑出，PriceChart（中列）叠加买卖点/净值曲线共用
   const [backtest, setBacktest] = useState<BacktestResult | null>(null);
@@ -36,6 +41,7 @@ const Dashboard: React.FC = () => {
   const suite = useAnalysisSuite(currentSymbol);
   const { step, stockInfo, news, dataError, quant } = suite;
   const { t } = useLanguage();
+  const { needsSetup } = useSettings();
 
   // 追问上下文：从已抓新闻/量化/已有分析精简，作为对话事实底座（不重复抓取）
   const chatContext = useMemo<ChatContext>(
@@ -144,6 +150,16 @@ const Dashboard: React.FC = () => {
       </main>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {/* 首启引导：从未保存过配置时挡在最前，指路到设置面板 */}
+      <OnboardingGuide
+        isOpen={needsSetup && !guideDismissed}
+        onConfigure={() => {
+          setGuideDismissed(true);
+          setIsSettingsOpen(true);
+        }}
+        onDismiss={() => setGuideDismissed(true)}
+      />
 
       {/* 智能选股模态：选中结果行 → 切到该股票的常规分析流（模态内部自行关闭） */}
       <NlScreenerModal

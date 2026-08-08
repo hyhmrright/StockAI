@@ -328,5 +328,16 @@
   "alert_notify_title": "StockAI Price Alert",
   "alert_notify_above": "{symbol} broke above {limit} — now {price}",
   "alert_notify_below": "{symbol} fell below {limit} — now {price}",
-  "language_desc": "UI and AI analysis output language"
+  "language_desc": "UI and AI analysis output language",
+  "onboarding_title": "Welcome to StockAI",
+  "onboarding_subtitle": "One step to go: pick an AI provider and save your settings.",
+  "onboarding_step1_title": "Configure an AI provider",
+  "onboarding_step1_desc": "OpenAI / DeepSeek / GLM / Anthropic each take an API key; or pick locally-run Ollama, which needs none.",
+  "onboarding_step2_title": "Pick a stock",
+  "onboarding_step2_desc": "The watchlist on the left comes pre-filled; or search the top bar by ticker or name across A-shares, HK and US markets.",
+  "onboarding_step3_title": "Hit \"Start AI Analysis\"",
+  "onboarding_step3_desc": "Quotes, news and quant scores load automatically. AI analysis is manual so you never spend tokens by accident.",
+  "onboarding_note": "Until you save settings once, quotes and quant scores fail too — not just the AI features.",
+  "onboarding_configure": "Open settings",
+  "onboarding_later": "Later"
 }

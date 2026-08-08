@@ -51,6 +51,10 @@ export const DEFAULT_SETTINGS: Settings = {
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
+  // 「从未保存过配置」，首启引导（OnboardingGuide）的触发条件。
+  // 初值 false 且只在读盘成功却没有 app_settings 时置 true：读盘本身失败说明「不知道」，
+  // 不是「没配过」，不该据此弹引导。
+  const [needsSetup, setNeedsSetup] = useState(false);
 
   useEffect(() => {
     async function loadSettings() {
@@ -85,6 +89,8 @@ export function useSettings() {
             await store.save();
           }
           setSettings(migrated);
+        } else {
+          setNeedsSetup(true);
         }
       } catch (error) {
         console.error('加载设置失败:', error);
@@ -104,10 +110,11 @@ export function useSettings() {
       const store = await getStore();
       await store.set('app_settings', updated);
       await store.save();
+      setNeedsSetup(false);
     } catch (error) {
       console.error('保存设置失败:', error);
     }
   }
 
-  return { settings, updateSettings, isLoading };
+  return { settings, updateSettings, isLoading, needsSetup };
 }

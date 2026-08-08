@@ -328,5 +328,16 @@
   "alert_notify_title": "StockAI 価格アラート",
   "alert_notify_above": "{symbol} が上限 {limit} を突破 — 現在 {price}",
   "alert_notify_below": "{symbol} が下限 {limit} を下回りました — 現在 {price}",
-  "language_desc": "UI と AI 分析出力の言語"
+  "language_desc": "UI と AI 分析出力の言語",
+  "onboarding_title": "StockAI へようこそ",
+  "onboarding_subtitle": "あと一歩です：AI プロバイダーを選んで設定を保存してください。",
+  "onboarding_step1_title": "AI プロバイダーを設定",
+  "onboarding_step1_desc": "OpenAI / DeepSeek / GLM / Anthropic は API キーが必要です。ローカル実行の Ollama ならキー不要です。",
+  "onboarding_step2_title": "銘柄を選ぶ",
+  "onboarding_step2_desc": "左のウォッチリストには主要銘柄が登録済みです。上部の検索欄から A 株・香港株・米国株をコードや名称で検索することもできます。",
+  "onboarding_step3_title": "「AI 分析を開始」をクリック",
+  "onboarding_step3_desc": "株価・ニュース・クオンツスコアは自動で読み込まれます。AI 分析は手動実行なので、意図せずトークンを消費することはありません。",
+  "onboarding_note": "設定を一度保存するまでは、AI 機能だけでなく株価やクオンツスコアの取得も失敗します。",
+  "onboarding_configure": "設定を開く",
+  "onboarding_later": "後で"
 }
