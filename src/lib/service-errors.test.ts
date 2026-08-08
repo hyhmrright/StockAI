@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { ServiceError } from './ipc';
 import { formatServiceError, serviceErrorKey } from './service-errors';
 import zh from '../i18n/zh.json';
@@ -48,6 +50,62 @@ describe('formatServiceError', () => {
 
   it('裸 Error 同样走兜底 key', () => {
     expect(formatServiceError(new Error('raw'), t, 'quant_error')).toBe(zh.quant_error);
+  });
+});
+
+describe('Sidecar 错误码的翻译覆盖', () => {
+  /**
+   * 与 Rust 侧的 test_error_codes_registered_in_frontend 同一目的：**加了码却忘登记不会
+   * 有任何运行时报错**，只会让 UI 静默降级成兜底文案（en / ja 用户尤其无从下手）。
+   * 只有跨文件比对能拦。
+   *
+   * 读源码文本而不是 import：src/ 不得依赖 sidecar/（单向依赖），这里只是把它当文本扫一遍，
+   * 与 Rust 那条 include_str! 同一手法。
+   */
+  // 走 cwd 而不是 import.meta.url：vitest 把测试文件按 vite 的 http 模块 URL 加载，
+  // import.meta.url 不是 file: 协议，喂给 node:fs 会直接抛。
+  const SIDECAR_DIR = resolve(process.cwd(), 'sidecar');
+
+  /** 明确不需要译文的码——每条都得说清为什么它到不了 UI，否则就是漏登记 */
+  const NOT_USER_FACING: Record<string, string> = {
+    ERR_INFO: '--info 是 ipc: false 的 CLI 调试入口，无前端调用方',
+    ERR_NOT_FOUND: '同上，handleInfo 的另一个出口',
+    ERR_FIN_HISTORY: '--fundamentals-history，ipc: false',
+    ERR_MARKET_SNAPSHOT: '--market-snapshot，ipc: false',
+  };
+
+  /** 递归收集 sidecar 源码里出现的错误码字面量；跳过测试与构建产物 */
+  function collectCodes(dir: string, into = new Set<string>()): Set<string> {
+    for (const entry of readdirSync(dir)) {
+      if (entry === 'dist' || entry === 'node_modules') continue;
+      const child = join(dir, entry);
+      if (statSync(child).isDirectory()) {
+        collectCodes(child, into);
+      } else if (entry.endsWith('.ts') && !/\.(test|integration)\.ts$/.test(entry)) {
+        for (const m of readFileSync(child, 'utf8').matchAll(/'(ERR_[A-Z0-9_]+)'/g)) into.add(m[1]);
+      }
+    }
+    return into;
+  }
+
+  const codes = collectCodes(SIDECAR_DIR);
+
+  // 目录扫错会让下面两条空集比空集、永远绿。先钉死「确实扫到了东西」。
+  it('确实扫到了 sidecar 的错误码', () => {
+    expect(codes.size).toBeGreaterThan(20);
+    expect(codes.has('ERR_ANALYSIS_FAILED')).toBe(true);
+  });
+
+  it('每个码要么有译文，要么在豁免名单里', () => {
+    const unregistered = [...codes].filter(
+      (code) => !serviceErrorKey(new ServiceError(code, '')) && !(code in NOT_USER_FACING),
+    );
+    expect(unregistered).toEqual([]);
+  });
+
+  it('豁免名单里没有失效条目', () => {
+    // 码被删/改名后名单会留下死条目，下次真漏登记时就少一层保护
+    expect(Object.keys(NOT_USER_FACING).filter((code) => !codes.has(code))).toEqual([]);
   });
 });
 
