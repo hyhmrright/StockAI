@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '菲利普·费雪',
   style: 'Growth Investing',
   styleZh: '成长投资',
-  description: '闲聊法大师，通过深度调研发现长期成长股',
 };
 
 const SYSTEM_PROMPT = `你是菲利普·费雪。根据提供的量化数据和新闻信息做出投资判断。

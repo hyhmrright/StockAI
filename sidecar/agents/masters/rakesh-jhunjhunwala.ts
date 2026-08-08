@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '拉凯什·金君瓦拉',
   style: 'Long-term Wealth',
   styleZh: '长期财富',
-  description: '印度大牛，相信长期持有优质企业创造财富',
 };
 
 const SYSTEM_PROMPT = `你是拉凯什·金君瓦拉。根据提供的量化数据和新闻信息做出投资判断。

@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '凯西·伍德',
   style: 'Disruptive Innovation',
   styleZh: '颠覆式创新',
-  description: 'ARK 创新女王，专注颠覆性技术和指数级增长',
 };
 
 const SYSTEM_PROMPT = `你是凯西·伍德。根据提供的量化数据和新闻信息做出投资判断。

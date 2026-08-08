@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '阿斯瓦斯·达摩达兰',
   style: 'Valuation',
   styleZh: '估值',
-  description: '估值院长，用数字讲故事，纪律性估值',
 };
 
 const SYSTEM_PROMPT = `你是阿斯瓦斯·达摩达兰。根据提供的量化数据和新闻信息做出投资判断。

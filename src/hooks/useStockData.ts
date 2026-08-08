@@ -10,7 +10,6 @@ export interface UseStockDataResult {
   stockInfo: StockInfo | undefined;
   news: StockNews[];
   error: string | null;
-  refetch: () => void;
 }
 
 type FetchFn = (symbol: string) => Promise<MarketBundle>;
@@ -24,7 +23,7 @@ export function useStockData(
   fetcher: FetchFn = fetchMarketBundle,
 ): UseStockDataResult {
   const { t } = useLanguage();
-  const { step, data, error, refetch } = useSymbolFetch<MarketBundle>(
+  const { step, data, error } = useSymbolFetch<MarketBundle>(
     symbol,
     fetcher,
     t('data_fetch_error'),
@@ -35,6 +34,5 @@ export function useStockData(
     stockInfo: data?.stockInfo,
     news: data?.news ?? [],
     error,
-    refetch,
   };
 }

@@ -101,17 +101,16 @@ export const STATIC_MODELS: Record<ProviderType, StaticModel[]> = {
  * modelsPath 拼到用户配置的 baseUrl 之后——注意各 baseUrl 是否已含 /v1。
  */
 export interface ProviderCaps {
-  isLocal: boolean;
   modelsPath?: string;
   authStyle?: 'bearer' | 'anthropic';
 }
 
 export const PROVIDER_CAPS: Record<ProviderType, ProviderCaps> = {
-  openai: { isLocal: false, modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 已含 /v1
-  ollama: { isLocal: true }, // 走 ollama SDK，非 HTTP /models
-  anthropic: { isLocal: false, modelsPath: '/v1/models', authStyle: 'anthropic' }, // baseUrl 为根，需补 /v1
-  deepseek: { isLocal: false, modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 为根，列模型在 /models
-  glm: { isLocal: false, modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 已含 /api/paas/v4
+  openai: { modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 已含 /v1
+  ollama: {}, // 走 ollama SDK，非 HTTP /models
+  anthropic: { modelsPath: '/v1/models', authStyle: 'anthropic' }, // baseUrl 为根，需补 /v1
+  deepseek: { modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 为根，列模型在 /models
+  glm: { modelsPath: '/models', authStyle: 'bearer' }, // baseUrl 已含 /api/paas/v4
 };
 
 /** 深度分析默认启用的大师 ID 列表 */

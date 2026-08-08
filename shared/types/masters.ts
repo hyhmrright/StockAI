@@ -6,7 +6,6 @@ export interface MasterMeta {
   nameZh: string;
   style: string;
   styleZh: string;
-  description: string;
 }
 
 /** 单个大师的分析信号 */
@@ -71,7 +70,6 @@ export interface MasterLeaderboardEntry {
   hits: number; // 方向兑现次数
   hitRate: number | null; // hits / resolved；resolved 为 0 时为 null
   avgReturn: number | null; // 已裁决 signal 的方向调整收益均值；resolved 为 0 时为 null
-  lastSignalAt: number; // 最近一次落账时间（Unix 毫秒）
 }
 
 /** 净值曲线一个点（按时间顺序等额全仓复利，含未平仓浮盈） */

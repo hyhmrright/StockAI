@@ -70,8 +70,6 @@ export const SIDECAR_ACTIONS = {
   info: { flag: '--info', slots: ['actionParam'], ipc: false },
 } as const satisfies Record<string, SidecarActionDef>;
 
-export type SidecarActionName = keyof typeof SIDECAR_ACTIONS;
-
 /** 默认分析模式（无 flag）：`<symbol> <@config>`，为兼容旧调用保留 */
 export const DEFAULT_ANALYSIS_SLOTS = ['actionParam', 'configStr'] as const;
 

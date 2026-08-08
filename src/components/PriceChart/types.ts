@@ -2,13 +2,10 @@ import type { KlinePeriod, KlineRange } from '../../../shared/types';
 
 export type Market = 'A股' | '美股';
 
-export type ChartType = 'candle' | 'line' | 'area' | 'heikin-ashi';
-
 export type SubChartIndicator = 'macd' | 'rsi' | 'kdj' | 'boll' | 'obv' | 'vwap';
 
 export interface ChartConfig {
   range: KlineRange;
-  chartType: ChartType;
   logScale: boolean;
   adjust: 'qfq' | 'hfq' | 'none';
   subIndicator: SubChartIndicator;
@@ -18,7 +15,6 @@ export interface ChartConfig {
 
 export const DEFAULT_CONFIG: ChartConfig = {
   range: '1y',
-  chartType: 'candle',
   logScale: false,
   adjust: 'qfq',
   subIndicator: 'macd',

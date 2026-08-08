@@ -22,7 +22,6 @@ const meta: MasterMeta = {
   nameZh: '测试大师',
   style: 'test',
   styleZh: '测试风格',
-  description: 'A test master agent',
 };
 
 function makeCtx(

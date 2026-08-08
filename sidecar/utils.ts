@@ -67,7 +67,7 @@ export const logger = {
   },
 };
 
-import type { SuccessEnvelope, ErrorEnvelope, ServiceErrorPayload } from '../shared/types';
+import type { SuccessEnvelope, ErrorEnvelope } from '../shared/types';
 
 /**
  * 构造成功信封（强类型，避免散落各处写错字段名）
@@ -88,14 +88,6 @@ export function errorEnvelope(code: string, message: string): ErrorEnvelope {
  */
 export function errorEnvelopeFromUnknown(code: string, error: unknown): ErrorEnvelope {
   return errorEnvelope(code, toErrorMessage(error));
-}
-
-/** 类型守卫：判断信封是否为成功响应（编译期 + 运行期双重校验） */
-export function isSuccess<T>(env: {
-  data?: T;
-  error?: ServiceErrorPayload;
-}): env is SuccessEnvelope<T> {
-  return env.error === undefined && env.data !== undefined;
 }
 
 let _stdoutWritten = false;

@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '沃伦·巴菲特',
   style: 'Value Investing',
   styleZh: '价值投资',
-  description: '奥马哈先知，寻找具有持久竞争优势的优质企业，以合理价格长期持有',
 };
 
 const SYSTEM_PROMPT = `你是沃伦·巴菲特。根据提供的量化数据和新闻信息做出投资判断。

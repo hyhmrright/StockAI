@@ -74,7 +74,6 @@ export function computeMasterPortfolio(
       curve.push({ time: s.recordedAt, value: nav });
     }
 
-    const lastSignalAt = list.reduce((m, s) => Math.max(m, s.recordedAt), 0);
     leaderboard.push({
       masterId,
       total: list.length,
@@ -83,7 +82,6 @@ export function computeMasterPortfolio(
       hits,
       hitRate: resolved.length > 0 ? hits / resolved.length : null,
       avgReturn: resolved.length > 0 ? sumReturn / resolved.length : null,
-      lastSignalAt,
     });
     if (curve.length > 0) navCurves[masterId] = curve;
     resolvedSignals += resolved.length;

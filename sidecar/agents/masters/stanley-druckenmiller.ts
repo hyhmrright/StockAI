@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '斯坦利·德鲁肯米勒',
   style: 'Macro Growth',
   styleZh: '宏观成长',
-  description: '宏观大师，寻找不对称的成长机会',
 };
 
 const SYSTEM_PROMPT = `你是斯坦利·德鲁肯米勒。根据提供的量化数据和新闻信息做出投资判断。

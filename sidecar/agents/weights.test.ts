@@ -100,7 +100,6 @@ describe('computeMasterWeights — 元数据与验收组合（§8-1）', () => {
   test('hitRate = hits/sampleSize（无 rounding 分歧）', () => {
     const e = computeMasterWeights([w('a', 30, 24)]).get('a')!;
     expect(e.hitRate).toBe(24 / 30);
-    expect(e.sampleSize).toBe(30);
   });
 
   test('§8-1：A(n30 h24) 与 B(n30 h6) → weight(A) > 1 > weight(B)，均在钳位内', () => {

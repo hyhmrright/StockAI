@@ -60,19 +60,6 @@ describe('useStockData', () => {
     expect(result.current.stockInfo).toBeUndefined();
   });
 
-  it('refetch 触发重新拉取（即使 symbol 不变）', async () => {
-    const fetcher = vi.fn(async (sym: string) => buildBundle(sym));
-    const { result } = renderHook(() => useStockData('AAPL', fetcher));
-
-    await waitFor(() => expect(result.current.step).toBe('ready'));
-    expect(fetcher).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      result.current.refetch();
-    });
-    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
-  });
-
   it('旧请求若晚于新请求返回不应覆盖新数据（防竞态）', async () => {
     let resolveOld: ((b: MarketBundle) => void) | null = null;
     const fetcher = vi.fn((sym: string) => {

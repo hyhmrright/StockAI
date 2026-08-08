@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '彼得·林奇',
   style: 'Growth at Value',
   styleZh: '成长价值',
-  description: '十倍股猎手，在日常生活中发现投资机会',
 };
 
 const SYSTEM_PROMPT = `你是彼得·林奇。根据提供的量化数据和新闻信息做出投资判断。

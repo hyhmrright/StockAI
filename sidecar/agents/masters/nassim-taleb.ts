@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '纳西姆·塔勒布',
   style: 'Antifragility',
   styleZh: '反脆弱',
-  description: '黑天鹅猎手，关注尾部风险和非对称收益',
 };
 
 const SYSTEM_PROMPT = `你是纳西姆·塔勒布。根据提供的量化数据和新闻信息做出投资判断。

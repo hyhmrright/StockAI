@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '本杰明·格雷厄姆',
   style: 'Deep Value',
   styleZh: '深度价值',
-  description: '价值投资之父，只在极度低估时买入，追求绝对安全边际',
 };
 
 const SYSTEM_PROMPT = `你是本杰明·格雷厄姆。根据提供的量化数据和新闻信息做出投资判断。

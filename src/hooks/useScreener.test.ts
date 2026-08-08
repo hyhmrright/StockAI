@@ -119,20 +119,6 @@ describe('useScreener', () => {
     expect(result.current.results[0].symbol).toBe('TSLA');
   });
 
-  it('clear() resets all state', async () => {
-    const fetcher = vi.fn().mockResolvedValue(makeQuant('AAPL', 7));
-    const { result } = renderHook(() => useScreener(fetcher));
-
-    act(() => result.current.scan([{ sym: 'AAPL', name: 'Apple' }]));
-    await waitFor(() => expect(result.current.scanning).toBe(false));
-    expect(result.current.results).toHaveLength(1);
-
-    act(() => result.current.clear());
-    expect(result.current.results).toHaveLength(0);
-    expect(result.current.scanning).toBe(false);
-    expect(result.current.progress).toEqual({ done: 0, total: 0 });
-  });
-
   it('does nothing for empty items', () => {
     const fetcher = vi.fn();
     const { result } = renderHook(() => useScreener(fetcher));

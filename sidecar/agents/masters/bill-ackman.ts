@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '比尔·阿克曼',
   style: 'Activist Investing',
   styleZh: '激进投资',
-  description: '激进价值投资者，大胆押注并推动变革',
 };
 
 const SYSTEM_PROMPT = `你是比尔·阿克曼。根据提供的量化数据和新闻信息做出投资判断。

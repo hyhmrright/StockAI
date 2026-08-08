@@ -16,6 +16,8 @@ src-tauri/target/
 sidecar/stockai-backend-*
 *.lockb
 *.lock
+# 本项目用 bun.lock 锁依赖；npm 生成的 lockfile 不是真源，别再提交进来
+package-lock.json
 
 # 临时构建产物 / 调试输出（历史曾误入仓库，参见 brooks-sweep 修复）
 output.json

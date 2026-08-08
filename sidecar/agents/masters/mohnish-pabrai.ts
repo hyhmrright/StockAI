@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '莫尼什·帕布莱',
   style: 'Dhandho Investing',
   styleZh: '低风险高回报',
-  description: 'Dhandho 哲学：正面我赢很多，反面我输很少',
 };
 
 const SYSTEM_PROMPT = `你是莫尼什·帕布莱。根据提供的量化数据和新闻信息做出投资判断。

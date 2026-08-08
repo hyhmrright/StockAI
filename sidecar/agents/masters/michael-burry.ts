@@ -8,7 +8,6 @@ const meta: MasterMeta = {
   nameZh: '迈克尔·伯里',
   style: 'Contrarian Value',
   styleZh: '逆向价值',
-  description: '大空头，擅长发现市场定价错误，敢于逆势而行',
 };
 
 const SYSTEM_PROMPT = `你是迈克尔·伯里。根据提供的量化数据和新闻信息做出投资判断。

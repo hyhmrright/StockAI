@@ -9,7 +9,6 @@ export interface UseQuantDataResult {
   step: QuantDataStep;
   quant: QuantBundle | null;
   error: string | null;
-  refetch: () => void;
 }
 
 type FetchFn = (symbol: string) => Promise<QuantBundle>;
@@ -20,11 +19,7 @@ export function useQuantData(
   fetcher: FetchFn = fetchQuantBundle,
 ): UseQuantDataResult {
   const { t } = useLanguage();
-  const { step, data, error, refetch } = useSymbolFetch<QuantBundle>(
-    symbol,
-    fetcher,
-    t('quant_error'),
-  );
+  const { step, data, error } = useSymbolFetch<QuantBundle>(symbol, fetcher, t('quant_error'));
 
-  return { step, quant: data, error, refetch };
+  return { step, quant: data, error };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { successEnvelope, errorEnvelope, errorEnvelopeFromUnknown, isSuccess } from './utils';
+import { successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from './utils';
 
 describe('信封工厂', () => {
   it('successEnvelope 只有 data，没有 error', () => {
@@ -23,11 +23,6 @@ describe('信封工厂', () => {
   it('errorEnvelopeFromUnknown 支持非 Error 输入', () => {
     const env = errorEnvelopeFromUnknown('ERR_X', 'string error');
     expect(env.error.message).toBe('string error');
-  });
-
-  it('isSuccess 区分成功/失败信封', () => {
-    expect(isSuccess(successEnvelope({ ok: true }))).toBe(true);
-    expect(isSuccess(errorEnvelope('ERR', 'x'))).toBe(false);
   });
 
   it('信封是合法 JSON（round-trip 一致）', () => {

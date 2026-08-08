@@ -55,7 +55,6 @@ describe('all master agents share contract', () => {
         expect(agent.meta.nameZh).toBeTruthy();
         expect(agent.meta.style).toBeTruthy();
         expect(agent.meta.styleZh).toBeTruthy();
-        expect(agent.meta.description).toBeTruthy();
       });
 
       test('analyze returns valid signal on success', async () => {

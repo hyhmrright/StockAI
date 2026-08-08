@@ -19,11 +19,10 @@ export const WEIGHT_MIN = 0.5;
 /** 权重上限（避免单一大师主导） */
 export const WEIGHT_MAX = 1.5;
 
-/** sidecar 内部计算结果：达阈值大师的权重及其可解释元数据（供 prompt 标注） */
+/** sidecar 内部计算结果：达阈值大师的权重与命中率（后者供 prompt 标注） */
 export interface MasterWeight {
   weight: number;
   hitRate: number;
-  sampleSize: number;
 }
 
 function clamp(v: number, min: number, max: number): number {
@@ -43,7 +42,7 @@ export function computeMasterWeights(summary: MasterWeightInput[]): Map<string, 
     const shrunk = (hits + SHRINK_STRENGTH * PRIOR_HIT_RATE) / (sampleSize + SHRINK_STRENGTH);
     // 防线 3（钳位）：兜底极端值，任何大师都不被完全静音或独裁
     const weight = clamp(1 + SENSITIVITY * (shrunk - PRIOR_HIT_RATE), WEIGHT_MIN, WEIGHT_MAX);
-    out.set(masterId, { weight, hitRate: hits / sampleSize, sampleSize });
+    out.set(masterId, { weight, hitRate: hits / sampleSize });
   }
   return out;
 }

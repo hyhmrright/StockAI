@@ -10,7 +10,6 @@ export interface UseScreenerResult {
   scanning: boolean;
   progress: { done: number; total: number };
   scan: (items: WatchlistItem[]) => void;
-  clear: () => void;
 }
 
 type FetchFn = (symbol: string) => Promise<QuantBundle>;
@@ -62,12 +61,5 @@ export function useScreener(fetcher: FetchFn = fetchQuantBundle): UseScreenerRes
     [fetcher],
   );
 
-  const clear = useCallback(() => {
-    reqIdRef.current++;
-    setResults([]);
-    setScanning(false);
-    setProgress({ done: 0, total: 0 });
-  }, []);
-
-  return { results, scanning, progress, scan, clear };
+  return { results, scanning, progress, scan };
 }

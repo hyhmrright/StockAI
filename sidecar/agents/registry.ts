@@ -32,9 +32,6 @@ const REGISTRY: Map<string, MasterAgent> = new Map([
 
 export const DEFAULT_MASTER_IDS = DEFAULT_SELECTED_MASTERS;
 
-export function getMaster(id: string): MasterAgent | undefined {
-  return REGISTRY.get(id);
-}
 export function getAllMasters(): MasterAgent[] {
   return [...REGISTRY.values()];
 }
