@@ -51,6 +51,7 @@ vi.mock('../../lib/market-hours', async () => {
 });
 
 import PriceChart from './index';
+import SubChart from './SubChart';
 import { fetchKline } from '../../lib/ipc';
 import { useRealtimeQuote } from '../../hooks/useRealtimeQuote';
 
@@ -184,5 +185,16 @@ describe('PriceChart 协调层', () => {
     await waitFor(() => expect(fetchKline).toHaveBeenCalled());
     // 测试通过隐含验证：不同 day 时合并 effect 早退、未触发 setData crash
     // （ChartCanvas mock 的 setData 累计调用次数可作为更细的断言，但当前需求是不崩 + 不污染 state）
+  });
+});
+
+describe('SubChart 指标切换', () => {
+  // BOLL 不在副图绘制，早年那处「hook 之前 return null」会让切到 BOLL 时 hook 数量变少，
+  // React 直接抛 "Rendered fewer hooks than expected" 导致整页白屏。
+  it('在 BOLL 与其它指标之间来回切换都不抛错', () => {
+    const klines = buildKline(40);
+    const { rerender } = render(<SubChart data={klines} indicator="macd" market="美股" />);
+    expect(() => rerender(<SubChart data={klines} indicator="boll" market="美股" />)).not.toThrow();
+    expect(() => rerender(<SubChart data={klines} indicator="kdj" market="美股" />)).not.toThrow();
   });
 });

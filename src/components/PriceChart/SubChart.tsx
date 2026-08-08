@@ -27,10 +27,10 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
-  // BOLL 不在副图绘制（由主图叠加上下轨），直接返回 null
-  if (indicator === 'boll') return null;
-
   useEffect(() => {
+    // BOLL 由主图叠加上下轨，副图不画（早退必须落在 hook 内部：在 hook 之前 return
+    // 会让切到 BOLL 时的 hook 数量变少，React 直接抛 "Rendered fewer hooks than expected"）
+    if (indicator === 'boll') return;
     if (!containerRef.current) return;
 
     const chart = createChart(containerRef.current, {
@@ -120,6 +120,8 @@ const SubChart: React.FC<Props> = ({ data, indicator, market, height = 140 }) =>
     };
   }, [data, indicator, market]);
 
+  // BOLL 不占副图位置（上下轨叠在主图上）；早退放在全部 hook 之后才不破坏 hook 顺序
+  if (indicator === 'boll') return null;
   return <div ref={containerRef} style={{ width: '100%', height }} />;
 };
 
