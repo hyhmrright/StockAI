@@ -77,7 +77,9 @@ Sidecar **完全不碰这个库**——它是 spawn-per-call 的无状态进程�
 
 Bun 进程，主流程两步：
 
-1. **Scrape** (`scraper.ts`)：按 `StrategyRegistry.getStrategies()` 顺序尝试策略，首个返回非空结果即停止。顺序为 RSS 优先（`strategies/google-news-rss.ts` 原生覆盖 A 股、绕过 reCAPTCHA），其次 Playwright 策略（`google-news.ts` / `google.ts` / `yahoo.ts`）。Chromium 懒启动——仅 Playwright 策略或深度正文提取才触发，纯 RSS 路径可节省 1–3 秒。`deepMode=true`（默认）时对前 3 条抽取正文。纯解析助手（HTML / 交易所识别）在 `sidecar/parsers/{html,exchange}.ts`，与网络层解耦。
+1. **Scrape** (`scraper.ts`)：按 `StrategyRegistry.getStrategies()` 顺序尝试策略，首个返回非空结果即停止。顺序为两个纯 fetch 策略在前——RSS（`google-news-rss.ts`，命中质量最好、绕过 reCAPTCHA）、东财资讯（`eastmoney-news.ts`）——其次 Playwright 策略（`google-news.ts` / `google.ts` / `yahoo.ts`）。Chromium 懒启动——仅 Playwright 策略或深度正文提取才触发，纯 fetch 路径可节省 1–3 秒。
+
+> **东财资讯是唯一不依赖 google/yahoo 域名的新闻源**，删它等于让这两个域名不可达的地区（本项目 A 股用户的所在地）新闻抓取 100% 失败，且失败会被 `fetchMarketBundle` 报成"没有找到这只股票的相关新闻，请确认代码是否正确"——把网络不可达伪装成用户输错代码。它必须排在 Playwright 策略之前：那三个策略每个都要启浏览器并跑满导航超时，60s 的 `scrapeBudget` 撑不到它。同理，**每个策略的对外请求都必须经 `fetchWithPolicy`**——裸 `fetch` 没有超时，一个不可达的域名就能挂满整份预算，让后面的备源一次都轮不到（RSS 曾如此）。因为链路首个成功即返回，CI 上 RSS 永远先命中、东财一次都跑不到，所以它的真网络断言在 `scraper.integration.ts` 里**直接打策略**而非走 `scrapeStockNews`。`deepMode=true`（默认）时对前 3 条抽取正文。纯解析助手（HTML / 交易所识别）在 `sidecar/parsers/{html,exchange}.ts`，与网络层解耦。
 2. **Analyze** (`analysis.ts`)：委托 `providers/registry.ts` 工厂创建 provider，再调 `provider.analyze()`。Prompt 构建统一在 `prompts.ts`。
 
 结果以 JSON 字符串写 stdout，由 Tauri 捕获返回前端。**stdout 只允许有最终 JSON，调试日志一律走 stderr。**

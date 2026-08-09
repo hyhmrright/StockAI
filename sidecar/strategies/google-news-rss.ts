@@ -1,5 +1,6 @@
 import type { StockNews } from '../../shared/types';
 import { todayISO, toErrorMessage, logger } from '../utils';
+import { fetchWithPolicy } from '../http';
 import type { ScrapeContext, ScrapeStrategy } from './base';
 import { parseSymbol } from '../parsers/exchange';
 
@@ -11,7 +12,7 @@ import { parseSymbol } from '../parsers/exchange';
 export class GoogleNewsRSSStrategy implements ScrapeStrategy {
   readonly name = 'Google News RSS';
 
-  constructor(private readonly _fetch: typeof globalThis.fetch = globalThis.fetch) {}
+  constructor(private readonly fetchImpl?: typeof fetch) {}
 
   async scrape(symbol: string, _ctx: ScrapeContext): Promise<StockNews[]> {
     const parsed = parseSymbol(symbol);
@@ -22,7 +23,7 @@ export class GoogleNewsRSSStrategy implements ScrapeStrategy {
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
 
     try {
-      const resp = await this._fetch(url);
+      const resp = await fetchWithPolicy(url, { fetchImpl: this.fetchImpl });
       if (!resp.ok) {
         throw new Error(`HTTP 错误! 状态码: ${resp.status}`);
       }
