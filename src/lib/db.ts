@@ -120,13 +120,31 @@ export async function saveMasterSignals(
 
   const db = await getDb();
   const recordedAt = Date.now();
-  for (const s of signals) {
-    await db.execute(
-      `INSERT INTO master_signals (master_id, symbol, signal, confidence, price_at, recorded_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [s.masterId, symbol, s.signal, s.confidence, priceAt ?? null, recordedAt],
-    );
-  }
+
+  // 单条多行 INSERT，而非逐条 await：一次深度分析的 13 条 signal 是一个整体，
+  // 中途失败留下半份记录会直接歪掉命中率与动态权重的口径（这张表就是那两项的数据基础）。
+  // 单语句天然原子，顺带把 13 次 IPC 往返压成 1 次。
+  const columns = 6;
+  const rows = signals
+    .map((_, i) => {
+      const base = i * columns;
+      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`;
+    })
+    .join(', ');
+  const values = signals.flatMap((s) => [
+    s.masterId,
+    symbol,
+    s.signal,
+    s.confidence,
+    priceAt ?? null,
+    recordedAt,
+  ]);
+
+  await db.execute(
+    `INSERT INTO master_signals (master_id, symbol, signal, confidence, price_at, recorded_at)
+     VALUES ${rows}`,
+    values,
+  );
 }
 
 interface RawSignalRow {
