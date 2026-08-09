@@ -36,6 +36,20 @@ describe('detectChinaStock', () => {
     expect(result!.googleSuffix).toBe('BJS');
   });
 
+  // 920 是北交所 2024 年启用的新号段，东财北交所板块头部已基本被它占满
+  // （实测 m:0 t:81 s:2048 前 5 只全是 920xxx）。漏认会让这些股票落进美股链路取不到数据。
+  test('920 开头识别为北交所', () => {
+    const result = detectChinaStock('920008');
+    expect(result).not.toBeNull();
+    expect(result!.googleSuffix).toBe('BJS');
+    expect(result!.sinaPrefix).toBe('bj');
+  });
+
+  // 900 是沪 B 股，与 920 只差一位但归属上交所——不能按「9 开头即北交所」放行
+  test('900 开头（沪 B）不误判为北交所', () => {
+    expect(detectChinaStock('900901')?.googleSuffix).not.toBe('BJS');
+  });
+
   test('纯英文代码返回 null（非 A 股）', () => {
     expect(detectChinaStock('AAPL')).toBeNull();
     expect(detectChinaStock('TSLA')).toBeNull();

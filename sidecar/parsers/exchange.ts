@@ -104,7 +104,9 @@ export function detectChinaStock(symbol: string): ChinaStockInfo | null {
   if (first === '0' || first === '3') {
     return { code, googleSuffix: 'SZE', yahooSuffix: '.SZ', sinaPrefix: 'sz' };
   }
-  if (first === '4' || first === '8') {
+  // 北交所：430/83x/87x/88x 为存量号段，920 为 2024 年启用的新号段。
+  // 920 不能简化为「9 开头」——900xxx 是沪 B 股，两者归属不同交易所。
+  if (first === '4' || first === '8' || code.startsWith('920')) {
     return { code, googleSuffix: 'BJS', yahooSuffix: '.BJ', sinaPrefix: 'bj' };
   }
 
