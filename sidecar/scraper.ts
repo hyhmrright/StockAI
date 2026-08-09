@@ -4,7 +4,7 @@ import type { ScrapeStrategy, ScrapeContext } from './strategies/base';
 import { StrategyRegistry } from './strategies/registry';
 import { DEEP_MODE_MAX_ARTICLES, TIMEOUTS } from './config';
 import { extractFullContent } from './content-extractor';
-import { toErrorMessage, logger, withTimeout } from './utils';
+import { toErrorMessage, logger, withTimeout, runWithConcurrency } from './utils';
 import { BrowserManager } from './browser-manager';
 
 /** 测试注入点；生产不传。避开 bun:test 全局 mock.module 导致的跨文件状态泄漏。 */
@@ -15,6 +15,15 @@ export interface ScraperDeps {
   /** 覆盖单次抓取总预算，仅为让超时用例秒级跑完；生产走 TIMEOUTS.scrapeBudget */
   budgetMs?: number;
 }
+
+/**
+ * 并行提取正文时同时打开的页面数上限。
+ *
+ * 与 DEEP_MODE_MAX_ARTICLES 刻意写成两个常量：一个并发页就是一个 Chromium 标签页，
+ * 属于内存开销，不该跟着"抓几篇文章"这个产品口径一起涨。两者共用同一个值会让上限
+ * 形同虚设——limit 恒等于任务数，读起来像有节流、实际没有。
+ */
+const EXTRACT_CONCURRENCY = 3;
 
 /**
  * 给一段抓取工作套上剩余预算。
@@ -98,7 +107,7 @@ export async function scrapeStockNews(
         logger.warn(`已耗尽 ${budgetMs}ms 预算，跳过正文提取，仅用新闻概要`);
       } else {
         await withBudget(
-          enrichWithFullContent(news, ctx.getPage, deps?.extractContent),
+          enrichWithFullContent(news, () => browserMgr.newPage(), deps?.extractContent),
           deadline - Date.now(),
           '正文提取',
         ).catch((err) => logger.warn(toErrorMessage(err)));
@@ -114,28 +123,37 @@ export async function scrapeStockNews(
 }
 
 /**
- * 深度模式：为前 N 条新闻补齐正文（就地修改）
- * getPage 工厂函数仅在首次真正需要时被调用，RSS 纯路径不触发 Chromium 启动。
+ * 深度模式：为前 N 条新闻补齐正文（就地修改）。
+ *
+ * **并行提取，每条各用一个页面**。串行版实测是整条链最大的单项开销：3 条各约 4.3s、
+ * 合计 12.85s，占一次 A 股深度模式抓取（21.9s）的 59%——而这三次几乎全是等网络，
+ * 排队等没有任何理由。各用各的页面是必须的：同一个 page 上并发 goto 会互相冲掉导航。
+ * 并发上限见 EXTRACT_CONCURRENCY，页面由 close() 在 context 层一并回收。
+ *
+ * newPage 工厂仅在首次真正需要时被调用，RSS 纯路径不触发 Chromium 启动。
+ * 单条失败只吞掉自己（runWithConcurrency 是 Promise.all 语义，不 catch 会拖垮整批）。
  */
 async function enrichWithFullContent(
   news: StockNews[],
-  getPage: () => Promise<Page>,
+  newPage: () => Promise<Page>,
   extract?: typeof extractFullContent,
 ): Promise<void> {
   const doExtract = extract ?? extractFullContent;
   logger.info('深度模式已开启，正在提取新闻正文...');
-  const count = Math.min(news.length, DEEP_MODE_MAX_ARTICLES);
-  let page: Page | null = null;
-  for (let i = 0; i < count; i++) {
-    try {
-      page ??= await getPage();
-      const content = await doExtract(page, news[i].url);
-      if (content) {
-        news[i].content = content;
-        logger.info(`  - 已提取正文: ${news[i].title.substring(0, 30)}...`);
+  const targets = news.slice(0, DEEP_MODE_MAX_ARTICLES);
+
+  await runWithConcurrency(
+    targets.map((item) => async () => {
+      try {
+        const content = await doExtract(await newPage(), item.url);
+        if (content) {
+          item.content = content;
+          logger.info(`  - 已提取正文: ${item.title.substring(0, 30)}...`);
+        }
+      } catch (e) {
+        logger.warn(`  - 无法提取正文 [${item.title.substring(0, 20)}]: ${toErrorMessage(e)}`);
       }
-    } catch (e) {
-      logger.warn(`  - 无法提取正文 [${news[i].title.substring(0, 20)}]: ${toErrorMessage(e)}`);
-    }
-  }
+    }),
+    EXTRACT_CONCURRENCY,
+  );
 }

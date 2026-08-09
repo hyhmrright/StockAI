@@ -75,6 +75,19 @@ export class BrowserManager {
   }
 
   /**
+   * 再开一个独立页面，供并行任务使用。
+   *
+   * 与 getPage() 共用同一个 browser / context——**因此 close() 无需改动**：它拆的是
+   * context 与 browser，两者一关，从中开出的所有页面一并回收，不会漏出孤儿页。
+   * 先 await getPage() 是为了复用那一次懒启动（含系统浏览器回退），而不是各自去 launch。
+   */
+  async newPage(): Promise<Page> {
+    await this.getPage();
+    if (!this.context) throw new Error('浏览器上下文不可用');
+    return this.context.newPage();
+  }
+
+  /**
    * 设置 Playwright 寻找 browsers.json 的路径
    * 适配 Tauri 2.0 打包后的目录结构
    */

@@ -18,13 +18,16 @@ function makeStrategy(
 /** 创建模拟 BrowserManager（只关心 close 是否被调用） */
 function makeBrowserMgr() {
   const closeFn = mock(() => Promise.resolve());
+  const newPageFn = mock(() => Promise.resolve({} as any));
   return {
     mgr: {
       getPage: mock(() => Promise.resolve({} as any)),
+      newPage: newPageFn,
       close: closeFn,
       // BrowserManager 其余属性测试无需关注
     } as any,
     closeFn,
+    newPageFn,
   };
 }
 
@@ -193,6 +196,70 @@ describe('scrapeStockNews', () => {
     });
 
     expect(result).toHaveLength(1);
+  });
+
+  test('多条正文并行提取，而不是一条接一条排队', async () => {
+    // 实测串行提取是整条链最大的单项开销：3 条各约 4.3s，合计 12.85s，
+    // 占一次 A 股深度模式抓取（21.9s）的 59%。
+    let inFlight = 0;
+    let peak = 0;
+    const extractContent = mock(async () => {
+      peak = Math.max(peak, ++inFlight);
+      await new Promise((r) => setTimeout(r, 30));
+      inFlight--;
+      return '正文';
+    });
+    const news = [
+      createMockNews({ title: 'a', url: 'https://a' }),
+      createMockNews({ title: 'b', url: 'https://b' }),
+      createMockNews({ title: 'c', url: 'https://c' }),
+    ];
+    const { mgr } = makeBrowserMgr();
+
+    await scrapeStockNews('AAPL', true, {
+      strategies: [makeStrategy('RSS', () => Promise.resolve(news))],
+      browserMgr: mgr,
+      extractContent,
+    });
+
+    expect(extractContent).toHaveBeenCalledTimes(3);
+    expect(peak).toBeGreaterThan(1);
+  });
+
+  test('每条正文用各自的页面——同一页面并发导航会互相冲掉', async () => {
+    const news = [
+      createMockNews({ title: 'a', url: 'https://a' }),
+      createMockNews({ title: 'b', url: 'https://b' }),
+    ];
+    const { mgr, newPageFn } = makeBrowserMgr();
+
+    await scrapeStockNews('AAPL', true, {
+      strategies: [makeStrategy('RSS', () => Promise.resolve(news))],
+      browserMgr: mgr,
+      extractContent: mock(() => Promise.resolve('正文')),
+    });
+
+    expect(newPageFn).toHaveBeenCalledTimes(2);
+  });
+
+  test('单条正文提取失败不影响其余条目', async () => {
+    const news = [
+      createMockNews({ title: 'a', url: 'https://a', content: '原摘要A' }),
+      createMockNews({ title: 'b', url: 'https://b', content: '原摘要B' }),
+    ];
+    const { mgr } = makeBrowserMgr();
+
+    const result = await scrapeStockNews('AAPL', true, {
+      strategies: [makeStrategy('RSS', () => Promise.resolve(news))],
+      browserMgr: mgr,
+      extractContent: mock((_p: any, url: string) =>
+        url === 'https://a' ? Promise.reject(new Error('提取炸了')) : Promise.resolve('正文B'),
+      ) as any,
+    });
+
+    // 失败的那条保留原摘要，不被清空；成功的那条正常覆盖
+    expect(result[0].content).toBe('原摘要A');
+    expect(result[1].content).toBe('正文B');
   });
 
   test('正文提取失败不会导致策略被重新执行', async () => {
