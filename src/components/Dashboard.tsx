@@ -1,20 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import PriceChart from './PriceChart';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { SettingsModal } from './SettingsModal';
 import { useAnalysisSuite } from '../hooks/useAnalysisSuite';
 import { useChat } from '../hooks/useChat';
 import { DEFAULT_WATCHLIST } from '../hooks/useWatchlist';
 import { usePersistAnalysisResults } from '../hooks/usePersistAnalysisResults';
 import { useLanguage } from '../hooks/useLanguage';
-import { useSettings } from '../hooks/useSettings';
-import OnboardingGuide from './OnboardingGuide';
+import { useModalRouter } from '../hooks/useModalRouter';
 import Watchlist from './Watchlist';
 import SearchHeader from './SearchHeader';
 import IndexBar from './IndexBar';
-import MarketOverviewModal from './MarketOverviewModal';
-import NlScreenerModal from './Screener/NlScreenerModal';
-import PortfolioModal from './Portfolio/PortfolioModal';
+import DashboardModals from './DashboardModals';
 import AnalysisPanel from './AnalysisPanel';
 import ChatPanel from './ChatPanel';
 import PriceSummaryCards from './PriceSummaryCards';
@@ -32,14 +28,7 @@ import type { ChatContext, BacktestResult } from '../../shared/types';
  * 本组件只管布局与标的路由；分析状态全部由 useAnalysisSuite 持有。
  */
 const Dashboard: React.FC = () => {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isScreenerOpen, setIsScreenerOpen] = useState(false);
-  // 持仓弹窗按需挂载：usePortfolio 会拉 SQLite 并轮询报价，不开就不该跑
-  const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
-  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
-  // 引导只在本次运行内可关：不落盘「已看过」，因为真正的退出条件是保存一次配置——
-  // 保存后 needsSetup 会经 useSettings 单例回落，引导自行消失。
-  const [guideDismissed, setGuideDismissed] = useState(false);
+  const modal = useModalRouter();
   const [currentSymbol, setCurrentSymbol] = useState(DEFAULT_WATCHLIST[0].sym);
   // 回测结果提升到此：BacktestPanel（右列）跑出，PriceChart（中列）叠加买卖点/净值曲线共用
   const [backtest, setBacktest] = useState<BacktestResult | null>(null);
@@ -47,7 +36,6 @@ const Dashboard: React.FC = () => {
   const suite = useAnalysisSuite(currentSymbol);
   const { step, stockInfo, news, dataError, quant } = suite;
   const { t } = useLanguage();
-  const { needsSetup } = useSettings();
 
   // 追问上下文：从已抓新闻/量化/已有分析精简，作为对话事实底座（不重复抓取）
   const chatContext = useMemo<ChatContext>(
@@ -92,12 +80,12 @@ const Dashboard: React.FC = () => {
       <SearchHeader
         onSearch={setCurrentSymbol}
         loading={busy}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenScreener={() => setIsScreenerOpen(true)}
-        onOpenPortfolio={() => setIsPortfolioOpen(true)}
+        onOpenSettings={() => modal.open('settings')}
+        onOpenScreener={() => modal.open('screener')}
+        onOpenPortfolio={() => modal.open('portfolio')}
         stepLabel={stepLabel}
       />
-      <IndexBar onOpenOverview={() => setIsOverviewOpen(true)} />
+      <IndexBar onOpenOverview={() => modal.open('overview')} />
 
       {/* 小屏纵向排列并整体滚动；lg 以上横向排列各区域独立滚动 */}
       <main className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
@@ -157,34 +145,12 @@ const Dashboard: React.FC = () => {
         />
       </main>
 
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-
-      {/* 首启引导：从未保存过配置时挡在最前，指路到设置面板 */}
-      <OnboardingGuide
-        isOpen={needsSetup && !guideDismissed}
-        onConfigure={() => {
-          setGuideDismissed(true);
-          setIsSettingsOpen(true);
-        }}
-        onDismiss={() => setGuideDismissed(true)}
-      />
-
-      {/* 智能选股模态：选中结果行 → 切到该股票的常规分析流（模态内部自行关闭） */}
-      <NlScreenerModal
-        isOpen={isScreenerOpen}
-        onClose={() => setIsScreenerOpen(false)}
+      <DashboardModals
+        active={modal.active}
+        onOpen={modal.open}
+        onClose={modal.close}
         onSelect={setCurrentSymbol}
       />
-
-      {/* 市场概览：点顶部指数条展开，只在打开时拉一次板块榜 */}
-      {isOverviewOpen && (
-        <MarketOverviewModal onClose={() => setIsOverviewOpen(false)} onSelect={setCurrentSymbol} />
-      )}
-
-      {/* 我的持仓：只在打开时挂载，避免不看持仓也在轮询报价 */}
-      {isPortfolioOpen && (
-        <PortfolioModal onClose={() => setIsPortfolioOpen(false)} onSelect={setCurrentSymbol} />
-      )}
     </div>
   );
 };
