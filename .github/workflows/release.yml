@@ -104,22 +104,26 @@ jobs:
       # 预置较新版 linuxdeploy(遇 ldd 失败改为警告跳过)到 Tauri 缓存覆盖之。
       # pin SHA256 防供应链篡改：哈希不符则构建 loud 失败，需人工复核后更新此值。
       #
-      # 为什么跟滚动的 continuous 而不是某个不可变 tag：上游最新正式 tag 是 1-alpha-20251107-1，
-      # 早于我们依赖的两处修复(2026-04-27 Fix dynamic linking on Linux、2026-05-12 Don't fail
-      # if missing dependency is in excludeLibraryPatterns)，钉过去等于退回 abort 之前。
-      # 代价是上游每隔约一个月重建 continuous、原地换掉资产，此值就会失配并卡住发版
-      # (已发生三次：2026-06-01 / 07-12 / 08-01 轮换)。重新钉的复核步骤：
-      #   1. 确认资产来自官方 repo、uploader 为 github-actions[bot]、updated_at 与上游最新提交对得上
-      #   2. curl 下来 shasum -a 256，把值填到下面
+      # 为什么从本仓库的 release 取、而不是直连上游：上游把它发在**滚动** tag continuous 上，
+      # 每隔约一个月重建、原地换掉资产，钉死的哈希必然失配、当场卡住发版
+      # (2026-06-01 / 07-12 / 08-01 连卡三次)。也不能改钉上游的不可变 tag——最新正式 tag
+      # 1-alpha-20251107-1 早于我们依赖的两处修复(2026-04-27 Fix dynamic linking on Linux、
+      # 2026-05-12 Don't fail if missing dependency is in excludeLibraryPatterns)，
+      # 钉过去等于退回 abort 之前。镜像一份到自己的 release 资产，字节就永不变了。
+      #
+      # 镜像的溯源与「什么时候该换新」写在该 release 的正文里：
+      # https://github.com/hyhmrright/StockAI/releases/tag/linuxdeploy-continuous-20260801
+      # 换新时建**新** release(勿覆盖旧资产，否则旧 tag 的构建不可复现)，再同步下面两个值。
       - name: Pre-seed pinned linuxdeploy (Linux AppImage)
         if: matrix.platform == 'ubuntu-24.04'
         env:
-          # 2026-08-01 轮换，对应上游 07333c6 "Update binutils to latest release"
+          # 上游 continuous @ 07333c6 "Update binutils to latest release" (2026-08-01) 的镜像，
+          # 即 v0.16.0 实际打出 AppImage 所用的那一份字节
+          LD_URL: https://github.com/hyhmrright/StockAI/releases/download/linuxdeploy-continuous-20260801/linuxdeploy-x86_64.AppImage
           LD_SHA256: 421ca71d5c69ea97c6309276232990d43df1dcece0edfaa26bbf926ff96ed12e
         run: |
           mkdir -p ~/.cache/tauri
-          curl -fsSL --retry 5 -o ~/.cache/tauri/linuxdeploy-x86_64.AppImage \
-            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -fsSL --retry 5 -o ~/.cache/tauri/linuxdeploy-x86_64.AppImage "${LD_URL}"
           echo "${LD_SHA256}  ${HOME}/.cache/tauri/linuxdeploy-x86_64.AppImage" | sha256sum -c -
           chmod +x ~/.cache/tauri/linuxdeploy-x86_64.AppImage
 
