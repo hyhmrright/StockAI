@@ -259,9 +259,12 @@ export interface SectorRank {
   code: string; // 板块代码，如 BK0899
   name: string; // 板块名，如 CRO
   changePercent: number; // 板块涨跌幅(%)
-  mainNetInflow: number; // 主力净流入(元)
-  advancers: number; // 板块内上涨家数
-  decliners: number; // 板块内下跌家数
+  // 以下三项**可选**：东财给，新浪（东财整机故障时的备源）不给。
+  // 缺了要让 UI 显示「—」，绝不能填 0——「主力净流入 0」会被读成"没有资金进出"，
+  // 那是一句我们并不知道的断言。
+  mainNetInflow?: number; // 主力净流入(元)
+  advancers?: number; // 板块内上涨家数
+  decliners?: number; // 板块内下跌家数
   leader?: { name: string; symbol: string; changePercent: number }; // 领涨股
 }
 

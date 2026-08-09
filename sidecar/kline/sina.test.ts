@@ -5,7 +5,9 @@ import {
   parseSinaCnQuote,
   aggregateBars,
   trimToRange,
-  sinaSupportsPeriod,
+  sinaUsSupportsPeriod,
+  sinaCnSupportsPeriod,
+  parseSinaCnKline,
 } from './sina';
 import type { KlinePoint, KlinePeriod } from './types';
 
@@ -168,12 +170,12 @@ describe('trimToRange', () => {
   });
 });
 
-describe('sinaSupportsPeriod', () => {
+describe('sinaUsSupportsPeriod', () => {
   test('只认日/周/月——分钟线接口早已下线，声明支持等于白打一趟', () => {
     const supported: KlinePeriod[] = ['1d', '1w', '1mo'];
     const minute: KlinePeriod[] = ['1m', '5m', '15m', '30m', '60m'];
-    expect(supported.every(sinaSupportsPeriod)).toBe(true);
-    expect(minute.some(sinaSupportsPeriod)).toBe(false);
+    expect(supported.every(sinaUsSupportsPeriod)).toBe(true);
+    expect(minute.some(sinaUsSupportsPeriod)).toBe(false);
   });
 });
 
@@ -273,5 +275,74 @@ describe('parseSinaCnQuote', () => {
 
   test('昨收为 0 时涨跌幅取 0 而非 NaN/Infinity', () => {
     expect(parseSinaCnQuote(body({ 2: '0' }), 'sh600519').changePercent).toBe(0);
+  });
+});
+
+describe('parseSinaCnKline', () => {
+  const row = (day: string, o: number, h: number, l: number, c: number, v = 100) => ({
+    day,
+    open: String(o),
+    high: String(h),
+    low: String(l),
+    close: String(c),
+    volume: String(v),
+  });
+
+  test('裸 JSON 数组（无 JSONP 外壳）也能解析', () => {
+    const pts = parseSinaCnKline(
+      JSON.stringify([row('2026-08-07', 1308.66, 1315.28, 1301, 1309.22)]),
+    );
+    expect(pts[0]).toMatchObject({ open: 1308.66, high: 1315.28, low: 1301, close: 1309.22 });
+  });
+
+  test('日线按北京时区落点，与腾讯/东财两源口径一致', () => {
+    const [pt] = parseSinaCnKline(JSON.stringify([row('2026-08-07', 1, 2, 0.5, 1.5)]));
+    expect(new Date(pt.time * 1000).toISOString()).toBe('2026-08-06T16:00:00.000Z');
+  });
+
+  test('分钟线的日期时间串同样按北京时区解析', () => {
+    const [pt] = parseSinaCnKline(JSON.stringify([row('2026-08-07 14:55:00', 1, 2, 0.5, 1.5)]));
+    expect(new Date(pt.time * 1000).toISOString()).toBe('2026-08-07T06:55:00.000Z');
+  });
+
+  test('停牌日整根丢弃', () => {
+    const pts = parseSinaCnKline(
+      JSON.stringify([row('2026-08-06', 0, 0, 0, 0), row('2026-08-07', 1, 2, 0.5, 1.5)]),
+    );
+    expect(pts).toHaveLength(1);
+  });
+
+  test('非数组响应抛出，不静静返回空表', () => {
+    expect(() => parseSinaCnKline('null')).toThrow('不含数组体');
+  });
+});
+
+describe('sinaCnSupportsPeriod', () => {
+  test('A 股这支有分钟线，但没有 1 分钟档', () => {
+    const supported: KlinePeriod[] = ['5m', '15m', '30m', '60m', '1d', '1w', '1mo'];
+    expect(supported.every(sinaCnSupportsPeriod)).toBe(true);
+    expect(sinaCnSupportsPeriod('1m')).toBe(false);
+  });
+});
+
+describe('aggregateBars 的时区分组', () => {
+  // A 股日线落在当日 00:00+08:00 = 前一日 16:00 UTC。8/31 与 9/1 两根若按 UTC 分组，
+  // 会双双落进 8 月而被并成一根——这正是月初错组的样子。
+  const cnBar = (date: string): KlinePoint => ({
+    time: Math.floor(new Date(`${date}T00:00:00+08:00`).getTime() / 1000),
+    open: 1,
+    high: 1,
+    low: 1,
+    close: 1,
+    volume: 1,
+  });
+  const bars = [cnBar('2026-08-31'), cnBar('2026-09-01')];
+
+  test('传北京偏移后跨月正确分成两根', () => {
+    expect(aggregateBars(bars, '1mo', 8 * 3600)).toHaveLength(2);
+  });
+
+  test('不传偏移则错并成一根——本用例即该 bug 的复现', () => {
+    expect(aggregateBars(bars, '1mo')).toHaveLength(1);
   });
 });

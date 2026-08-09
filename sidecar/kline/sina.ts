@@ -23,7 +23,7 @@ async function readGbk(resp: Response): Promise<string> {
  * 新浪只提供**日** K（分钟线接口早已下线，`US_MinKService.getMinKline` 返回
  * "Service not found"），周/月由日线聚合而来。
  */
-export function sinaSupportsPeriod(period: KlinePeriod): boolean {
+export function sinaUsSupportsPeriod(period: KlinePeriod): boolean {
   return period === '1d' || period === '1w' || period === '1mo';
 }
 
@@ -35,7 +35,7 @@ export function sinaSupportsPeriod(period: KlinePeriod): boolean {
  * 4:1 拆股当天直接断崖）。Yahoo 是复权的，故本源在 KLINE_SOURCES 里排在 Yahoo 之后，
  * 只在 Yahoo 不可达（不少地区直接被墙）时兜底——有断层的历史也远好过整片空白。
  */
-export async function fetchSinaKline(
+export async function fetchSinaUsKline(
   req: NormalizedRequest,
   deps: KlineSourceDeps = {},
 ): Promise<KlinePoint[]> {
@@ -107,14 +107,22 @@ function usDateToEpoch(date: string): number {
 /**
  * 日线聚合为周/月线：开=首根开，收=末根收，高/低取极值，量求和，时间取**区间首根**
  * （lightweight-charts 与 Yahoo 的 1wk/1mo 都以区间起点为 bar 时间）。
+ *
+ * `tzOffsetSec` 是**分组用**的时区偏移，不改写 bar 时间本身。必须传对，否则月初会错组：
+ * A 股日线打在当日 `00:00+08:00`，即前一日 16:00 UTC——2026-09-01 那根按 UTC 算是
+ * 8 月，会被并进上个月。美股日线打在 14:00 UTC、本就落在正确的 UTC 日历日，故传 0。
  */
-export function aggregateBars(daily: KlinePoint[], period: '1w' | '1mo'): KlinePoint[] {
+export function aggregateBars(
+  daily: KlinePoint[],
+  period: '1w' | '1mo',
+  tzOffsetSec = 0,
+): KlinePoint[] {
   const keyOf = period === '1mo' ? monthKey : weekKey;
   const out: KlinePoint[] = [];
   // 初值用 null 而非 ''：任何 keyOf 的返回值都不会与它相等，首根必定开新组
   let key: string | null = null;
   for (const bar of daily) {
-    const k = keyOf(bar.time);
+    const k = keyOf(bar.time + tzOffsetSec);
     if (k !== key) {
       key = k;
       out.push({ ...bar });
@@ -160,6 +168,106 @@ export function trimToRange(bars: KlinePoint[], range: KlineRange, now = Date.no
       ? Math.floor(Date.UTC(new Date(now).getUTCFullYear(), 0, 1) / 1000)
       : Math.floor(now / 1000) - RANGE_DAYS[range] * 86400;
   return bars.filter((b) => b.time >= cutoff);
+}
+
+// ───────────────────────── A 股 K 线 ─────────────────────────
+
+/** 北京时区偏移，A 股的日期串与分组都按它算 */
+const CN_TZ_OFFSET_SEC = 8 * 3600;
+
+/**
+ * 通用周期 → 新浪 scale（分钟数）。新浪没有 1 分钟档，也没有周/月档：
+ * 周/月由 240（日线）聚合而来。
+ */
+const CN_SCALE: Partial<Record<KlinePeriod, number>> = {
+  '5m': 5,
+  '15m': 15,
+  '30m': 30,
+  '60m': 60,
+  '1d': 240,
+  '1w': 240,
+  '1mo': 240,
+};
+
+/** 新浪 A 股支持的周期——缺 1 分钟档，声明支持等于白打一趟 */
+export function sinaCnSupportsPeriod(period: KlinePeriod): boolean {
+  return CN_SCALE[period] !== undefined;
+}
+
+/** 新浪单次返回上限 */
+const CN_MAX_BARS = 1023;
+
+/**
+ * 拉取 A 股 K 线。排在腾讯、东财**之后**：本接口是**不复权**的，
+ * 前两者都给前复权。只在它们都不可达时兜底（东财 push2his 就时常整个挂掉）。
+ */
+export async function fetchSinaCnKline(
+  req: NormalizedRequest,
+  deps: KlineSourceDeps = {},
+): Promise<KlinePoint[]> {
+  const scale = CN_SCALE[req.period];
+  if (!scale) throw new Error(`新浪 A 股 K 线不支持周期：${req.period}`);
+  const { prefix, code } = parseChinaSymbol(req.rawSymbol);
+
+  const url = `https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${prefix}${code}&scale=${scale}&ma=no&datalen=${CN_MAX_BARS}`;
+  const resp = await fetchWithPolicy(url, { headers: SINA_HEADERS, fetchImpl: deps.fetchImpl });
+  if (!resp.ok) throw new Error(`新浪 A 股 K 线 HTTP ${resp.status}`);
+
+  const bars = parseSinaCnKline(await resp.text());
+  const shaped =
+    req.period === '1w' || req.period === '1mo'
+      ? aggregateBars(bars, req.period, CN_TZ_OFFSET_SEC)
+      : bars;
+  return trimToRange(shaped, req.range);
+}
+
+/** 新浪 A 股 K 线单条：day 在日线是 "2026-08-07"、分钟线是 "2026-08-07 14:55:00" */
+interface SinaCnKlineRow {
+  day?: string;
+  open?: string;
+  high?: string;
+  low?: string;
+  close?: string;
+  volume?: string;
+}
+
+/** 与美股日 K 不同，这个接口返回的是裸 JSON 数组，没有 JSONP 外壳 */
+export function parseSinaCnKline(raw: string): KlinePoint[] {
+  const start = raw.indexOf('[');
+  const end = raw.lastIndexOf(']');
+  if (start < 0 || end <= start) throw new Error('新浪 A 股 K 线响应不含数组体');
+
+  let rows: SinaCnKlineRow[];
+  try {
+    rows = JSON.parse(raw.slice(start, end + 1));
+  } catch {
+    throw new Error('新浪 A 股 K 线响应 JSON 解析失败');
+  }
+
+  const points: KlinePoint[] = [];
+  for (const r of rows) {
+    if (!r?.day) continue;
+    const open = Number(r.open);
+    const high = Number(r.high);
+    const low = Number(r.low);
+    const close = Number(r.close);
+    if (![open, high, low, close].every((v) => Number.isFinite(v) && v > 0)) continue;
+    points.push({
+      time: cnDateToEpoch(r.day),
+      open,
+      high,
+      low,
+      close,
+      volume: Number(r.volume) || 0,
+    });
+  }
+  return points;
+}
+
+/** 日期/时间串按北京时区解析，与腾讯、东财两源的口径一致 */
+function cnDateToEpoch(day: string): number {
+  const iso = day.length === 10 ? `${day}T00:00:00+08:00` : `${day.replace(' ', 'T')}+08:00`;
+  return Math.floor(new Date(iso).getTime() / 1000);
 }
 
 // ───────────────────────── 报价 ─────────────────────────

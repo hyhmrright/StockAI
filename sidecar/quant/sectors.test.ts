@@ -88,15 +88,83 @@ describe('fetchSectorBoards', () => {
     expect(boards.fetchedAt).toBeGreaterThan(0);
   });
 
-  test('一张榜失败即整体失败——半截的市场概览比没有更容易误导', async () => {
-    const halfBroken = (async (url: string) =>
-      String(url).includes('t:3')
-        ? new Response('', { status: 500 })
-        : new Response(JSON.stringify({ data: { diff: [ROW] } }))) as unknown as typeof fetch;
+  /** 新浪板块榜的最小合法响应（GBK 在 fixture 里无所谓，字段全是 ASCII 与中文名） */
+  function sinaBoardBody(rows: string[][]) {
+    const table = Object.fromEntries(rows.map((f) => [f[0], f.join(',')]));
+    return `var S_Finance_bankuai = ${JSON.stringify(table)};`;
+  }
+  const sinaRow = (code: string, name: string, pct: string) => [
+    code,
+    name,
+    '19',
+    '17.06',
+    '0.71',
+    pct,
+    '938514036',
+    '25437696452',
+    'sz300395',
+    '9.495',
+    '89.600',
+    '7.770',
+    'LEADER',
+  ];
 
-    await expect(fetchSectorBoards({ fetchImpl: halfBroken, ...noCache })).rejects.toThrow(
-      '东财板块榜 HTTP 500',
-    );
+  test('一张榜失败即整组回退到新浪——不混用两个源，字段覆盖度不一致更像 bug', async () => {
+    const calls: string[] = [];
+    const halfBroken = (async (url: string) => {
+      calls.push(String(url));
+      if (String(url).includes('sina.com.cn')) {
+        return new Response(sinaBoardBody([sinaRow('new_blhy', 'GLASS-IND', '4.35')]));
+      }
+      // 概念那张挂掉，行业那张是好的
+      return String(url).includes('t:3')
+        ? new Response('', { status: 500 })
+        : new Response(JSON.stringify({ data: { diff: [ROW] } }));
+    }) as unknown as typeof fetch;
+
+    const boards = await fetchSectorBoards({ fetchImpl: halfBroken, ...noCache });
+    // 行业那张东财本来是成功的，但仍整组改用新浪
+    expect(boards.industry[0].name).toBe('GLASS-IND');
+    expect(boards.concept[0].name).toBe('GLASS-IND');
+    expect(calls.filter((u) => u.includes('sina.com.cn'))).toHaveLength(2);
+  });
+
+  test('东财与新浪都失败才整体抛出', async () => {
+    await expect(
+      fetchSectorBoards({
+        fetchImpl: (async () => new Response('', { status: 500 })) as unknown as typeof fetch,
+        ...noCache,
+      }),
+    ).rejects.toThrow('新浪板块榜 HTTP 500');
+  });
+
+  test('备源没有资金流与涨跌家数，留空而不是填 0', async () => {
+    // 「主力净流入 0」会被读成"没有资金进出"，那是一句我们并不知道的断言
+    const boards = await fetchSectorBoards({
+      fetchImpl: (async (url: string) =>
+        String(url).includes('sina.com.cn')
+          ? new Response(sinaBoardBody([sinaRow('new_blhy', 'GLASS-IND', '4.35')]))
+          : new Response('', { status: 502 })) as unknown as typeof fetch,
+      ...noCache,
+    });
+    const row = boards.industry[0];
+    expect(row.changePercent).toBe(4.35);
+    expect(row.mainNetInflow).toBeUndefined();
+    expect(row.advancers).toBeUndefined();
+    expect(row.decliners).toBeUndefined();
+    expect(row.leader).toMatchObject({ name: 'LEADER', symbol: 'sz300395' });
+  });
+
+  test('备源解析为空时抛出，不把东财故障伪装成空面板', async () => {
+    await expect(
+      fetchSectorBoards({
+        fetchImpl: (async (url: string) =>
+          String(url).includes('sina.com.cn')
+            ? new Response('var S_Finance_bankuai = {};')
+            : new Response('', { status: 502 })) as unknown as typeof fetch,
+        ...noCache,
+      }),
+    ).rejects.toThrow('新浪板块榜解析为空');
   });
 
   /** 加缓存的全部理由：两张榜合计约 1.8s，而面板按页签条件挂载，开关弹窗即重取 */

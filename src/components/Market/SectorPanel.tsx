@@ -29,11 +29,18 @@ const SectorList: React.FC<{
           >
             <div className="min-w-0">
               <div className="text-sm text-gray-200 truncate">{s.name}</div>
+              {/* 备源（新浪）没有这两项，缺失时显示「—」而不是 0——0 会被读成"没有资金进出" */}
               <div className="text-[10px] text-gray-600 font-mono">
-                {t('sectors_breadth')} {s.advancers}/{s.decliners} · {t('sectors_main_inflow')}{' '}
-                <span style={{ color: tone(s.mainNetInflow) }}>
-                  {formatAmount(s.mainNetInflow)}
-                </span>
+                {t('sectors_breadth')}{' '}
+                {s.advancers == null || s.decliners == null ? '—' : `${s.advancers}/${s.decliners}`}{' '}
+                · {t('sectors_main_inflow')}{' '}
+                {s.mainNetInflow == null ? (
+                  '—'
+                ) : (
+                  <span style={{ color: tone(s.mainNetInflow) }}>
+                    {formatAmount(s.mainNetInflow)}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3 shrink-0">

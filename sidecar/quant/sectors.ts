@@ -3,6 +3,7 @@ import * as path from 'path';
 import type { SectorBoards, SectorRank } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
 import { fetchWithPolicy } from '../http';
+import { logger, toErrorMessage } from '../utils';
 
 /**
  * 板块涨幅榜（东财 push2 clist，与 market-snapshot 同一端点、不同 fs 过滤）。
@@ -108,11 +109,102 @@ async function fetchBoard(kind: SectorBoardKind, deps: SectorDeps): Promise<Sect
   return parseSectorPage(await resp.json());
 }
 
+// ─────────────────── 新浪备源 ───────────────────
+
 /**
- * 抓取行业 + 概念两张涨幅榜。
+ * 东财 push2 整机故障时的备源（2026-08-09 实测 502，板块榜整块打不开）。
  *
+ * 覆盖度不如东财：**没有主力净流入，也没有涨跌家数**——那三个字段留空，
+ * 由 UI 显示「—」。填 0 会被读成"没有资金进出"，是一句我们并不知道的断言。
+ */
+const SINA_BOARD_URL: Record<SectorBoardKind, string> = {
+  industry: 'https://vip.stock.finance.sina.com.cn/q/view/newSinaHy.php',
+  concept: 'https://vip.stock.finance.sina.com.cn/q/view/newFLJK.php?param=class',
+};
+
+/**
+ * 新浪板块响应：`var X = {"代码":"逗号分隔的一行", ...};`（GBK）。
+ * 行内字段（0-based）：0=代码 1=名称 2=公司家数 3=平均价 4=涨跌额 5=涨跌幅%
+ *                     6=总成交量 7=总成交额 8=领涨股代码 9=领涨股涨跌幅
+ *                     10=领涨股现价 11=领涨股涨跌额 12=领涨股名称
+ */
+export function parseSinaSectorPage(text: string, top = SECTOR_TOP_N): SectorRank[] {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end <= start) throw new Error('新浪板块榜响应不含对象体');
+
+  let table: Record<string, string>;
+  try {
+    table = JSON.parse(text.slice(start, end + 1));
+  } catch {
+    throw new Error('新浪板块榜响应 JSON 解析失败');
+  }
+
+  return (
+    Object.values(table)
+      .map((line) => String(line).split(','))
+      .filter((f) => f.length >= 13 && f[0] && Number.isFinite(Number(f[5])))
+      .map((f) => ({
+        code: f[0],
+        name: f[1],
+        changePercent: Number(Number(f[5]).toFixed(2)),
+        // mainNetInflow / advancers / decliners 本源没有，刻意不填
+        leader:
+          f[8] && f[12]
+            ? // 不能复用上面的 num()：它只认 number 类型，而新浪整行都是字符串，会恒得 0
+              { name: f[12], symbol: f[8], changePercent: Number(Number(f[9]).toFixed(2)) || 0 }
+            : undefined,
+      }))
+      // 新浪返回全量且不排序，涨幅榜要自己排
+      .sort((a, b) => b.changePercent - a.changePercent)
+      .slice(0, top)
+  );
+}
+
+async function fetchSinaBoard(kind: SectorBoardKind, deps: SectorDeps): Promise<SectorRank[]> {
+  const resp = await fetchWithPolicy(SINA_BOARD_URL[kind], {
+    headers: { Referer: 'https://finance.sina.com.cn' },
+    fetchImpl: deps.fetchImpl,
+  });
+  if (!resp.ok) throw new Error(`新浪板块榜 HTTP ${resp.status}`);
+  // 板块名是中文，GBK 直接 text() 会拿到乱码
+  const rows = parseSinaSectorPage(new TextDecoder('gbk').decode(await resp.arrayBuffer()));
+  // 新浪的板块恒有几百个，解析出 0 行只可能是格式变了或被挡了。
+  // 这里必须抛：备源静静返回空表，会把东财的故障伪装成"今天没有板块在动"的空面板。
+  if (rows.length === 0) throw new Error('新浪板块榜解析为空');
+  return rows;
+}
+
+/**
  * 两张榜并发拉；**一张失败即整体失败**——半截的市场概览比没有更容易误导，
  * 用户会以为"今天只有行业板块在动"。
+ *
+ * 回退是**整组**回退而非逐张：两张榜混用不同源会让两边的字段覆盖度不一致
+ * （东财那张有资金流、新浪那张没有），并排看更像 bug。
+ */
+async function fetchBothBoards(deps: SectorDeps): Promise<[SectorRank[], SectorRank[]]> {
+  try {
+    return await fetchEastmoneyBoards(deps);
+  } catch (err) {
+    logger.warn(`东财板块榜失败，回退新浪：${toErrorMessage(err)}`);
+    return await fetchSinaBoards(deps);
+  }
+}
+
+/**
+ * 两个源各自导出，供集成测试**逐源直连**——走 fetchSectorBoards 的话，
+ * 新浪的成功会掩盖东财的失效，那正是每日冒烟要暴露的东西。
+ */
+export function fetchEastmoneyBoards(deps: SectorDeps = {}): Promise<[SectorRank[], SectorRank[]]> {
+  return Promise.all([fetchBoard('industry', deps), fetchBoard('concept', deps)]);
+}
+
+export function fetchSinaBoards(deps: SectorDeps = {}): Promise<[SectorRank[], SectorRank[]]> {
+  return Promise.all([fetchSinaBoard('industry', deps), fetchSinaBoard('concept', deps)]);
+}
+
+/**
+ * 抓取行业 + 概念两张涨幅榜。
  */
 export async function fetchSectorBoards(deps: SectorDeps = {}): Promise<SectorBoards> {
   const _readCache = deps.readCacheImpl ?? readCache;
@@ -122,10 +214,7 @@ export async function fetchSectorBoards(deps: SectorDeps = {}): Promise<SectorBo
   const cached = _readCache<SectorBoards>(key, SECTOR_CACHE_OPTS);
   if (cached) return cached;
 
-  const [industry, concept] = await Promise.all([
-    fetchBoard('industry', deps),
-    fetchBoard('concept', deps),
-  ]);
+  const [industry, concept] = await fetchBothBoards(deps);
   const result: SectorBoards = { industry, concept, fetchedAt: Date.now() };
 
   // 空表不写缓存：漏 np=1 时解析会静默得到空表（本模块开头那个坑），

@@ -12,7 +12,14 @@ import { MAX_BATCH_QUOTES } from '../../shared/constants';
 import { fetchYahooKline, fetchYahooQuote } from './yahoo';
 import { fetchTencentKline, fetchTencentQuote, fetchTencentUsQuote } from './tencent';
 import { fetchEastmoneyKline } from './eastmoney';
-import { fetchSinaKline, fetchSinaUsQuote, fetchSinaCnQuote, sinaSupportsPeriod } from './sina';
+import {
+  fetchSinaUsKline,
+  fetchSinaCnKline,
+  fetchSinaUsQuote,
+  fetchSinaCnQuote,
+  sinaUsSupportsPeriod,
+  sinaCnSupportsPeriod,
+} from './sina';
 import { logger, toErrorMessage, runWithConcurrency } from '../utils';
 
 interface KlineSource {
@@ -39,10 +46,13 @@ const KLINE_SOURCES: Record<Market, KlineSource[]> = {
   A股: [
     { name: '腾讯', fetch: fetchTencentKline },
     { name: '东财', fetch: fetchEastmoneyKline },
+    // 第三源：前两者都给前复权，新浪不复权，故垫底。存在的理由是东财的 push2his
+    // 会整个主机级挂掉（2026-08-09 实测连接重置），那时 A 股 K 线就只剩腾讯一根独苗
+    { name: '新浪', fetch: fetchSinaCnKline, supportsPeriod: sinaCnSupportsPeriod },
   ],
   美股: [
     { name: 'Yahoo', fetch: fetchYahooKline },
-    { name: '新浪', fetch: fetchSinaKline, supportsPeriod: sinaSupportsPeriod },
+    { name: '新浪', fetch: fetchSinaUsKline, supportsPeriod: sinaUsSupportsPeriod },
   ],
 };
 

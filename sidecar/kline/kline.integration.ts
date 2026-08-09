@@ -3,7 +3,7 @@ import type { KlinePoint, NormalizedRequest, RealtimeQuote } from './types';
 import { fetchEastmoneyKline } from './eastmoney';
 import { fetchTencentKline, fetchTencentQuote, fetchTencentUsQuote } from './tencent';
 import { fetchYahooKline, fetchYahooQuote } from './yahoo';
-import { fetchSinaKline, fetchSinaUsQuote, fetchSinaCnQuote } from './sina';
+import { fetchSinaUsKline, fetchSinaCnKline, fetchSinaUsQuote, fetchSinaCnQuote } from './sina';
 
 /**
  * K 线/报价数据源的真网络冒烟——只跑 `bun run test:integration`，默认套件不含。
@@ -62,6 +62,10 @@ describe('K 线数据源（真网络）', () => {
     expectQuoteContract(await fetchSinaCnQuote(CN_SYMBOL));
   });
 
+  it('新浪 K 线（A 股第三源——东财整机挂掉时的最后一道）', async () => {
+    expectKlineContract(await fetchSinaCnKline(req(CN_SYMBOL, 'A股')));
+  });
+
   it('Yahoo K 线（美股首选源——唯一提供复权历史的源）', async () => {
     expectKlineContract(await fetchYahooKline(req(US_SYMBOL, '美股')));
   });
@@ -84,11 +88,11 @@ describe('K 线数据源（真网络）', () => {
   });
 
   it('新浪日 K（美股回退源——Yahoo 不可达时的唯一 K 线来源）', async () => {
-    expectKlineContract(await fetchSinaKline(req(US_SYMBOL, '美股')));
+    expectKlineContract(await fetchSinaUsKline(req(US_SYMBOL, '美股')));
   });
 
   it('新浪日 K 聚合出的月线（走的是与日线不同的代码路径）', async () => {
-    const monthly = await fetchSinaKline({
+    const monthly = await fetchSinaUsKline({
       rawSymbol: US_SYMBOL,
       period: '1mo',
       range: '5y',

@@ -40,6 +40,28 @@ function yahooKlineBody(close: number) {
   });
 }
 
+/** 新浪 A 股 K 线的最小合法响应——裸 JSON 数组，无 JSONP 外壳（与美股那支不同） */
+function sinaCnKlineBody() {
+  return JSON.stringify([
+    {
+      day: '2026-08-06',
+      open: '1310.00',
+      high: '1314.40',
+      low: '1300.01',
+      close: '1308.55',
+      volume: '2546328',
+    },
+    {
+      day: '2026-08-07',
+      open: '1308.66',
+      high: '1315.28',
+      low: '1301.00',
+      close: '1309.22',
+      volume: '2497581',
+    },
+  ]);
+}
+
 /** 新浪美股日 K 的最小合法响应，含它那段防盗链 JSONP 外壳 */
 function sinaDailyKBody() {
   const rows = [
@@ -85,7 +107,24 @@ describe('getKline 多源回退', () => {
       getKline(REQ, {
         fetchImpl: (async () => new Response('', { status: 503 })) as unknown as typeof fetch,
       }),
-    ).rejects.toThrow('东财 K 线 HTTP 503');
+    ).rejects.toThrow('新浪 A 股 K 线 HTTP 503');
+  });
+
+  test('A 股腾讯+东财双双不可达 → 新浪第三源接手', async () => {
+    // 2026-08-09 东财 push2his 整个主机挂掉时，A 股 K 线就只剩腾讯一根独苗，这条是为此设的
+    const calls: string[] = [];
+    const points = await getKline(REQ, {
+      fetchImpl: (async (url: string) => {
+        calls.push(String(url));
+        if (String(url).includes('gtimg.cn') || String(url).includes('eastmoney.com')) {
+          return new Response('', { status: 502 });
+        }
+        return new Response(sinaCnKlineBody());
+      }) as unknown as typeof fetch,
+    });
+    expect(calls).toHaveLength(3);
+    expect(calls[2]).toContain('finance.sina.com.cn');
+    expect(points.map((p) => p.close)).toEqual([1308.55, 1309.22]);
   });
 
   test('美股 K 线 Yahoo 优先 —— 成功时不回退到不复权的中文源', async () => {

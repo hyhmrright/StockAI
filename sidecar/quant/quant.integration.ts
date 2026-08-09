@@ -3,7 +3,7 @@ import { fetchFinancialHistory } from './fundamental-history';
 import { fetchFundamentals } from './fundamental';
 import { fetchFundFlow } from './fundflow';
 import { fetchMarketSnapshot } from './market-snapshot';
-import { fetchSectorBoards } from './sectors';
+import { fetchEastmoneyBoards, fetchSinaBoards } from './sectors';
 import { fetchBillboard } from './billboard';
 import { fetchCompanyF10 } from './company-f10';
 
@@ -64,11 +64,12 @@ describe('量化数据源（真网络）', () => {
   }, 60_000); // 分页串行 + 页间抖动，实测约 20s
 
   it('东财板块涨幅榜——行业与概念各一张', async () => {
-    const boards = await fetchSectorBoards(noCache);
+    // 直连东财而不走 fetchSectorBoards：后者会用新浪备源的成功掩盖东财的失效
+    const [industry, concept] = await fetchEastmoneyBoards(noCache);
 
     // 非空是必断项：漏掉 np=1 时 diff 会退化成对象，parseSectorPage 静默返回空表，
     // 只断「没抛异常」等于完全没监控这条链路。
-    for (const list of [boards.industry, boards.concept]) {
+    for (const list of [industry, concept]) {
       expect(list.length).toBeGreaterThan(0);
       const s = list[0];
       expect(s.code).toMatch(/^BK\d+$/); // 板块代码形如 BK0899
@@ -78,7 +79,28 @@ describe('量化数据源（真网络）', () => {
     }
 
     // 行业与概念必须是两份不同的榜单——fs 过滤写错会让两边拉回同一张
-    expect(boards.industry[0].code).not.toBe(boards.concept[0].code);
+    expect(industry[0].code).not.toBe(concept[0].code);
+  });
+
+  it('新浪板块涨幅榜（东财整机故障时的备源）', async () => {
+    const [industry, concept] = await fetchSinaBoards(noCache);
+
+    for (const list of [industry, concept]) {
+      expect(list.length).toBeGreaterThan(0);
+      const s = list[0];
+      expect(s.code.length).toBeGreaterThan(0); // 新浪代码形如 new_blhy / gn_hwqc，与东财不同构
+      expect(s.name.length).toBeGreaterThan(0);
+      expect(Number.isFinite(s.changePercent)).toBe(true);
+      // 本源没有资金流与涨跌家数，必须是 undefined 而不是 0
+      expect(s.mainNetInflow).toBeUndefined();
+    }
+
+    // 行业榜的键以 new_ 开头、概念榜以 gn_ 开头；两个 URL 写混会让两边拉回同一张
+    expect(industry[0].code).not.toBe(concept[0].code);
+    // 已按涨跌幅降序——新浪返回的是全量无序表，排序是我们自己做的
+    expect(industry[0].changePercent).toBeGreaterThanOrEqual(
+      industry[industry.length - 1].changePercent,
+    );
   });
 
   it('东财龙虎榜——最新交易日的买卖两榜', async () => {
