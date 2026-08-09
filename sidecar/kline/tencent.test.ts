@@ -1,5 +1,10 @@
 import { describe, test, expect } from 'bun:test';
-import { parseTencentKline, parseTencentQuote, mapPeriodToTencent } from './tencent';
+import {
+  parseTencentKline,
+  parseTencentQuote,
+  parseTencentUsQuote,
+  mapPeriodToTencent,
+} from './tencent';
 
 describe('mapPeriodToTencent', () => {
   test('1m → m1', () => expect(mapPeriodToTencent('1m')).toBe('m1'));
@@ -75,5 +80,70 @@ describe('parseTencentQuote', () => {
 
   test('缺失内容字符串 → 抛错', () => {
     expect(() => parseTencentQuote(`v_sh600519="";`, 'sh600519')).toThrow();
+  });
+});
+
+describe('parseTencentUsQuote', () => {
+  // 真实 usAAPL 响应的字段布局（下标见 tencent.ts 注释）
+  function body(over: Record<number, string> = {}) {
+    const f = new Array(50).fill('0');
+    f[1] = '苹果';
+    f[3] = '313.33';
+    f[4] = '312.41';
+    f[5] = '311.45';
+    f[6] = '34437191';
+    f[30] = '2026-08-07 16:00:01';
+    f[31] = '0.92';
+    f[32] = '0.29';
+    f[33] = '314.81';
+    f[34] = '310.74';
+    f[35] = 'USD';
+    f[37] = '10776446647';
+    f[39] = '35.93';
+    f[45] = '45727.94419';
+    f[46] = 'Apple Inc.';
+    f[48] = '344.57';
+    f[49] = '218.40';
+    for (const [i, v] of Object.entries(over)) f[Number(i)] = v;
+    return `v_usAAPL="${f.join('~')}";`;
+  }
+
+  test('解析为 RealtimeQuote', () => {
+    const q = parseTencentUsQuote(body(), 'AAPL');
+    expect(q).toMatchObject({
+      symbol: 'AAPL',
+      name: '苹果',
+      price: 313.33,
+      prevClose: 312.41,
+      high: 314.81,
+      low: 310.74,
+      pe: 35.93,
+      high52w: 344.57,
+      low52w: 218.4,
+      currency: 'USD',
+      market: '美股',
+    });
+    expect(q.change).toBeCloseTo(0.92, 2);
+  });
+
+  test('美股成交量已是股数、成交额已是绝对值，不套 A 股那两处换算', () => {
+    // A 股解析器对 f[6] ×100（手→股）、对 f[37] ×1e4（万→元）；照搬会虚高百倍/万倍
+    const q = parseTencentUsQuote(body(), 'AAPL');
+    expect(q.volume).toBe(34437191);
+    expect(q.amount).toBe(10776446647);
+  });
+
+  test('f[46] 在美股是英文名而非市净率，绝不能落进 pb', () => {
+    // 复用 parseTencentQuote 就会把 "Apple Inc." 塞进 pb —— 本条即为此设防
+    expect(parseTencentUsQuote(body(), 'AAPL').pb).toBeUndefined();
+  });
+
+  test('市值按亿换算为元', () => {
+    expect(parseTencentUsQuote(body(), 'AAPL').marketCap).toBeCloseTo(45727.94419 * 1e8, 0);
+  });
+
+  test('空载荷与现价为 0 都抛出', () => {
+    expect(() => parseTencentUsQuote('v_usAAPL="";', 'AAPL')).toThrow('为空');
+    expect(() => parseTencentUsQuote(body({ 3: '0' }), 'AAPL')).toThrow('无效');
   });
 });

@@ -75,7 +75,7 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 - **图表的第二块结构性失明**：vitest 跑在 happy-dom 上、没有 canvas，`PriceChart.test.tsx` 把 lightweight-charts 整个 mock 掉了——图表画不画得出来在默认套件里断不到。补位的是 `bun run test:e2e`（`scripts/e2e-smoke.ts`）：起 vite + 真浏览器，读回 canvas 像素断言 **K 线实体色覆盖 ≥ 20 条像素行**。行数而非像素数是关键：空图表照样画网格和坐标轴，现价水平线也是涨跌色且横跨整幅宽度，只有实体会沿价格轴铺开几十行。**动 `src/components/PriceChart/` 后必跑这条**。
 - **Outbound HTTP**: 一律经 `sidecar/http.ts` 的 `fetchWithPolicy(url, policy)`，UA 与超时的唯一来源是 `sidecar/config.ts` 的 `HTTP_DEFAULTS`。**不要在数据源模块另写 UA 字面量或 `AbortSignal.timeout(...)`**。
 - **Frontend async hooks**: 「按 symbol 取数」复用 `useSymbolFetch`，「按 symbol 缓存异步结果」复用 `useSymbolScopedAsync`（含竞态守卫 + LRI 限容），不要再手搓一份。
-- **Adding a K-line source**: 在 `sidecar/kline/index.ts` 的 `KLINE_SOURCES[市场]` 数组追加一行即可（依次尝试、首个成功即返回），不必改控制流。
+- **Adding a K-line / quote source**: 在 `sidecar/kline/index.ts` 的 `KLINE_SOURCES[市场]` 或 `QUOTE_SOURCES[市场]` 数组追加一行即可（依次尝试、首个成功即返回），不必改控制流。**两张表分开且顺序不同**是刻意的：K 线要复权（故美股 Yahoo 优先），报价只看可达性（故美股腾讯/新浪优先，Yahoo 兜底）。理由写在表上方的注释里，改顺序前先读。
 - **Adding a scrape strategy**: 实现 `sidecar/strategies/base.ts` 的 `ScrapeStrategy`，然后在 `sidecar/strategies/registry.ts` 的 `StrategyRegistry.strategies` 追加一行。能跳过 Chromium 的策略尽量排前。
 - **Adding an AI provider**: 兼容 OpenAI 协议时，在 `shared/constants.ts` 的 `PROVIDER_PROFILES` 加默认值（`sidecar/config.ts` 仅 re-export，勿在此加）+ `providers/registry.ts` 的 `PROVIDER_FACTORIES` 追加一行；协议不兼容时在 `sidecar/providers/` 实现 `AIProvider` 接口（`sidecar/ai.ts`）。最后同步 `shared/types/provider.ts` 的 `ProviderType`。
 - **i18n**: 多语言通过 `Language` 类型（`shared/types`）传递；前端用 `useLanguage()` hook 获取翻译函数；`src/i18n/zh.json` 是翻译 key 的 TypeScript 类型来源（编译期校验），新增 UI 文字须先在此文件加 key。

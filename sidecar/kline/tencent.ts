@@ -8,7 +8,7 @@ import type {
 } from './types';
 import type { KlineSourceDeps } from './types';
 import { fetchWithPolicy } from '../http';
-import { parseChinaSymbol } from './symbol';
+import { parseChinaSymbol, parseUsSymbol } from './symbol';
 
 /** 把通用周期映射为腾讯 param */
 export function mapPeriodToTencent(period: KlinePeriod): string {
@@ -172,6 +172,70 @@ export function parseTencentQuote(text: string, symbol: string): RealtimeQuote {
     timestamp: parseTencentTime(f[30]),
     currency: 'CNY',
     market: 'A股',
+  };
+}
+
+export async function fetchTencentUsQuote(
+  symbol: string,
+  deps: KlineSourceDeps = {},
+): Promise<RealtimeQuote> {
+  const { ticker } = parseUsSymbol(symbol);
+  // 指数与个股在腾讯是同一套写法：usDJI / usAAPL，无需区分。
+  // 未登记的代码是用户输入，编码后再拼，避免 & ? 之类混进查询串
+  const tencentSymbol = `us${encodeURIComponent(ticker)}`;
+  const resp = await fetchWithPolicy(`https://web.sqt.gtimg.cn/q=${tencentSymbol}`, {
+    headers: { Referer: 'https://gu.qq.com' },
+    fetchImpl: deps.fetchImpl,
+  });
+  if (!resp.ok) throw new Error(`腾讯美股报价 HTTP ${resp.status}`);
+  const buf = await resp.arrayBuffer();
+  return parseTencentUsQuote(new TextDecoder('gbk').decode(buf), ticker);
+}
+
+/**
+ * 腾讯**美股**报价字段（0-based）：
+ * 1=中文名 3=现价 4=昨收 5=今开 6=成交量(股) 30=美东时间串 31=涨跌额 32=涨跌幅
+ * 33=最高 34=最低 35=币种 37=成交额 39=PE 45=总市值(亿) 46=英文名 48=52周高 49=52周低
+ *
+ * **不能复用 parseTencentQuote**：同一个接口在两个市场的字段语义并不一致——
+ * f[46] 在 A 股是市净率、在美股是英文名（复用会把 "Apple Inc." 塞进 pb）；
+ * 且美股 f[6] 已是股数、f[37] 已是绝对成交额，不再有 A 股那两处 ×100 / ×1e4 换算。
+ */
+export function parseTencentUsQuote(text: string, ticker: string): RealtimeQuote {
+  const m = text.match(/="([^"]*)"/);
+  if (!m || !m[1]) throw new Error(`腾讯美股报价为空：${ticker}`);
+  const f = m[1].split('~');
+  if (f.length < 50) throw new Error(`腾讯美股报价字段不足：${f.length}`);
+
+  const price = parseFloat(f[3]);
+  if (!Number.isFinite(price) || price <= 0) throw new Error(`腾讯美股报价无效：${ticker}`);
+  const prevClose = parseFloat(f[4]) || 0;
+  const change = parseFloat(f[31]) || price - prevClose;
+  const marketCapYi = parseFloat(f[45]); // 亿（美元），下方转为元
+
+  return {
+    symbol: ticker,
+    name: f[1] || f[46] || ticker,
+    price,
+    change: Number(change.toFixed(4)),
+    changePercent: Number(
+      (parseFloat(f[32]) || (prevClose ? (change / prevClose) * 100 : 0)).toFixed(2),
+    ),
+    open: parseFloat(f[5]) || 0,
+    high: parseFloat(f[33]) || 0,
+    low: parseFloat(f[34]) || 0,
+    prevClose,
+    volume: parseFloat(f[6]) || 0,
+    amount: parseFloat(f[37]) || 0,
+    pe: parseFloat(f[39]) || undefined,
+    marketCap: marketCapYi > 0 ? marketCapYi * 1e8 : undefined,
+    high52w: parseFloat(f[48]) || undefined,
+    low52w: parseFloat(f[49]) || undefined,
+    // f[30] 是美东挂钟串、不带偏移，按 +08:00 解会整体偏十几个小时；夏令时又要另立一套表。
+    // 本源是延迟行情，取抓取时刻已足够表达「这份报价有多新」
+    timestamp: Math.floor(Date.now() / 1000),
+    currency: 'USD',
+    market: '美股',
   };
 }
 

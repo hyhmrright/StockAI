@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { parseChinaSymbol, chinaPrefixToEastmoneyMarket } from './symbol';
+import { parseChinaSymbol, chinaPrefixToEastmoneyMarket, parseUsSymbol } from './symbol';
 
 describe('parseChinaSymbol', () => {
   test('显式 sh 前缀优先', () => {
@@ -43,4 +43,22 @@ describe('chinaPrefixToEastmoneyMarket', () => {
   test('sh → 1', () => expect(chinaPrefixToEastmoneyMarket('sh')).toBe(1));
   test('sz → 0', () => expect(chinaPrefixToEastmoneyMarket('sz')).toBe(0));
   test('bj → 0', () => expect(chinaPrefixToEastmoneyMarket('bj')).toBe(0));
+});
+
+describe('parseUsSymbol', () => {
+  test('剥掉 gb_ 前缀并统一大写', () => {
+    expect(parseUsSymbol('gb_aapl')).toEqual({ ticker: 'AAPL', isIndex: false });
+    expect(parseUsSymbol('aapl')).toEqual({ ticker: 'AAPL', isIndex: false });
+  });
+
+  test('Yahoo 的指数代码换成各源通用 id', () => {
+    // 前端 IndexBar 一律用 Yahoo 写法，照搬给腾讯/新浪只会拿到空响应
+    expect(parseUsSymbol('^GSPC')).toEqual({ ticker: 'INX', isIndex: true });
+    expect(parseUsSymbol('^IXIC')).toEqual({ ticker: 'IXIC', isIndex: true });
+    expect(parseUsSymbol('^DJI')).toEqual({ ticker: 'DJI', isIndex: true });
+  });
+
+  test('未登记的 ^ 代码按个股处理，不静静吞掉', () => {
+    expect(parseUsSymbol('^RUT')).toEqual({ ticker: '^RUT', isIndex: false });
+  });
 });

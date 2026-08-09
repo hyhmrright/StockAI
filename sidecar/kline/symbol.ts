@@ -33,3 +33,27 @@ export function parseChinaSymbol(raw: string): ChinaSymbol {
 export function chinaPrefixToEastmoneyMarket(prefix: ChinaExchangePrefix): 0 | 1 {
   return prefix === 'sh' ? 1 : 0;
 }
+
+/**
+ * 美股指数在各家源的代码互不相同：Yahoo 是 ^GSPC，腾讯是 usINX，新浪是 gb_$inx。
+ * 这里只登记「Yahoo 代码 → 各源共用的裸 id」，`us` / `gb_$` 之类的前缀由各源自己拼——
+ * 否则这张表就得按源数量翻倍。前端 IndexBar 用的是 Yahoo 写法，故以它为 key。
+ */
+const US_INDEX_IDS: Record<string, string> = {
+  '^GSPC': 'INX',
+  '^IXIC': 'IXIC',
+  '^DJI': 'DJI',
+};
+
+export interface UsSymbol {
+  /** 裸代码：个股为大写 ticker（AAPL），指数为各源通用 id（INX / IXIC / DJI） */
+  ticker: string;
+  isIndex: boolean;
+}
+
+/** 解析美股 symbol：剥掉 gb_ 前缀，指数换成通用 id，其余一律大写 */
+export function parseUsSymbol(raw: string): UsSymbol {
+  const cleaned = raw.replace(/^gb_/i, '').trim().toUpperCase();
+  const indexId = US_INDEX_IDS[cleaned];
+  return indexId ? { ticker: indexId, isIndex: true } : { ticker: cleaned, isIndex: false };
+}

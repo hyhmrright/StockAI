@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 import type { KlinePoint, NormalizedRequest, RealtimeQuote } from './types';
 import { fetchEastmoneyKline } from './eastmoney';
-import { fetchTencentKline, fetchTencentQuote } from './tencent';
+import { fetchTencentKline, fetchTencentQuote, fetchTencentUsQuote } from './tencent';
 import { fetchYahooKline, fetchYahooQuote } from './yahoo';
+import { fetchSinaKline, fetchSinaUsQuote, fetchSinaCnQuote } from './sina';
 
 /**
  * K 线/报价数据源的真网络冒烟——只跑 `bun run test:integration`，默认套件不含。
@@ -49,7 +50,7 @@ describe('K 线数据源（真网络）', () => {
     expectKlineContract(await fetchTencentKline(req(CN_SYMBOL, 'A股')));
   });
 
-  it('腾讯报价（A 股唯一报价源）', async () => {
+  it('腾讯报价（A 股首选报价源）', async () => {
     expectQuoteContract(await fetchTencentQuote(CN_SYMBOL));
   });
 
@@ -57,11 +58,45 @@ describe('K 线数据源（真网络）', () => {
     expectKlineContract(await fetchEastmoneyKline(req(CN_SYMBOL, 'A股')));
   });
 
-  it('Yahoo K 线（美股唯一源，无回退）', async () => {
+  it('新浪报价（A 股回退源）', async () => {
+    expectQuoteContract(await fetchSinaCnQuote(CN_SYMBOL));
+  });
+
+  it('Yahoo K 线（美股首选源——唯一提供复权历史的源）', async () => {
     expectKlineContract(await fetchYahooKline(req(US_SYMBOL, '美股')));
   });
 
-  it('Yahoo 报价（美股唯一源，无回退）', async () => {
+  it('Yahoo 报价（美股回退源）', async () => {
     expectQuoteContract(await fetchYahooQuote(US_SYMBOL));
+  });
+
+  it('腾讯报价（美股首选报价源）', async () => {
+    expectQuoteContract(await fetchTencentUsQuote(US_SYMBOL));
+  });
+
+  it('腾讯报价（美股指数——代码写法与个股不同，需单独盯）', async () => {
+    // ^GSPC 要映射成 usINX；映射错了拿到的是空响应而非报错
+    expectQuoteContract(await fetchTencentUsQuote('^GSPC'));
+  });
+
+  it('新浪报价（美股回退源）', async () => {
+    expectQuoteContract(await fetchSinaUsQuote(US_SYMBOL));
+  });
+
+  it('新浪日 K（美股回退源——Yahoo 不可达时的唯一 K 线来源）', async () => {
+    expectKlineContract(await fetchSinaKline(req(US_SYMBOL, '美股')));
+  });
+
+  it('新浪日 K 聚合出的月线（走的是与日线不同的代码路径）', async () => {
+    const monthly = await fetchSinaKline({
+      rawSymbol: US_SYMBOL,
+      period: '1mo',
+      range: '5y',
+      adjust: 'qfq',
+      market: '美股',
+    });
+    expectKlineContract(monthly);
+    // 月线根数必然远少于同期日线；两者相等说明聚合根本没生效
+    expect(monthly.length).toBeLessThan(100);
   });
 });
