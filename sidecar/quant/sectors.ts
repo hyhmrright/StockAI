@@ -1,4 +1,7 @@
+import { tmpdir } from 'os';
+import * as path from 'path';
 import type { SectorBoards, SectorRank } from '../../shared/types';
+import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
 import { fetchWithPolicy } from '../http';
 
 /**
@@ -24,6 +27,23 @@ const BOARD_FS = {
 } as const;
 
 export type SectorBoardKind = keyof typeof BOARD_FS;
+
+/**
+ * 实测两张榜合计约 1.8s，而面板按页签条件挂载（`useAsyncOnce` 挂载即取）——
+ * 关掉市场概览再打开、在两个页签间来回切，每次都重走全程。
+ *
+ * TTL 只给 60 秒，远短于邻居们的 24h：这是**盘中实时变动**的涨幅榜，
+ * 不是 F10 那种按季更新的档案。60 秒足够吃掉「来回切页签」这个真正的重复来源，
+ * 又不至于让用户盯着一个明显停住的榜单——它本来也不轮询（见 MarketOverviewModal）。
+ */
+const SECTOR_CACHE_OPTS: CacheOptions = {
+  // 独立目录不是可有可无的：maxEntries 修剪的是「目录里的文件数」，与邻居共用根目录时
+  // 配额最小的那个说了算——本模块只要 4 条，共用就会把深度分析的结果一并删光。
+  // 同 f10 / 财报历史 / 全市场快照的做法。
+  dir: path.join(tmpdir(), 'stockai-sector-cache'),
+  ttlMs: 60_000,
+  maxEntries: 4, // 无参数、只有一个 key，保守即可
+};
 
 interface SectorRow {
   f12?: string;
@@ -75,6 +95,8 @@ export function parseSectorPage(json: SectorResponse): SectorRank[] {
 
 export interface SectorDeps {
   fetchImpl?: typeof fetch;
+  readCacheImpl?: typeof readCache;
+  writeCacheImpl?: typeof writeCache;
 }
 
 async function fetchBoard(kind: SectorBoardKind, deps: SectorDeps): Promise<SectorRank[]> {
@@ -93,9 +115,21 @@ async function fetchBoard(kind: SectorBoardKind, deps: SectorDeps): Promise<Sect
  * 用户会以为"今天只有行业板块在动"。
  */
 export async function fetchSectorBoards(deps: SectorDeps = {}): Promise<SectorBoards> {
+  const _readCache = deps.readCacheImpl ?? readCache;
+  const _writeCache = deps.writeCacheImpl ?? writeCache;
+
+  const key = cacheKey(['sector-boards', 'v1']);
+  const cached = _readCache<SectorBoards>(key, SECTOR_CACHE_OPTS);
+  if (cached) return cached;
+
   const [industry, concept] = await Promise.all([
     fetchBoard('industry', deps),
     fetchBoard('concept', deps),
   ]);
-  return { industry, concept, fetchedAt: Date.now() };
+  const result: SectorBoards = { industry, concept, fetchedAt: Date.now() };
+
+  // 空表不写缓存：漏 np=1 时解析会静默得到空表（本模块开头那个坑），
+  // 缓存下来就把一次解析失败固化成一分钟的空榜。
+  if (industry.length > 0 && concept.length > 0) _writeCache(key, result, SECTOR_CACHE_OPTS);
+  return result;
 }

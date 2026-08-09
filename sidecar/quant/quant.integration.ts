@@ -16,8 +16,9 @@ import { fetchCompanyF10 } from './company-f10';
  * **数据源死了没有任何人会知道**——量化分只是静默降级。只查「没抛异常」的测试
  * 在这里毫无价值，必须查内容。
  *
- * 带 24h 磁盘缓存的两个源（财报历史、全市场快照）注入空缓存强制走网络，
- * 否则命中缓存就等于没测上游。写缓存同时置空，避免冒烟污染真实缓存目录。
+ * 带磁盘缓存的源一律注入空缓存强制走网络，否则命中缓存就等于没测上游——
+ * 这条 CI 任务每天跑，缓存一命中它就变成「永远绿的空断言」，正是本仓最防的那种失明。
+ * 写缓存同时置空，避免冒烟污染真实缓存目录。
  */
 
 const CN_SYMBOL = '600519'; // 贵州茅台
@@ -63,7 +64,7 @@ describe('量化数据源（真网络）', () => {
   }, 60_000); // 分页串行 + 页间抖动，实测约 20s
 
   it('东财板块涨幅榜——行业与概念各一张', async () => {
-    const boards = await fetchSectorBoards();
+    const boards = await fetchSectorBoards(noCache);
 
     // 非空是必断项：漏掉 np=1 时 diff 会退化成对象，parseSectorPage 静默返回空表，
     // 只断「没抛异常」等于完全没监控这条链路。
@@ -81,7 +82,7 @@ describe('量化数据源（真网络）', () => {
   });
 
   it('东财龙虎榜——最新交易日的买卖两榜', async () => {
-    const board = await fetchBillboard();
+    const board = await fetchBillboard(noCache);
 
     // 交易日必须是「最近」的：该 report 是全历史表（约 8.8 万页），
     // 少了 TRADE_DATE 过滤会静默拉回 2015 年的榜单——形状完全合法，只是过期十年。

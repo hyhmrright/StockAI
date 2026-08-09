@@ -131,6 +131,13 @@ describe('parseBillboardPage', () => {
 });
 
 describe('fetchBillboard', () => {
+  /**
+   * 强制缓存未命中。**不注入就是真的会串**：缓存落在系统临时目录、跨进程存活，
+   * 本机跑过一次真实 `--billboard` 之后，这些用例会直接吃到那份真数据而完全不发请求
+   * （已实测踩到）。写也置空，避免单测污染真实缓存目录。
+   */
+  const noCache = { readCacheImpl: () => null, writeCacheImpl: () => {} };
+
   /** 按 URL 里的 sortTypes 分派假响应 */
   function fakeFetch(pages: { probe: unknown; buy: unknown; sell: unknown }, calls: string[] = []) {
     return (async (url: string) => {
@@ -156,6 +163,7 @@ describe('fetchBillboard', () => {
         },
         calls,
       ),
+      ...noCache,
     });
 
     expect(result.tradeDate).toBe('2026-08-07');
@@ -169,7 +177,7 @@ describe('fetchBillboard', () => {
 
   test('探不到交易日就报错——宁可报错也不要拉回 2015 年的榜单', async () => {
     const fetchImpl = fakeFetch({ probe: page([]), buy: page([]), sell: page([]) });
-    expect(fetchBillboard({ fetchImpl })).rejects.toThrow('交易日');
+    expect(fetchBillboard({ fetchImpl, ...noCache })).rejects.toThrow('交易日');
   });
 
   /**
@@ -187,6 +195,7 @@ describe('fetchBillboard', () => {
         buy: mixed,
         sell: mixed,
       }),
+      ...noCache,
     });
 
     expect(result.topBuy.map((e) => e.symbol)).toEqual(['000001']);
@@ -195,6 +204,49 @@ describe('fetchBillboard', () => {
 
   test('HTTP 非 200 直接抛错，不把错误页当空榜单', async () => {
     const fetchImpl = (async () => new Response('', { status: 503 })) as unknown as typeof fetch;
-    expect(fetchBillboard({ fetchImpl })).rejects.toThrow('503');
+    expect(fetchBillboard({ fetchImpl, ...noCache })).rejects.toThrow('503');
+  });
+
+  /**
+   * 缓存存在的全部理由：这条链路是两轮串行 RTT、三发请求，打到本仓最慢的 datacenter 端点
+   * （实测 2.3–8.1s，三次里超时挂一次），而面板按页签条件挂载、开关弹窗即重取。
+   * 断「一发都没发」而不是「快了」——后者在 CI 上量不准。
+   */
+  test('缓存命中时一发请求都不发', async () => {
+    const calls: string[] = [];
+    const cached = { tradeDate: '2026-08-07', topBuy: [], topSell: [], fetchedAt: 1 };
+    const result = await fetchBillboard({
+      fetchImpl: (async (url: string) => {
+        calls.push(url);
+        return new Response('{}', { status: 200 });
+      }) as unknown as typeof fetch,
+      readCacheImpl: () => cached as never,
+      writeCacheImpl: () => {},
+    });
+
+    expect(result).toEqual(cached);
+    expect(calls).toHaveLength(0);
+  });
+
+  /**
+   * 空榜多半是上游抽风而非「今天没人上榜」（实测该端点会超时失败）。
+   * 缓存下来等于把一次偶发失败固化成半小时的空榜，且用户没有重试入口。
+   */
+  test('两榜皆空时不写缓存，下次仍会重试', async () => {
+    const written: unknown[] = [];
+    const result = await fetchBillboard({
+      fetchImpl: fakeFetch({
+        probe: page([{ TRADE_DATE: '2026-08-07 00:00:00' }]),
+        buy: page([]),
+        sell: page([]),
+      }),
+      readCacheImpl: () => null,
+      writeCacheImpl: ((_k: string, v: unknown) => {
+        written.push(v);
+      }) as never,
+    });
+
+    expect(result.tradeDate).toBe('2026-08-07'); // 照常返回，不抛错
+    expect(written).toHaveLength(0);
   });
 });

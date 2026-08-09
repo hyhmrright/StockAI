@@ -55,6 +55,33 @@ describe('readCache / writeCache', () => {
     expect(files.length).toBeLessThanOrEqual(3);
   });
 
+  /**
+   * **maxEntries 是目录级配额，不是调用方级配额**——两种用途共用一个目录时，
+   * 配额最小的那个说了算，会把另一方的数据一并删掉，且全程无任何报错。
+   *
+   * 这不是假想：龙虎榜/板块榜（各只需 4 条）最初没设 `dir`，落进了 deep-analysis 的
+   * 默认目录，实测写一次就删掉 7 条深度分析结果（每条代表 15 次 LLM 调用）。
+   * 修法是各模块用独立 `dir`（f10 / 财报历史 / 全市场快照一直如此）。
+   *
+   * 本用例把这个陷阱本身钉住：它**断言的是当前的危险行为**，好让下一个想
+   * 「省事共用默认目录」的人在注释之外还能撞到一条明确的红线。
+   */
+  test('共用目录时，小 maxEntries 会连带删掉另一用途的缓存', () => {
+    const shared = freshDir();
+    const precious = Array.from({ length: 6 }, (_, i) => cacheKey(['deep-analysis', i]));
+    for (const k of precious) writeCache(k, { llmCalls: 15 }, { dir: shared });
+
+    // 另一个用途只想留 2 条，却裁掉了整个目录
+    writeCache(
+      cacheKey(['billboard']),
+      { tradeDate: '2026-08-07' },
+      { dir: shared, maxEntries: 2 },
+    );
+
+    const survived = precious.filter((k) => readCache(k, { dir: shared }) !== null).length;
+    expect(survived).toBeLessThan(6);
+  });
+
   test('缓存目录不存在时读取安全返回 null（不抛）', () => {
     const missing = path.join(tmpdir(), 'stockai-cache-test-missing-xyz');
     expect(readCache(cacheKey(['x']), { dir: missing })).toBeNull();

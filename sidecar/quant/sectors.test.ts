@@ -68,6 +68,12 @@ describe('parseSectorPage', () => {
 });
 
 describe('fetchSectorBoards', () => {
+  /**
+   * 强制缓存未命中。缓存落在系统临时目录、跨进程存活——本机跑过一次真实 `--sectors` 后，
+   * 这些用例会直接吃到那份真数据、一发请求都不发（已实测踩到）。写也置空，避免污染真实缓存。
+   */
+  const noCache = { readCacheImpl: () => null, writeCacheImpl: () => {} };
+
   const okFetch = (async (url: string) =>
     new Response(
       JSON.stringify({
@@ -76,7 +82,7 @@ describe('fetchSectorBoards', () => {
     )) as unknown as typeof fetch;
 
   test('行业与概念各拉一张榜', async () => {
-    const boards = await fetchSectorBoards({ fetchImpl: okFetch });
+    const boards = await fetchSectorBoards({ fetchImpl: okFetch, ...noCache });
     expect(boards.industry[0].name).toBe('行业');
     expect(boards.concept[0].name).toBe('概念');
     expect(boards.fetchedAt).toBeGreaterThan(0);
@@ -88,8 +94,45 @@ describe('fetchSectorBoards', () => {
         ? new Response('', { status: 500 })
         : new Response(JSON.stringify({ data: { diff: [ROW] } }))) as unknown as typeof fetch;
 
-    await expect(fetchSectorBoards({ fetchImpl: halfBroken })).rejects.toThrow(
+    await expect(fetchSectorBoards({ fetchImpl: halfBroken, ...noCache })).rejects.toThrow(
       '东财板块榜 HTTP 500',
     );
+  });
+
+  /** 加缓存的全部理由：两张榜合计约 1.8s，而面板按页签条件挂载，开关弹窗即重取 */
+  test('缓存命中时一发请求都不发', async () => {
+    const calls: string[] = [];
+    const parsed = parseSectorPage({ data: { diff: [ROW] } });
+    const cached = { industry: parsed, concept: parsed, fetchedAt: 1 };
+    const boards = await fetchSectorBoards({
+      fetchImpl: (async (url: string) => {
+        calls.push(url);
+        return new Response('{}');
+      }) as unknown as typeof fetch,
+      readCacheImpl: () => cached as never,
+      writeCacheImpl: () => {},
+    });
+
+    expect(boards).toEqual(cached);
+    expect(calls).toHaveLength(0);
+  });
+
+  /** 漏 np=1 时解析静默得空表（本模块开头那个坑）——缓存下来就固化成一分钟的空榜 */
+  test('任一张榜为空时不写缓存', async () => {
+    const written: unknown[] = [];
+    const emptyConcept = (async (url: string) =>
+      new Response(
+        JSON.stringify({ data: { diff: String(url).includes('t:3') ? [] : [ROW] } }),
+      )) as unknown as typeof fetch;
+
+    await fetchSectorBoards({
+      fetchImpl: emptyConcept,
+      readCacheImpl: () => null,
+      writeCacheImpl: ((_k: string, v: unknown) => {
+        written.push(v);
+      }) as never,
+    });
+
+    expect(written).toHaveLength(0);
   });
 });
