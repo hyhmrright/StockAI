@@ -2,15 +2,20 @@
 
 发版时必须按顺序完成以下所有步骤，缺一不可：
 
-## 1. 版本号同步（3 个文件）
+## 1. 版本号同步（4 处）
 
 | 文件 | 字段 |
 |------|------|
 | `src-tauri/tauri.conf.json` | `version` |
 | `src-tauri/Cargo.toml` | `version`（`[package]` 段） |
 | `package.json` | `version` |
+| `src-tauri/Cargo.lock` | `[[package]] name = "stockai"` 的 `version` |
 
 一键同步：`bun run bump-version <x.y.z>` 先 dry-run 预览，确认后 `bun run bump-version <x.y.z> --write` 写盘。
+
+> Cargo.lock 不是手改的：脚本写完 Cargo.toml 后会调 `cargo update --workspace --offline` 重锁，
+> 只动 workspace 成员自身那一条（输出 `Locking 1 package`），不碰任何依赖版本。
+> 因此本机需要 Rust 工具链——缺了会 loud 失败并提示补跑的命令，而不是留一个半同步的树。
 
 ## 2. CHANGELOG.md
 

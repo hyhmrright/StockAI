@@ -94,7 +94,7 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 
 完整发版流程（含双语 Release Notes 模板）见 `.claude/rules/release-checklist.md`（发版时 Read 该文件）。
 
-版本号需同步 3 个文件：`src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml` / `package.json`，一键同步：`bun run bump-version <x.y.z> --write`。
+版本号需同步 4 处：`src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml` / `package.json` / `src-tauri/Cargo.lock`，一键同步：`bun run bump-version <x.y.z> --write`（前三个改文本，Cargo.lock 由脚本调 `cargo update --workspace --offline` 重锁）。
 
 ## `.claude/` 目录
 

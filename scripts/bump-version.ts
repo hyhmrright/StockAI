@@ -84,8 +84,39 @@ async function applyAll(plans: Plan[], versionArg: string, write: boolean): Prom
       console.log(`→ ${plan.target.label}: ${plan.oldVersion} → ${versionArg}  (dry-run)`);
     }
   }
-  if (!write) console.log('\n(dry-run) 加 --write 实际写盘');
-  else if (touched === 0) console.log('\n所有目标已是目标版本，无需改动');
+  if (write && touched === 0) console.log('所有目标已是目标版本，无需改动');
+}
+
+/**
+ * Cargo.lock 里 stockai 自身那条 `version` 是 Cargo.toml 的派生值，改了 toml 不改 lock，
+ * 下一次 cargo check / CI 构建才会发现不一致——发版当场返工。这里就地同步掉。
+ *
+ * 用 `cargo update --workspace`：只重锁 workspace 成员（输出「Locking 1 package」），
+ * 不碰任何依赖版本。`--offline` 保证它不会顺手联网升级什么东西。
+ * 不用 `cargo check`（要编译，几十秒）也不用手改 lock（lockfile 不该手写）。
+ */
+async function syncCargoLock(write: boolean): Promise<void> {
+  const manifest = resolve(ROOT, 'src-tauri/Cargo.toml');
+  if (!write) {
+    console.log('→ src-tauri/Cargo.lock: cargo update --workspace 同步  (dry-run)');
+    return;
+  }
+  const proc = Bun.spawn(
+    ['cargo', 'update', '--workspace', '--offline', '--manifest-path', manifest],
+    { stdout: 'pipe', stderr: 'pipe' },
+  );
+  const [exitCode, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()]);
+  if (exitCode !== 0) {
+    console.error(`✗ src-tauri/Cargo.lock 同步失败：\n${stderr.trim()}`);
+    console.error(
+      '\n版本号文件已写盘，但 Cargo.lock 仍是旧值。装好 Rust 工具链后补一条：\n' +
+        '  cargo update --workspace --offline --manifest-path src-tauri/Cargo.toml',
+    );
+    process.exit(1);
+  }
+  // cargo 无改动时不打印 Updating/Downgrading，据此区分「已同步」与「刚同步」
+  const line = stderr.match(/^\s*(?:Updating|Downgrading) .*$/m)?.[0].trim();
+  console.log(line ? `✓ src-tauri/Cargo.lock: ${line}` : '= src-tauri/Cargo.lock: 已是目标版本');
 }
 
 async function main(): Promise<void> {
@@ -104,6 +135,8 @@ async function main(): Promise<void> {
 
   const plans = await planAll(versionArg);
   await applyAll(plans, versionArg, write);
+  await syncCargoLock(write);
+  if (!write) console.log('\n(dry-run) 加 --write 实际写盘');
 }
 
 main();
