@@ -130,6 +130,31 @@ describe('fetchMarketBundle (拆分后的纯抓取)', () => {
     expect(bundle.news).toHaveLength(DEFAULT_NEWS.length);
   });
 
+  test('A 股：公司名迟迟不来时不再干等，用裸代码先去抓新闻', async () => {
+    // 公司名只是搜索词优化，不该让一次慢查询把新闻抓取整体顶后。实测 hq.sinajs.cn
+    // 打满 8s 超时那次，整个 bundle 从 5.71s 涨到 15.92s，多出来的全是干等。
+    let infoSettled = false;
+    const scrape = mock(() => {
+      expect(infoSettled).toBe(false); // 抓新闻时信息还没回来，证明没在等它
+      return Promise.resolve(DEFAULT_NEWS);
+    });
+    const fetchInfo = mock(
+      () =>
+        new Promise<StockInfo | null>((res) =>
+          setTimeout(() => {
+            infoSettled = true;
+            res({ name: '隆基绿能' } as StockInfo);
+          }, 60),
+        ),
+    );
+
+    const bundle = await fetchMarketBundle('601012', false, { scrape, fetchInfo, nameWaitMs: 10 });
+
+    expect(scrape).toHaveBeenCalledWith('601012', false);
+    // 超时只是"不再等名字"，信息本身仍会跑完并进入 bundle
+    expect(bundle.stockInfo?.name).toBe('隆基绿能');
+  });
+
   test('美股：信息与新闻并发，不为拼搜索词而串行等待', async () => {
     // 美股无需公司名，fetchInfo 不该挡在 scrape 前面——这条钉住并发没被重构掉
     let infoResolved = false;

@@ -28,6 +28,18 @@ export class ScrapeEmptyError extends Error {
 }
 
 /** 测试注入点；生产不传。避开 bun:test 全局 mock.module 导致的跨文件状态泄漏。 */
+/**
+ * 等公司名的上限。
+ *
+ * 公司名只用来把搜索词从 "601012" 变成 "隆基绿能601012"，是**搜索优化而非强依赖**，
+ * 不该让一次慢查询把新闻抓取整体顶后：实测 hq.sinajs.cn 抖动 0.29s–8.00s，打满超时
+ * 那次整个 bundle 从 5.71s 涨到 15.92s，多出来的全是干等。3s 能保住实测的正常区间
+ * （0.29s / 2.28s），只砍掉长尾。
+ *
+ * 超时只是**不再等**——信息本身仍在后台跑完并进入 bundle，不会因此丢字段。
+ */
+const NAME_WAIT_MS = 3_000;
+
 export interface AnalysisDeps {
   scrape?: typeof realScrape;
   fetchInfo?: (parsed: ParsedSymbol) => Promise<StockInfo | null>;
@@ -35,6 +47,8 @@ export interface AnalysisDeps {
     type: string,
     cfg: { apiKey?: string; baseUrl?: string; model?: string },
   ) => AIProvider;
+  /** 覆盖等公司名的上限，仅为让超时用例秒级跑完；生产走 NAME_WAIT_MS */
+  nameWaitMs?: number;
 }
 
 function resolveDeps(deps: AnalysisDeps): Required<AnalysisDeps> {
@@ -42,7 +56,19 @@ function resolveDeps(deps: AnalysisDeps): Required<AnalysisDeps> {
     scrape: deps.scrape ?? realScrape,
     fetchInfo: deps.fetchInfo ?? realFetchInfo,
     createProvider: deps.createProvider ?? realCreateProvider,
+    nameWaitMs: deps.nameWaitMs ?? NAME_WAIT_MS,
   };
+}
+
+/**
+ * 最多等 promise 这么久；超时或失败一律给 null——调用方据此走降级分支。
+ * 刻意**不取消**原 promise：它仍会跑完，结果照常进入 bundle。
+ */
+function waitAtMost<T>(promise: Promise<T | null>, ms: number): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms).unref?.()),
+  ]).catch(() => null);
 }
 
 /**
@@ -63,9 +89,11 @@ export async function fetchMarketBundle(
   // 往返最坏白等 8 秒，还串在整条链最前面把新闻抓取一起顶后。
   const infoPromise = resolved.fetchInfo(parsed).catch(() => null);
 
-  // A 股纯代码要等公司名回来才能拼搜索词；其余市场无此依赖，信息与新闻保持并发
+  // A 股纯代码要等公司名回来才能拼搜索词；其余市场无此依赖，信息与新闻保持并发。
+  // 等待有上限（见 NAME_WAIT_MS）：名字没按时到就用裸代码去搜——实测裸代码在东财与
+  // Google RSS 上都能拿到 8/8 条相关新闻，远好过为一个搜索词优化把整条链干等到 8 秒。
   const searchSymbol = needsNameLookup(parsed)
-    ? enhanceSymbol(symbol, parsed, await infoPromise)
+    ? enhanceSymbol(symbol, parsed, await waitAtMost(infoPromise, resolved.nameWaitMs))
     : symbol;
 
   const [stockInfo, news] = await Promise.all([
