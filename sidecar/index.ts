@@ -6,6 +6,7 @@ import {
   logger,
   toErrorMessage,
   outputJson,
+  exitAfterFlush,
   logToFile,
   errorEnvelope,
   errorEnvelopeFromUnknown,
@@ -20,14 +21,14 @@ process.on('uncaughtException', (err) => {
   const msg = toErrorMessage(err);
   logger.error(`[CRITICAL] 未捕获异常: ${msg}`);
   outputJson(errorEnvelope('ERR_BOOT_CRASH', `启动崩溃: ${msg}`));
-  process.exit(1);
+  void exitAfterFlush(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   const msg = toErrorMessage(reason);
   logger.error(`[CRITICAL] Promise 拒绝: ${msg}`);
   outputJson(errorEnvelope('ERR_BOOT_ASYNC', `异步启动失败: ${msg}`));
-  process.exit(1);
+  void exitAfterFlush(1);
 });
 
 /** 参数解析结果：槽位名 → 值，槽位布局来自 shared/actions.ts 的清单 */
@@ -217,9 +218,11 @@ async function run() {
 
 // 仅作为 CLI 入口被直接执行时才跑；被 import（如 parseArgs 的单测）时不启动业务流程
 if (import.meta.main) {
-  run().catch((err) => {
-    logger.error(`执行流异常: ${toErrorMessage(err)}`);
-    outputJson(errorEnvelopeFromUnknown('ERR_FATAL', err));
-    process.exit(1);
-  });
+  run()
+    .then(() => exitAfterFlush(0))
+    .catch((err) => {
+      logger.error(`执行流异常: ${toErrorMessage(err)}`);
+      outputJson(errorEnvelopeFromUnknown('ERR_FATAL', err));
+      return exitAfterFlush(1);
+    });
 }

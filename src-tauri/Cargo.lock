@@ -4263,6 +4263,7 @@ dependencies = [
  "tauri-plugin-sql",
  "tauri-plugin-store",
  "tauri-plugin-updater",
+ "tokio",
 ]
 
 [[package]]

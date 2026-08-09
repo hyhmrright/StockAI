@@ -11,6 +11,19 @@ const CONFIG_SLOT: &str = "@config";
 const PAYLOAD_SLOT: &str = "@payload";
 
 /**
+ * 收到完整 JSON 后，再等 Sidecar 自行退出的宽限期。
+ *
+ * 这是**兜底**，不是主修法：Sidecar 正常情况下写完那行 JSON 就 `exitAfterFlush` 主动退了
+ * （见 sidecar/utils.ts）。但只要它因为任何缘故没退——历史上是浏览器清理超时后留下的孤儿
+ * Chromium 吊住了 Bun 的事件循环——`rx.recv()` 就会一直等管道关闭，而答案其实早就收全了。
+ * 那种情形下 IPC 调用永不返回，UI 无限转圈。
+ *
+ * 计时只在**已经拿到完整 JSON 之后**才起，所以不会误杀跑得慢的调用：深度分析要连打 15 次
+ * LLM，几分钟不出声也属正常，那期间根本没进入宽限期。
+ */
+const POST_JSON_GRACE: std::time::Duration = std::time::Duration::from_secs(5);
+
+/**
  * Rust 侧 `Err(String)` 的错误码。约定格式为 `ERR_XXX: 诊断`——前端 ipc.ts 按此前缀解析成
  * ServiceError，再由 src/lib/service-errors.ts 译成用户语言。
  *
@@ -53,7 +66,16 @@ impl Drop for TempFileGuard {
 struct SidecarManager;
 
 impl SidecarManager {
-    // 取最后一行——Sidecar 协议保证每次运行只写一行 JSON 到 stdout。
+    /// 取最后一行完整 JSON——Sidecar 协议保证每次运行只写一行 JSON 到 stdout。
+    fn last_json_line(buffer: &str) -> Option<String> {
+        buffer
+            .lines()
+            .rev()
+            .map(|l| l.trim())
+            .find(|l| l.starts_with('{') && l.ends_with('}'))
+            .map(|l| l.to_string())
+    }
+
     async fn run(app_handle: &tauri::AppHandle, args: Vec<String>) -> Result<String, String> {
         let sidecar_command = app_handle
             .shell()
@@ -68,8 +90,25 @@ impl SidecarManager {
         let mut stdout_buffer = String::new();
         let mut stderr_buffer = String::new();
         let mut exit_code = None;
+        // 结果已收全但进程赖着不走，宽限期满后强制回收
+        let mut abandoned = false;
 
-        while let Some(event) = rx.recv().await {
+        loop {
+            // 拿到完整 JSON 之前无限期等——慢不等于卡死，深度分析几分钟不出声是正常的。
+            // 拿到之后只再给 POST_JSON_GRACE，到点就不陪了。
+            let event = if Self::last_json_line(&stdout_buffer).is_some() {
+                match tokio::time::timeout(POST_JSON_GRACE, rx.recv()).await {
+                    Ok(event) => event,
+                    Err(_) => {
+                        abandoned = true;
+                        break;
+                    }
+                }
+            } else {
+                rx.recv().await
+            };
+
+            let Some(event) = event else { break };
             match event {
                 tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
                     let s = String::from_utf8_lossy(&line);
@@ -86,16 +125,19 @@ impl SidecarManager {
                 _ => {}
             }
         }
-        drop(child);
 
-        // 查找最后一个完整的 JSON 对象
-        let last_json = stdout_buffer
-            .lines()
-            .rev()
-            .map(|l| l.trim())
-            .find(|l| l.starts_with('{') && l.ends_with('}'))
-            .unwrap_or("")
-            .to_string();
+        if abandoned {
+            eprintln!(
+                "Sidecar 已输出结果但 {:?} 内未退出，强制回收进程",
+                POST_JSON_GRACE
+            );
+            // kill 失败无所谓：结果已经拿到，回收不掉最多留一个孤儿进程，不该因此让调用失败
+            let _ = child.kill();
+        } else {
+            drop(child);
+        }
+
+        let last_json = Self::last_json_line(&stdout_buffer).unwrap_or_default();
 
         if last_json.is_empty() {
             // message 只放中立诊断（退出码 + stderr 原文）：前端会把它原样拼在本地化文案之后，
@@ -145,7 +187,20 @@ impl SidecarManager {
         }
         #[cfg(not(unix))]
         {
-            std::fs::write(&temp_path, content)
+            use std::io::Write;
+            // 与 Unix 分支同样用 create_new：`fs::write` 会跟随并覆写已存在的同名文件/符号链接，
+            // 而这里写的是含 apiKey 的配置。文件名虽带 pid+纳秒，抢占窗口仍不该留着。
+            // share_mode(0) 让写入期间其他进程无法打开它（Windows 上 %TEMP% 按用户隔离，
+            // 权限本身由目录 ACL 保证，这里补的是写入过程中的可见性）。
+            let mut opts = std::fs::OpenOptions::new();
+            opts.write(true).create_new(true);
+            #[cfg(windows)]
+            {
+                use std::os::windows::fs::OpenOptionsExt;
+                opts.share_mode(0);
+            }
+            opts.open(&temp_path)
+                .and_then(|mut f| f.write_all(content.as_bytes()))
                 .map_err(|e| coded(ERR_TEMP_FILE, format!("write {} failed: {}", label, e)))?;
         }
         Ok(TempFileGuard(temp_path))
@@ -277,6 +332,36 @@ mod tests {
 
     const EMPTY_STDOUT_RESPONSE: &str =
         r#"{"error":{"code":"ERR_SIDECAR","message":"exit code None, no stderr"}}"#;
+
+    /**
+     * `last_json_line` 决定何时启动 POST_JSON_GRACE 宽限期，误判两个方向都有代价：
+     * 判早了（把半行当成完整 JSON）会在结果还没收全时就开始倒计时；判晚了则宽限期永不
+     * 触发，退回「Sidecar 不退出就永远等」的原始故障。
+     */
+    #[test]
+    fn test_last_json_line_only_matches_complete_lines() {
+        // 结果还在流式写入、行尾未到 → 不能算数
+        assert_eq!(
+            SidecarManager::last_json_line(r#"{"partial":"no newline yet"#),
+            None
+        );
+        assert_eq!(SidecarManager::last_json_line(""), None);
+        // stderr 混进来的普通日志行不该被当成结果
+        assert_eq!(
+            SidecarManager::last_json_line("Sidecar 执行: action=--quote\n"),
+            None
+        );
+
+        // 协议保证只写一行；真有多行时取最后一行完整的
+        assert_eq!(
+            SidecarManager::last_json_line("noise\n{\"ok\":true}\n"),
+            Some(r#"{"ok":true}"#.to_string())
+        );
+        assert_eq!(
+            SidecarManager::last_json_line("{\"first\":1}\n{\"second\":2}\n"),
+            Some(r#"{"second":2}"#.to_string())
+        );
+    }
 
     #[test]
     fn test_empty_stdout_fallback_is_valid_json_with_error_field() {

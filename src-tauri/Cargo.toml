@@ -27,6 +27,9 @@ tauri-plugin-shell = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-store = "2"
 tauri-plugin-process = "2"
+# 仅用 time::timeout 给 Sidecar 收流加宽限期（见 lib.rs 的 POST_JSON_GRACE）。
+# tokio 本就在 tauri 的依赖树里，这里只是把它提为直接依赖，不引入新的传递依赖。
+tokio = { version = "1", features = ["time"] }
 
 # updater 插件仅桌面端可用（更新器不支持移动端），单独声明避免移动端构建引入
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
