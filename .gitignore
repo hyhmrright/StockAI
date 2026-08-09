@@ -51,3 +51,6 @@ test-bun-build
 .worktrees/
 worktrees/
 .playwright-mcp/
+# 头脑风暴工具的本地会话状态（server.pid / idle-timeout 标记 / 草图 HTML）。
+# 与 docs/superpowers/ 的 plan、spec 无关，那批文档是正式产物、继续进仓库。
+.superpowers/
