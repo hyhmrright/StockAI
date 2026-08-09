@@ -29,6 +29,8 @@ React + TypeScript + Vite。唯一 IPC 入口是 `src/lib/ipc.ts`，它按 `shar
 | `useReportIndexWarmup` | 切标的时 fire-and-forget 触发财报 RAG 建索引，把交易所平台抓取挪出 chat 首答关键路径。 |
 | `useQuotes` | 订阅**一组**标的的实时报价（关注列表 / 持仓 / 指数条共用）。自己不轮询——定时器与请求都在 `lib/quotes-store.ts` 的单例里。 |
 | `usePortfolio` | 用户持仓：SQLite 是唯一真源，写操作后整表重读；现价复用 `useQuotes`，估值走 `lib/portfolio.ts` 的纯函数。 |
+| `useAsyncOnce` | 挂载时取一次、之后不重取，供「打开才拉、关掉就完」的一次性快照用（板块榜 / 龙虎榜 / F10）。**刻意不提供重取入口**——按 key 重取请用上面两个。换 key 靠调用方 `key={...}` 重挂载。 |
+| `useModalRouter` | Dashboard 全屏浮层的互斥路由（单一 `active`，而非每个浮层一个 boolean）。 |
 
 新增「按 symbol 取数」或「按 symbol 缓存异步结果」的能力时，复用上面两个基础 hook，不要再抄一份竞态守卫。
 
@@ -98,7 +100,7 @@ Bun 进程，主流程两步：
 
 **新增一个能力 = 两处改动**：`shared/actions.ts` 加一条 + `cli-handlers/` 对应领域文件实现 handler + `sidecar/index.ts` 的 `DISPATCH` 加一行。Rust 与 ipc.ts 的调用管道不动。
 
-当前动作：`--list-models` / `--search` / `--kline` / `--quote` / `--quotes` / `--bundle` / `--analyze-only` / `--quant` / `--sectors` / `--index-reports` / `--backtest` / `--deep-analysis` / `--chat` / `--screen`（以上 `ipc: true`）；`--fundamentals-history` / `--market-snapshot` / `--info`（`ipc: false`，CLI 调试用）；无 flag 时为默认全流程分析模式（`<symbol> <@config>`，向后兼容）。另有 `--check` 健康自检，在参数解析前短路处理。
+当前动作：`--list-models` / `--search` / `--kline` / `--quote` / `--quotes` / `--bundle` / `--analyze-only` / `--quant` / `--sectors` / `--billboard` / `--company` / `--index-reports` / `--backtest` / `--deep-analysis` / `--chat` / `--screen`（以上 `ipc: true`）；`--fundamentals-history` / `--market-snapshot` / `--info`（`ipc: false`，CLI 调试用）；无 flag 时为默认全流程分析模式（`<symbol> <@config>`，向后兼容）。另有 `--check` 健康自检，在参数解析前短路处理。
 
 ### handler 分组（`sidecar/cli-handlers/`）
 
@@ -135,7 +137,14 @@ handler 按领域分文件，各组是一个 `createXxxHandlers(ctx)` 工厂，�
 | 复合分入参 | `technical.ts` / `fundamental.ts` / `valuation.ts` / `volatility.ts` | 前两者产出 composite 信号，后两者分别提供估值快照与风险指标 |
 | 聚合 | `scoring.ts` | 技术 + 基本面加权为基准，blend 估值方向，按风险向中性收敛（缺估值/风险自动降级），产出 1–100 分与 bullish/bearish/neutral |
 | 派生 | `levels.ts` / `fundflow.ts` / `factors.ts` | 价位推导、资金流、给大师 Agent 用的因子集 |
-| 独立能力 | `market-snapshot.ts` / `nl-screen.ts` / `sectors.ts` / `fundamental-history.ts` / `roe-annualize.ts` | 各自对应一个 CLI action 或被选股/财报链路调用，不进复合分 |
+| 独立能力 | `market-snapshot.ts` / `nl-screen.ts` / `sectors.ts` / `billboard.ts` / `company-f10.ts` / `fundamental-history.ts` / `roe-annualize.ts` | 各自对应一个 CLI action 或被选股/财报链路调用，不进复合分 |
+
+**A 股专属数据源的两个共同陷阱**（`sectors.ts` / `billboard.ts` / `company-f10.ts` 各踩过一次，加新源前先对照）：
+
+- **东财 clist 系列必须带 `np=1`**，否则 `data.diff` 返回对象而非数组，解析静默得到空表。
+- **datacenter 的 `reportName` 多是全历史表**。`RPT_DAILYBILLBOARD_DETAILSNEW` 有约 8.8 万页，不带日期 `filter` 时默认排序返回 2015 年数据——形状完全合法，只是过期十年。务必先探最新交易日再过滤，并在集成测试里断言「日期距今够近」。
+
+**失败容忍度按「合起来是不是一个整体」定**，不要照抄：板块榜行业+概念少一张会误导「今天只有行业在动」，故一张失败即整体失败；F10 四块是彼此无关的事实，故 `allSettled` 按块降级，四块全空才报错。
 
 前端对应 `useQuantData` hook 与 `QuantScoreCard` 组件。**新增维度先想清楚是「进复合分」还是「派生/独立」**——进复合分要改 `scoring.ts` 的权重口径，属于口径变更，不是加法。
 
