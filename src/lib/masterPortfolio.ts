@@ -109,25 +109,34 @@ export function computeMasterPortfolio(
 
 /** 取数依赖（DI）：读全量落账 signal / 按 symbol 回查现价。保持本模块无 IO，便于离线测试。 */
 export type SignalsFetcher = () => Promise<MasterSignalRecord[]>;
-export type PriceFetcher = (symbol: string) => Promise<number>;
+/** 批量取价：一次拿整组，不接受逐只调用（见 loadMasterPortfolio 的说明） */
+export type PriceFetcher = (symbols: string[]) => Promise<Record<string, number>>;
 
 /**
- * 虚拟大师组合取数流水线（复用点）：读全量 signal → 按 symbol 去重并发回查现价 → 纯函数聚合。
+ * 虚拟大师组合取数流水线（复用点）：读全量 signal → 按 symbol 去重**批量**回查现价 → 纯函数聚合。
  * 报价失败的 symbol 静默跳过（对应 signal 计入「待定」）。useMasterPortfolio 与 useMasterWeights 共用，
  * 避免「拉信号→拉现价→聚合」逻辑重复。
+ *
+ * **取价必须是批量的**：signal 表按分析过的标的数增长，这里的去重 symbol 集没有上限。
+ * sidecar 是 spawn-per-call，逐只取价等于「分析过多少只股票，打开面板就同时起多少个进程」。
+ * 这与 useAlertMonitor 从前逐只取价、以及各消费方各持一个轮询定时器是同一类缺陷，
+ * 项目已经消灭过两次，不该在这里第三次犯（见 lib/quotes-store.ts 与 ipc.fetchRealtimeQuotes）。
  */
 export async function loadMasterPortfolio(
   loadSignals: SignalsFetcher,
-  loadPrice: PriceFetcher,
+  loadPrices: PriceFetcher,
 ): Promise<MasterPortfolioData> {
   const signals = await loadSignals();
   const symbols = [...new Set(signals.map((s) => s.symbol))];
-  const quotes = await Promise.allSettled(symbols.map((sym) => loadPrice(sym)));
+  // 整批取价失败时退化为空价表——全部 signal 计入「待定」，与逐只取价时代
+  // 「每只各自失败、各自跳过」的结果一致：战绩榜照常渲染，不弹错误页。
+  const raw: Record<string, number> =
+    symbols.length > 0 ? await loadPrices(symbols).catch(() => ({})) : {};
   const priceMap: Record<string, number> = {};
-  symbols.forEach((sym, i) => {
-    const q = quotes[i];
-    if (q.status === 'fulfilled' && Number.isFinite(q.value)) priceMap[sym] = q.value;
-  });
+  for (const sym of symbols) {
+    const price = raw[sym];
+    if (Number.isFinite(price)) priceMap[sym] = price;
+  }
   return computeMasterPortfolio(signals, priceMap, Date.now());
 }
 

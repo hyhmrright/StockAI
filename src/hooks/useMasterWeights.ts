@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MasterWeightInput } from '../../shared/types';
 import { getAllMasterSignals } from '../lib/db';
-import { fetchRealtimeQuote } from '../lib/ipc';
+import { fetchRealtimeQuotes } from '../lib/ipc';
 import {
   deriveMasterWeights,
   loadMasterPortfolio,
@@ -14,8 +14,11 @@ export interface UseMasterWeightsResult {
   refetch: () => void;
 }
 
-const defaultPriceFetcher: PriceFetcher = async (symbol) =>
-  (await fetchRealtimeQuote(symbol)).price;
+/** 一次进程拉完整组；symbol 数没有上限，逐只取价会按标的数放大 sidecar 进程数 */
+const defaultPriceFetcher: PriceFetcher = async (symbols) => {
+  const { quotes } = await fetchRealtimeQuotes(symbols);
+  return Object.fromEntries(Object.entries(quotes).map(([sym, q]) => [sym, q.price]));
+};
 
 /**
  * 大师动态权重「命中率生产者」：全局（非按 symbol）加载战绩 → 派生权重快照。

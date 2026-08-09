@@ -150,23 +150,46 @@ describe('deriveMasterWeights', () => {
 });
 
 describe('loadMasterPortfolio', () => {
-  it('去重并发回查现价并聚合，报价失败的 symbol 静默跳过', async () => {
-    const loadSignals = vi.fn(async () => [
+  const threeSignals = () =>
+    vi.fn(async () => [
       sig({ id: 1, symbol: 'AAPL', priceAt: 100 }),
       sig({ id: 2, symbol: 'AAPL', priceAt: 100 }), // 同 symbol 去重
       sig({ id: 3, symbol: 'MSFT', priceAt: 200 }),
     ]);
-    // AAPL 报价成功、MSFT 抛错 → MSFT 信号判「待定」
-    const loadPrice = vi.fn(async (sym: string) => {
-      if (sym === 'MSFT') throw new Error('quote failed');
-      return 110;
-    });
 
-    const data = await loadMasterPortfolio(loadSignals, loadPrice);
+  it('去重后一次批量取价，缺价的 symbol 静默判「待定」', async () => {
+    // 只返回 AAPL：MSFT 缺价 → 其信号判「待定」
+    const loadPrices = vi.fn(async () => ({ AAPL: 110 }));
 
-    // AAPL 去重后只查一次现价
-    expect(loadPrice).toHaveBeenCalledTimes(2);
+    const data = await loadMasterPortfolio(threeSignals(), loadPrices);
+
+    // 关键断言：一次批量、而非按 symbol 数逐只调用（逐只 = 按标的数放大 sidecar 进程）
+    expect(loadPrices).toHaveBeenCalledTimes(1);
+    expect(loadPrices).toHaveBeenCalledWith(['AAPL', 'MSFT']);
     expect(data.totalSignals).toBe(3);
     expect(data.resolvedSignals).toBe(2); // 两条 AAPL 已裁决；MSFT 待定
+  });
+
+  it('整批取价失败时不抛，全部信号退为「待定」', async () => {
+    const loadPrices = vi.fn(async () => {
+      throw new Error('quote failed');
+    });
+
+    const data = await loadMasterPortfolio(threeSignals(), loadPrices);
+
+    expect(data.totalSignals).toBe(3);
+    expect(data.resolvedSignals).toBe(0);
+  });
+
+  it('没有信号时不发起取价请求', async () => {
+    const loadPrices = vi.fn(async () => ({}));
+
+    const data = await loadMasterPortfolio(
+      vi.fn(async () => []),
+      loadPrices,
+    );
+
+    expect(loadPrices).not.toHaveBeenCalled();
+    expect(data.totalSignals).toBe(0);
   });
 });

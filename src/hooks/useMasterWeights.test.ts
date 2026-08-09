@@ -20,13 +20,15 @@ function sig(over: Partial<MasterSignalRecord>): MasterSignalRecord {
 describe('useMasterWeights', () => {
   it('空历史 → 空数组（best-effort 退化默认权重）', async () => {
     const loadSignals = vi.fn(async () => []);
-    const loadPrice = vi.fn(async () => 100);
-    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrice));
+    const loadPrices = vi.fn(async (syms: string[]) =>
+      Object.fromEntries(syms.map((sym) => [sym, 100])),
+    );
+    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrices));
 
     await waitFor(() => expect(loadSignals).toHaveBeenCalled());
     expect(result.current.weights).toEqual([]);
     // 空历史无需回查任何现价
-    expect(loadPrice).not.toHaveBeenCalled();
+    expect(loadPrices).not.toHaveBeenCalled();
   });
 
   it('有战绩 → 派生权重快照（过滤掉全待定的大师）', async () => {
@@ -34,8 +36,10 @@ describe('useMasterWeights', () => {
       sig({ id: 1, masterId: 'a', signal: 'bullish', priceAt: 100 }), // 命中
       sig({ id: 2, masterId: 'b', signal: 'neutral', priceAt: 100 }), // 全待定 → 过滤
     ]);
-    const loadPrice = vi.fn(async () => 110);
-    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrice));
+    const loadPrices = vi.fn(async (syms: string[]) =>
+      Object.fromEntries(syms.map((sym) => [sym, 110])),
+    );
+    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrices));
 
     await waitFor(() => expect(result.current.weights.length).toBe(1));
     expect(result.current.weights[0]).toEqual({ masterId: 'a', sampleSize: 1, hits: 1 });
@@ -45,8 +49,10 @@ describe('useMasterWeights', () => {
     const loadSignals = vi.fn(async () => {
       throw new Error('db 读取失败');
     });
-    const loadPrice = vi.fn(async () => 100);
-    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrice));
+    const loadPrices = vi.fn(async (syms: string[]) =>
+      Object.fromEntries(syms.map((sym) => [sym, 100])),
+    );
+    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrices));
 
     await waitFor(() => expect(loadSignals).toHaveBeenCalled());
     expect(result.current.weights).toEqual([]);
@@ -54,8 +60,10 @@ describe('useMasterWeights', () => {
 
   it('refetch 重新拉取权重快照', async () => {
     const loadSignals = vi.fn(async () => [sig({ masterId: 'a', priceAt: 100 })]);
-    const loadPrice = vi.fn(async () => 110);
-    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrice));
+    const loadPrices = vi.fn(async (syms: string[]) =>
+      Object.fromEntries(syms.map((sym) => [sym, 110])),
+    );
+    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrices));
 
     await waitFor(() => expect(result.current.weights.length).toBe(1));
     result.current.refetch();

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MasterPortfolioData } from '../../shared/types';
 import { getAllMasterSignals } from '../lib/db';
-import { fetchRealtimeQuote } from '../lib/ipc';
+import { fetchRealtimeQuotes } from '../lib/ipc';
 import {
   loadMasterPortfolio,
   type PriceFetcher,
@@ -19,8 +19,11 @@ export interface UseMasterPortfolioResult {
   refetch: () => void;
 }
 
-const defaultPriceFetcher: PriceFetcher = async (symbol) =>
-  (await fetchRealtimeQuote(symbol)).price;
+/** 一次进程拉完整组；symbol 数没有上限，逐只取价会按标的数放大 sidecar 进程数 */
+const defaultPriceFetcher: PriceFetcher = async (symbols) => {
+  const { quotes } = await fetchRealtimeQuotes(symbols);
+  return Object.fromEntries(Object.entries(quotes).map(([sym, q]) => [sym, q.price]));
+};
 
 /**
  * 虚拟大师组合战绩 hook：读全量落账 signal → 按 symbol 回查现价 → 纯函数聚合。
