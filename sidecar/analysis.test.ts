@@ -37,7 +37,6 @@ function makeDeps(overrides?: {
     deps: {
       scrape,
       fetchInfo,
-      enhance: (s: string) => Promise.resolve(s),
       createProvider: () => ({ kind: 'openai' as const, analyze }),
     },
     mocks: { scrape, fetchInfo, analyze },
@@ -105,6 +104,52 @@ describe('fetchMarketBundle (拆分后的纯抓取)', () => {
     await expect(fetchMarketBundle('INVALID', true, deps)).rejects.toThrow(
       /未搜寻到股票 "INVALID"/,
     );
+  });
+
+  test('A 股：股票信息只取一次，且搜索词已用公司名增强', async () => {
+    // 防回归：搜索词增强此前自己调 fetchStockInfo，与这里的 fetchInfo 是同一接口的两次请求。
+    // 实测一次 A 股 bundle 打出 2 个 hq.sinajs.cn 请求（美股 1 个），该源抖动 0.26s–8.00s，
+    // 多出的那次最坏白等 8 秒。旧测试注入 enhance 恒等 stub，恰好把这次重复请求挡在视野外。
+    const { deps, mocks } = makeDeps({ fetchInfoResult: { name: '隆基绿能' } as StockInfo });
+
+    const bundle = await fetchMarketBundle('601012', false, deps);
+
+    expect(mocks.fetchInfo).toHaveBeenCalledTimes(1);
+    expect(mocks.scrape).toHaveBeenCalledWith('隆基绿能601012', false);
+    expect(bundle.stockInfo?.name).toBe('隆基绿能');
+  });
+
+  test('A 股：信息源失败时搜索词回退裸代码，新闻照抓', async () => {
+    const { deps, mocks } = makeDeps({ fetchInfoRejects: new Error('数据源超时') });
+
+    const bundle = await fetchMarketBundle('601012', false, deps);
+
+    expect(mocks.fetchInfo).toHaveBeenCalledTimes(1);
+    expect(mocks.scrape).toHaveBeenCalledWith('601012', false);
+    expect(bundle.stockInfo).toBeUndefined();
+    expect(bundle.news).toHaveLength(DEFAULT_NEWS.length);
+  });
+
+  test('美股：信息与新闻并发，不为拼搜索词而串行等待', async () => {
+    // 美股无需公司名，fetchInfo 不该挡在 scrape 前面——这条钉住并发没被重构掉
+    let infoResolved = false;
+    const scrape = mock(() => {
+      expect(infoResolved).toBe(false);
+      return Promise.resolve(DEFAULT_NEWS);
+    });
+    const fetchInfo = mock(
+      () =>
+        new Promise<StockInfo | null>((res) =>
+          setTimeout(() => {
+            infoResolved = true;
+            res(null);
+          }, 20),
+        ),
+    );
+
+    await fetchMarketBundle('AAPL', false, { scrape, fetchInfo });
+
+    expect(scrape).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -12,7 +12,7 @@ import type { AIProvider } from './ai';
 import { scrapeStockNews as realScrape } from './scraper';
 import { fetchStockInfo as realFetchInfo } from './stock-info';
 import { parseSymbol } from './parsers/exchange';
-import { getEnhancedSymbol as realEnhance } from './symbol';
+import { needsNameLookup, enhanceSymbol } from './symbol';
 import { createProvider as realCreateProvider } from './providers/registry';
 import { toErrorMessage, logger } from './utils';
 
@@ -31,7 +31,6 @@ export class ScrapeEmptyError extends Error {
 export interface AnalysisDeps {
   scrape?: typeof realScrape;
   fetchInfo?: (parsed: ParsedSymbol) => Promise<StockInfo | null>;
-  enhance?: typeof realEnhance;
   createProvider?: (
     type: string,
     cfg: { apiKey?: string; baseUrl?: string; model?: string },
@@ -42,7 +41,6 @@ function resolveDeps(deps: AnalysisDeps): Required<AnalysisDeps> {
   return {
     scrape: deps.scrape ?? realScrape,
     fetchInfo: deps.fetchInfo ?? realFetchInfo,
-    enhance: deps.enhance ?? realEnhance,
     createProvider: deps.createProvider ?? realCreateProvider,
   };
 }
@@ -59,17 +57,21 @@ export async function fetchMarketBundle(
   const resolved = resolveDeps(deps);
   const parsed = parseSymbol(symbol);
 
-  // 异步增强搜索词（例如：'601012' -> '隆基绿能601012'）
-  const searchSymbol = await resolved.enhance(symbol);
+  // 股票信息**只取一次**，两个用途共用：拼新闻搜索词、以及作为 bundle 的一部分返回。
+  // 此前搜索词增强自己又拉了一遍同一接口，同一份数据串行请求两遍；实测 A 股每次 bundle
+  // 发出 2 个 hq.sinajs.cn 请求（美股 1 个），而该源抖动区间 0.26s–8.00s，多出的那次
+  // 往返最坏白等 8 秒，还串在整条链最前面把新闻抓取一起顶后。
+  const infoPromise = resolved.fetchInfo(parsed).catch(() => null);
 
-  const [stockInfoResult, newsResult] = await Promise.allSettled([
-    resolved.fetchInfo(parsed),
-    resolved.scrape(searchSymbol, deepMode),
+  // A 股纯代码要等公司名回来才能拼搜索词；其余市场无此依赖，信息与新闻保持并发
+  const searchSymbol = needsNameLookup(parsed)
+    ? enhanceSymbol(symbol, parsed, await infoPromise)
+    : symbol;
+
+  const [stockInfo, news] = await Promise.all([
+    infoPromise.then((info) => info ?? undefined),
+    resolved.scrape(searchSymbol, deepMode).catch(() => [] as StockNews[]),
   ]);
-
-  const stockInfo =
-    stockInfoResult.status === 'fulfilled' ? (stockInfoResult.value ?? undefined) : undefined;
-  const news = newsResult.status === 'fulfilled' ? newsResult.value : [];
 
   if (news.length === 0) {
     throw new ScrapeEmptyError(
