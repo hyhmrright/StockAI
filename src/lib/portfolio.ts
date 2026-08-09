@@ -19,18 +19,6 @@ import type {
  *    正确做法是排除，并把这些标的显式列出来让用户知道少算了什么。
  */
 
-/** 加仓后的加权平均成本。两笔都为 0 股时退化为 0，避免除零产出 NaN。 */
-export function mergeCost(
-  existing: { shares: number; costPrice: number },
-  added: { shares: number; costPrice: number },
-): { shares: number; costPrice: number } {
-  const shares = existing.shares + added.shares;
-  if (shares === 0) return { shares: 0, costPrice: 0 };
-  const costPrice =
-    (existing.shares * existing.costPrice + added.shares * added.costPrice) / shares;
-  return { shares, costPrice };
-}
-
 /** 单笔估值。没有报价时只填 cost，其余留空。 */
 function valuate(position: Position, quote?: RealtimeQuote): PositionValuation {
   const cost = position.shares * position.costPrice;

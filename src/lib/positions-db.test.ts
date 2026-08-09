@@ -48,36 +48,39 @@ describe('positions-db', () => {
     });
   });
 
-  it('新标的走 INSERT', async () => {
-    mockSelect
-      .mockResolvedValueOnce([]) // 查已有 → 无
-      .mockResolvedValueOnce([row({ symbol: 'MSFT' })]); // 回读
+  it('建仓与加仓走同一条 INSERT..ON CONFLICT，写入前不再 SELECT', async () => {
+    mockSelect.mockResolvedValueOnce([row({ symbol: 'MSFT' })]); // 写后回读
 
-    await upsertPosition({ symbol: 'MSFT', shares: 10, costPrice: 300, openedAt: 1 });
+    const p = await upsertPosition({ symbol: 'MSFT', shares: 10, costPrice: 300, openedAt: 1 });
 
-    expect(String(mockExecute.mock.calls[0][0])).toContain('INSERT INTO positions');
-  });
-
-  it('已有标的走 UPDATE，并按份额加权合并成本——不是插第二行', async () => {
-    // 同一只股票两行不同成本在界面上无法解释；用户心里的"我的成本"是加权均价
-    mockSelect
-      .mockResolvedValueOnce([row({ shares: 100, cost_price: 10 })])
-      .mockResolvedValueOnce([row({ shares: 400, cost_price: 17.5 })]);
-
-    await upsertPosition({ symbol: 'AAPL', shares: 300, costPrice: 20, openedAt: 2 });
+    // 关键断言：单语句原子写入。先读后写的两步之间正是竞态窗口——
+    // 连点加仓会基于同一份旧值各算各的，后写覆盖前写
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockSelect).toHaveBeenCalledTimes(1);
 
     const [sql, params] = mockExecute.mock.calls[0];
-    expect(String(sql)).toContain('UPDATE positions');
-    expect(params[1]).toBe(400); // 100 + 300
-    expect(params[2]).toBe(17.5); // (100×10 + 300×20) / 400，不是算术平均 15
+    expect(String(sql)).toContain('INSERT INTO positions');
+    expect(String(sql)).toContain('ON CONFLICT(symbol) DO UPDATE');
+    expect(params.slice(0, 6)).toEqual(['MSFT', null, 10, 300, 1, null]);
+    expect(p?.symbol).toBe('MSFT');
   });
 
-  it('加仓不覆盖已有的名称——加仓表单通常只填代码与价格', async () => {
-    mockSelect.mockResolvedValueOnce([row({ name: 'Apple' })]).mockResolvedValueOnce([row()]);
+  it('合并语义都在 SQL 里（mock 执行不到，数值语义已用真 SQLite 实测过）', async () => {
+    // 实测记录：100股@10 加仓 300股@20 → 400股@17.5（加权均价，不是算术平均 15）；
+    // name/note 传 NULL 不覆盖已有值；份额合计为 0 时 cost_price 落 0 而非 NULL
+    await upsertPosition({ symbol: 'AAPL', shares: 300, costPrice: 20, openedAt: 2 });
 
-    await upsertPosition({ symbol: 'AAPL', shares: 1, costPrice: 1, openedAt: 2 });
-
-    expect(mockExecute.mock.calls[0][1][0]).toBe('Apple');
+    const sql = String(mockExecute.mock.calls[0][0]);
+    // 加权均价：份额乘各自成本求和，再除以总份额
+    expect(sql).toContain(
+      '(positions.shares * positions.cost_price + excluded.shares * excluded.cost_price)',
+    );
+    expect(sql).toContain('/ (positions.shares + excluded.shares)');
+    // 加仓表单通常只填代码与价格：NULL 不覆盖已有名称/备注
+    expect(sql).toContain('COALESCE(excluded.name, positions.name)');
+    expect(sql).toContain('COALESCE(excluded.note, positions.note)');
+    // opened_at 不进 SET 列表：加仓保持首次建仓时间
+    expect(sql).not.toMatch(/DO UPDATE SET[\s\S]*opened_at/);
   });
 
   it('deletePosition 按 id 删', async () => {

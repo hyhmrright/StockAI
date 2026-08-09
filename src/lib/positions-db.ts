@@ -1,6 +1,5 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { getDb } from './db';
-import { mergeCost } from './portfolio';
 import type { Position, PositionInput } from '../../shared/types';
 
 /**
@@ -47,49 +46,39 @@ export async function getPositions(): Promise<Position[]> {
  * 而不是插第二行——「同一只股票两行不同成本」在界面上无法解释，
  * 合并成一行加权均价才是用户心里的那个"我的成本"。
  *
+ * 加权合并放在 ON CONFLICT 里由 SQLite 单语句完成：先 SELECT 再回写的
+ * 两步之间有竞态窗口（连点加仓会基于同一份旧值各算各的，后写覆盖前写），
+ * 单语句天然原子。SET 各子句一律读冲突前的旧值，与书写顺序无关。
+ *
  * 返回合并后的持仓，便于调用方直接更新本地状态。
  */
 export async function upsertPosition(input: PositionInput): Promise<Position | null> {
   if (!isTauri()) return null;
   const db = await getDb();
-  const now = Date.now();
 
-  const existing = await db.select<RawPositionRow[]>(
-    `SELECT id, symbol, name, shares, cost_price, opened_at, note
-       FROM positions WHERE symbol = $1`,
-    [input.symbol],
+  // COALESCE：加仓表单通常只填代码与价格，不覆盖已有名称/备注；
+  // cost_price 的 CASE 兜住份额合计为 0 的退化情形——SQLite 除零得 NULL，会撞 NOT NULL
+  await db.execute(
+    `INSERT INTO positions (symbol, name, shares, cost_price, opened_at, note, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT(symbol) DO UPDATE SET
+       name = COALESCE(excluded.name, positions.name),
+       cost_price = CASE WHEN positions.shares + excluded.shares = 0 THEN 0
+         ELSE (positions.shares * positions.cost_price + excluded.shares * excluded.cost_price)
+              / (positions.shares + excluded.shares) END,
+       shares = positions.shares + excluded.shares,
+       note = COALESCE(excluded.note, positions.note),
+       updated_at = excluded.updated_at`,
+    [
+      input.symbol,
+      input.name ?? null,
+      input.shares,
+      input.costPrice,
+      input.openedAt,
+      input.note ?? null,
+      Date.now(),
+    ],
   );
-
-  if (existing.length === 0) {
-    await db.execute(
-      `INSERT INTO positions (symbol, name, shares, cost_price, opened_at, note, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        input.symbol,
-        input.name ?? null,
-        input.shares,
-        input.costPrice,
-        input.openedAt,
-        input.note ?? null,
-        now,
-      ],
-    );
-  } else {
-    const prev = rowToPosition(existing[0]);
-    const merged = mergeCost(prev, input);
-    await db.execute(
-      `UPDATE positions SET name = $1, shares = $2, cost_price = $3, note = $4, updated_at = $5
-       WHERE symbol = $6`,
-      [
-        input.name ?? prev.name ?? null,
-        merged.shares,
-        merged.costPrice,
-        input.note ?? prev.note ?? null,
-        now,
-        input.symbol,
-      ],
-    );
-  }
 
   const after = await db.select<RawPositionRow[]>(
     `SELECT id, symbol, name, shares, cost_price, opened_at, note

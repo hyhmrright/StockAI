@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildOverview, mergeCost } from './portfolio';
+import { buildOverview } from './portfolio';
 import type { Position, RealtimeQuote } from '../../shared/types';
 
 function pos(symbol: string, shares: number, costPrice: number, id = 1): Position {
@@ -29,23 +29,6 @@ function quote(
     market: currency === 'CNY' ? 'A股' : '美股',
   };
 }
-
-describe('mergeCost 加仓的加权平均', () => {
-  it('按份额加权，不是两个价格的算术平均', () => {
-    // 100 股 @10 + 300 股 @20 → 均价 17.5，不是 15
-    expect(mergeCost({ shares: 100, costPrice: 10 }, { shares: 300, costPrice: 20 })).toEqual({
-      shares: 400,
-      costPrice: 17.5,
-    });
-  });
-
-  it('总份额为 0 时不产出 NaN', () => {
-    expect(mergeCost({ shares: 0, costPrice: 0 }, { shares: 0, costPrice: 50 })).toEqual({
-      shares: 0,
-      costPrice: 0,
-    });
-  });
-});
 
 describe('buildOverview 组合估值', () => {
   it('空组合产出空结果，不抛也不造零值汇总', () => {
