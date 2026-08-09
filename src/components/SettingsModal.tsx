@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import {
   X,
@@ -33,10 +33,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [activeTab, setActiveTab] = useState<Tab>('providers');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const { t } = useLanguage();
+  const saveResetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings]);
+
+  // 卸载时撤掉未触发的复位计时器，不给已卸载组件补一刀 setState
+  useEffect(() => () => clearTimeout(saveResetTimer.current), []);
 
   useEffect(() => {
     // 浏览器 dev 模式下无 Tauri API，读不到版本号属预期；留痕便于排查真实故障，不打断 UI
@@ -51,7 +55,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     setSaveStatus('saving');
     await updateSettings(localSettings);
     setSaveStatus('saved');
-    setTimeout(() => setSaveStatus('idle'), 2000);
+    // 连续保存时先撤上一个计时器，否则旧计时器会提前把本次「已保存」打回 idle
+    clearTimeout(saveResetTimer.current);
+    saveResetTimer.current = setTimeout(() => setSaveStatus('idle'), 2000);
   };
 
   return (
