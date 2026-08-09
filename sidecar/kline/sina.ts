@@ -8,6 +8,7 @@ import type {
 import type { KlineSourceDeps } from './types';
 import { fetchWithPolicy } from '../http';
 import { parseChinaSymbol, parseUsSymbol } from './symbol';
+import { extractSinaJson } from '../parsers/sina-envelope';
 
 /** hq.sinajs.cn 不带 Referer 一律返回空串，不是 4xx——少了它会静默得到空数据 */
 const SINA_HEADERS = { Referer: 'https://finance.sina.com.cn' } as const;
@@ -68,16 +69,8 @@ interface SinaDailyRow {
  * 所以只认第一个 `[` 到最后一个 `]` 之间的数组体。
  */
 export function parseSinaDailyK(raw: string): KlinePoint[] {
-  const start = raw.indexOf('[');
-  const end = raw.lastIndexOf(']');
-  if (start < 0 || end <= start) throw new Error('新浪日 K 响应不含数组体');
-
-  let rows: SinaDailyRow[];
-  try {
-    rows = JSON.parse(raw.slice(start, end + 1));
-  } catch {
-    throw new Error('新浪日 K 响应 JSON 解析失败');
-  }
+  const rows = extractSinaJson<SinaDailyRow[]>(raw, '[');
+  if (!rows) throw new Error('新浪日 K 响应不含数组体');
 
   const points: KlinePoint[] = [];
   for (const r of rows) {
@@ -233,16 +226,8 @@ interface SinaCnKlineRow {
 
 /** 与美股日 K 不同，这个接口返回的是裸 JSON 数组，没有 JSONP 外壳 */
 export function parseSinaCnKline(raw: string): KlinePoint[] {
-  const start = raw.indexOf('[');
-  const end = raw.lastIndexOf(']');
-  if (start < 0 || end <= start) throw new Error('新浪 A 股 K 线响应不含数组体');
-
-  let rows: SinaCnKlineRow[];
-  try {
-    rows = JSON.parse(raw.slice(start, end + 1));
-  } catch {
-    throw new Error('新浪 A 股 K 线响应 JSON 解析失败');
-  }
+  const rows = extractSinaJson<SinaCnKlineRow[]>(raw, '[');
+  if (!rows) throw new Error('新浪 A 股 K 线响应不含数组体');
 
   const points: KlinePoint[] = [];
   for (const r of rows) {

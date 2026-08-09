@@ -4,7 +4,8 @@ import type { MarketSnapshot, MarketSnapshotEntry } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
 import { HTTP_DEFAULTS } from '../config';
 import { fetchWithPolicy } from '../http';
-import { logger } from '../utils';
+import { logger, toErrorMessage } from '../utils';
+import { extractSinaJson } from '../parsers/sina-envelope';
 
 /**
  * 全市场基本面快照（东财 push2 clist 分页 list 端点）。
@@ -85,6 +86,63 @@ export function buildClistUrl(pn: number, pz = PAGE_SIZE): string {
   );
 }
 
+// ─────────────────── 新浪备源 ───────────────────
+
+/**
+ * 东财 push2delay 也挂掉时的兜底（push2 家族 2026-08-09 整体故障过一轮）。
+ *
+ * 覆盖面略窄：新浪 hs_a 节点实测 5538 只，东财约 5874——差在退市整理、少数 B 股之类，
+ * 对「基本面粗筛」这个消费场景无实质影响。
+ */
+const SINA_NODE_URL = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php';
+
+export function buildSinaSnapshotUrl(page: number, num = PAGE_SIZE): string {
+  // sort=symbol&asc=1 = 按代码稳定排序，分页才不会漏行重行
+  return `${SINA_NODE_URL}/Market_Center.getHQNodeData?page=${page}&num=${num}&sort=symbol&asc=1&node=hs_a`;
+}
+
+/** 新浪快照一行。数值型字段是 number，价格类是字符串——两种都要能吃 */
+interface SinaNodeRow {
+  code?: string;
+  name?: string;
+  trade?: string | number;
+  changepercent?: number | string;
+  per?: number | string;
+  pb?: number | string;
+  mktcap?: number | string; // 单位**万元**（工商银行实测 268373911 万 = 2.68 万亿）
+  turnoverratio?: number | string;
+}
+
+/** 与东财那支的 num() 不同：新浪把价格类字段给成字符串，只认 number 会全部丢成 undefined */
+function loose(v: unknown): number | undefined {
+  if (v === null || v === undefined || v === '') return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** 纯解析：新浪一页响应 → MarketSnapshotEntry[]（响应是带 \u 转义的纯 JSON，无需 GBK 解码） */
+export function parseSinaSnapshotPage(raw: string): MarketSnapshotEntry[] {
+  const rows = extractSinaJson<SinaNodeRow[]>(raw, '[');
+  if (!rows) return [];
+
+  return rows
+    .filter((r) => !!r?.code)
+    .map((r) => {
+      const capWan = loose(r.mktcap);
+      return {
+        symbol: r.code as string,
+        name: r.name ?? '',
+        price: loose(r.trade),
+        changePercent: loose(r.changepercent),
+        pe: loose(r.per),
+        pb: loose(r.pb),
+        // 万元 → 元，与东财 f20 的口径对齐；忘了换算会让下游按市值筛选整体差 1 万倍
+        marketCap: capWan === undefined ? undefined : capWan * 1e4,
+        turnoverRate: loose(r.turnoverratio),
+      };
+    });
+}
+
 export interface MarketSnapshotDeps {
   fetchImpl?: typeof fetch;
   // 缓存读写默认走 cache.ts；测试注入以保持离线 hermetic
@@ -95,6 +153,68 @@ export interface MarketSnapshotDeps {
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+type Sleeper = (ms: number) => Promise<void>;
+interface Paged {
+  entries: MarketSnapshotEntry[];
+  total: number;
+}
+
+/**
+ * 分页串行拉取的公共骨架。两个源只在「URL 怎么拼、响应怎么解析、总数从哪来」上不同，
+ * 而翻页、抖动、空页停止、页数上限这些是一样的。
+ *
+ * 页间 120–300ms 随机抖动，避免高频批量触发反爬。
+ */
+async function fetchPaged(
+  sleepImpl: Sleeper,
+  page: (pn: number) => Promise<{ rows: MarketSnapshotEntry[]; total?: number }>,
+): Promise<Paged> {
+  const entries: MarketSnapshotEntry[] = [];
+  let total = 0;
+  for (let pn = 1; pn <= MAX_PAGES; pn++) {
+    const { rows, total: t } = await page(pn);
+    if (pn === 1 && t) total = t;
+    if (rows.length === 0) break; // 空页（末页或 total 不准）即结束
+    entries.push(...rows);
+    if (total > 0 && entries.length >= total) break; // 已拉全
+    await sleepImpl(120 + Math.floor(Math.random() * 180));
+  }
+  return { entries, total };
+}
+
+/** 东财：首选源，字段与下游口径原生一致 */
+export function fetchEastmoneySnapshot(
+  deps: MarketSnapshotDeps = {},
+  sleepImpl: Sleeper = sleep,
+): Promise<Paged> {
+  return fetchPaged(sleepImpl, async (pn) => {
+    // 分页聚合是重接口，用放宽超时
+    const resp = await fetchWithPolicy(buildClistUrl(pn), {
+      timeoutMs: HTTP_DEFAULTS.slowTimeoutMs,
+      fetchImpl: deps.fetchImpl,
+    });
+    if (!resp.ok) throw new Error(`东财 clist HTTP ${resp.status}`);
+    const json = (await resp.json()) as ClistResponse;
+    return { rows: parseClistPage(json), total: num(json?.data?.total) };
+  });
+}
+
+/** 新浪：备源。总数另有端点，这里不取——靠空页停止即可，少打一次请求 */
+export function fetchSinaSnapshot(
+  deps: MarketSnapshotDeps = {},
+  sleepImpl: Sleeper = sleep,
+): Promise<Paged> {
+  return fetchPaged(sleepImpl, async (pn) => {
+    const resp = await fetchWithPolicy(buildSinaSnapshotUrl(pn), {
+      timeoutMs: HTTP_DEFAULTS.slowTimeoutMs,
+      headers: { Referer: 'https://finance.sina.com.cn' },
+      fetchImpl: deps.fetchImpl,
+    });
+    if (!resp.ok) throw new Error(`新浪全市场快照 HTTP ${resp.status}`);
+    return { rows: parseSinaSnapshotPage(await resp.text()) };
+  });
+}
 
 /**
  * 拉取全市场基本面快照。命中 24h 磁盘缓存即返回；否则分页串行拉 clist 累加。
@@ -109,23 +229,13 @@ export async function fetchMarketSnapshot(deps: MarketSnapshotDeps = {}): Promis
   const cached = _readCache<MarketSnapshot>(key, SNAPSHOT_CACHE_OPTS);
   if (cached) return cached;
 
-  const entries: MarketSnapshotEntry[] = [];
-  let total = 0;
-  for (let pn = 1; pn <= MAX_PAGES; pn++) {
-    // 分页聚合是重接口，用放宽超时
-    const resp = await fetchWithPolicy(buildClistUrl(pn), {
-      timeoutMs: HTTP_DEFAULTS.slowTimeoutMs,
-      fetchImpl: deps.fetchImpl,
-    });
-    if (!resp.ok) throw new Error(`东财 clist HTTP ${resp.status}`);
-    const json = (await resp.json()) as ClistResponse;
-    // 首页取 total 用于判断是否已拉全（东财声明的全市场标的总数）
-    if (pn === 1) total = num(json?.data?.total) ?? 0;
-    const page = parseClistPage(json);
-    if (page.length === 0) break; // 空页（末页或 total 不准）即结束
-    entries.push(...page);
-    if (total > 0 && entries.length >= total) break; // 已拉全
-    await _sleep(120 + Math.floor(Math.random() * 180)); // 120–300ms 抖动
+  let entries: MarketSnapshotEntry[];
+  let total: number;
+  try {
+    ({ entries, total } = await fetchEastmoneySnapshot(deps, _sleep));
+  } catch (err) {
+    logger.warn(`东财全市场快照失败，回退新浪：${toErrorMessage(err)}`);
+    ({ entries, total } = await fetchSinaSnapshot(deps, _sleep));
   }
 
   const result: MarketSnapshot = { entries, fetchedAt: Date.now(), total: total || entries.length };

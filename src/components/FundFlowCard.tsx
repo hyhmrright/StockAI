@@ -48,8 +48,10 @@ const FundFlowCard: React.FC<FundFlowCardProps> = ({ fundFlow }) => {
             </div>
           ))}
         </div>
+        {/* 备源（新浪）是实时快照、没有日期字段；缺失时只显示说明，不编一个日期出来 */}
         <p className="text-[10px] text-gray-600 mt-1">
-          {fundFlow.date} · {t('fund_flow_note')}
+          {fundFlow.date ? `${fundFlow.date} · ` : ''}
+          {t('fund_flow_note')}
         </p>
       </div>
     </div>

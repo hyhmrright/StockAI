@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'bun:test';
 import {
   parseClistPage,
+  parseSinaSnapshotPage,
   buildClistUrl,
   fetchMarketSnapshot,
   type MarketSnapshotDeps,
@@ -174,5 +175,87 @@ describe('fetchMarketSnapshot（DI mock fetch，离线）', () => {
         sleepImpl: async () => {},
       }),
     ).rejects.toThrow('502');
+  });
+});
+
+describe('parseSinaSnapshotPage（东财 push2 家族整体故障时的备源）', () => {
+  /** 真实一行的形状：数值型给 number，价格类给字符串 */
+  const ROW = {
+    symbol: 'sh601398',
+    code: '601398',
+    name: 'ICBC',
+    trade: '7.530',
+    changepercent: -0.53,
+    per: 7.12,
+    pb: 0.78,
+    mktcap: 268373911.58802,
+    turnoverratio: 0.13,
+  };
+
+  test('映射为与东财同构的条目', () => {
+    const [e] = parseSinaSnapshotPage(JSON.stringify([ROW]));
+    expect(e).toMatchObject({
+      symbol: '601398',
+      name: 'ICBC',
+      price: 7.53,
+      changePercent: -0.53,
+      pe: 7.12,
+      pb: 0.78,
+      turnoverRate: 0.13,
+    });
+  });
+
+  test('市值从万元换算为元——漏了这一步下游按市值筛选会整体差 1 万倍', () => {
+    // 工商银行 268373911 万元 = 2.68 万亿元
+    expect(parseSinaSnapshotPage(JSON.stringify([ROW]))[0].marketCap).toBeCloseTo(2.6837e12, -8);
+  });
+
+  test('价格是字符串也要能取到数——东财那支的 num() 只认 number，照抄会全丢成 undefined', () => {
+    expect(parseSinaSnapshotPage(JSON.stringify([{ ...ROW, trade: '7.530' }]))[0].price).toBe(7.53);
+  });
+
+  test('缺失字段收敛为 undefined 而不是 0', () => {
+    const [e] = parseSinaSnapshotPage(JSON.stringify([{ code: '000001', name: 'X', per: null }]));
+    expect(e.pe).toBeUndefined();
+    expect(e.marketCap).toBeUndefined();
+  });
+
+  test('无代码的脏行被跳过', () => {
+    expect(parseSinaSnapshotPage(JSON.stringify([{ name: '幽灵' }, ROW]))).toHaveLength(1);
+  });
+
+  test('非数组响应返回空表（由分页骨架当作末页停止）', () => {
+    expect(parseSinaSnapshotPage('<html>blocked</html>')).toEqual([]);
+  });
+});
+
+describe('fetchMarketSnapshot 的源回退', () => {
+  const sinaPage = (n: number) =>
+    JSON.stringify(
+      Array.from({ length: n }, (_, i) => ({
+        code: String(600000 + i),
+        name: `S${i}`,
+        trade: '10.0',
+        mktcap: 1000,
+      })),
+    );
+
+  test('东财失败 → 整链改用新浪', async () => {
+    const calls: string[] = [];
+    const snap = await fetchMarketSnapshot({
+      readCacheImpl: () => null,
+      writeCacheImpl: () => {},
+      sleepImpl: async () => {},
+      fetchImpl: (async (url: string) => {
+        calls.push(String(url));
+        if (String(url).includes('eastmoney')) return new Response('', { status: 502 });
+        // 第二页返回空，让分页骨架停下
+        return new Response(String(url).includes('page=1') ? sinaPage(3) : '[]');
+      }) as unknown as typeof fetch,
+    });
+
+    expect(snap.entries).toHaveLength(3);
+    expect(snap.entries[0].symbol).toBe('600000');
+    expect(calls.some((u) => u.includes('sina.com.cn'))).toBe(true);
   });
 });

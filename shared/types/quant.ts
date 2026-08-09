@@ -83,8 +83,13 @@ export interface CompositeBreakdown {
 
 /** 个股资金流向（东财，最新一日，主力/超大/大/中/小单净流入，单位元；A 股专属，美股为空） */
 export interface FundFlowData {
-  /** 数据日期（YYYY-MM-DD，东财数据延迟约一日） */
-  date: string;
+  /**
+   * 数据日期（YYYY-MM-DD，东财数据延迟约一日）。
+   *
+   * **可选**：新浪备源（东财 push2his 整机故障时启用）返回的是实时快照、根本没有日期字段。
+   * 拿"今天"顶上会在周末/假日把上一交易日的数据标成当天——宁可让 UI 不显示日期。
+   */
+  date?: string;
   /** 主力净流入（元，正流入负流出） */
   mainNet: number;
   /** 超大单净流入（元） */

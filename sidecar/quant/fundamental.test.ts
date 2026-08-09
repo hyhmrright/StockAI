@@ -1,6 +1,7 @@
 import { describe, test, expect, mock, afterEach } from 'bun:test';
 import {
   parseEastmoneyFinancials,
+  parseEastmoneyUsFinancials,
   parseYahooFinancials,
   scoreFundamentals,
   fetchFundamentals,
@@ -318,5 +319,85 @@ describe('scoreFundamentals 可下钻 checks', () => {
   test('缺失指标不产生 check', () => {
     const checks = scoreFundamentals({ roe: 20 }).composite.checks ?? [];
     expect(checks.map((c) => c.key)).toEqual(['roe']);
+  });
+});
+
+describe('parseEastmoneyUsFinancials（Yahoo 不可达时的美股备源）', () => {
+  /** 东财把报表透视成「一行一个行项目」；数值取自 AAPL 2025/FY 实测 */
+  const row = (code: string, amount: number, yoy?: number, date = '2025-09-27 00:00:00') => ({
+    REPORT_DATE: date,
+    STD_ITEM_CODE: code,
+    AMOUNT: amount,
+    YOY_RATIO: yoy ?? null,
+  });
+  const INCOME = {
+    result: {
+      data: [
+        row('004001001', 416_161_000_000, 6.4255), // 主营收入
+        row('004005999', 195_201_000_000, 8.035), // 毛利
+        row('004013999', 112_010_000_000, 19.4952), // 净利润
+      ],
+    },
+  };
+  const BALANCE = {
+    result: {
+      data: [
+        row('004005999', 359_241_000_000), // 总资产（同码在利润表是毛利！）
+        row('004011999', 285_508_000_000), // 总负债
+        row('004017999', 73_733_000_000), // 股东权益合计
+        row('004001999', 147_957_000_000), // 流动资产合计
+        row('004007999', 165_631_000_000), // 流动负债合计
+        row('004001001', 35_934_000_000), // 现金（同码在利润表是主营收入！）
+      ],
+    },
+  };
+
+  test('比率按 Yahoo 口径产出百分数', () => {
+    const m = parseEastmoneyUsFinancials(INCOME, BALANCE);
+    expect(m.grossMargin).toBeCloseTo(46.9, 1);
+    expect(m.netMargin).toBeCloseTo(26.9, 1);
+    expect(m.roe).toBeCloseTo(151.9, 1); // 苹果长期回购，ROE 确实在 150% 量级
+    expect(m.debtToAsset).toBeCloseTo(79.5, 1);
+  });
+
+  test('currentRatio 是倍数而非百分数', () => {
+    expect(parseEastmoneyUsFinancials(INCOME, BALANCE).currentRatio).toBeCloseTo(0.893, 3);
+  });
+
+  test('两张表的同码字段不串味——这是本模块最容易错的地方', () => {
+    // 004005999 在利润表是毛利、在资产负债表是总资产；串了的话 grossMargin 会变成 86%
+    const m = parseEastmoneyUsFinancials(INCOME, BALANCE);
+    expect(m.revenue).toBe(416_161_000_000);
+    expect(m.cash).toBe(35_934_000_000); // 取自资产负债表的 004001001
+    expect(m.grossMargin).toBeLessThan(50); // 若误用总资产当毛利会得到 86%
+  });
+
+  test('增速直接取上游 YOY_RATIO，不再拉一期自算', () => {
+    const m = parseEastmoneyUsFinancials(INCOME, BALANCE);
+    expect(m.revenueGrowth).toBeCloseTo(6.43, 2);
+    expect(m.netIncomeGrowth).toBeCloseTo(19.5, 2);
+  });
+
+  test('只认最新一期——多期混排会让分子分母来自不同年份', () => {
+    const mixed = {
+      result: {
+        data: [
+          ...INCOME.result.data,
+          row('004001001', 391_035_000_000, 2.02, '2024-09-28 00:00:00'),
+        ],
+      },
+    };
+    expect(parseEastmoneyUsFinancials(mixed, BALANCE).revenue).toBe(416_161_000_000);
+  });
+
+  test('分母为 0 或缺失时返回 undefined，不产出 Infinity/NaN', () => {
+    const zeroEquity = { result: { data: [row('004017999', 0)] } };
+    const m = parseEastmoneyUsFinancials(INCOME, zeroEquity);
+    expect(m.roe).toBeUndefined();
+    expect(m.currentRatio).toBeUndefined();
+  });
+
+  test('两张表都空时返回 {}', () => {
+    expect(parseEastmoneyUsFinancials({ result: null }, { result: null })).toEqual({});
   });
 });

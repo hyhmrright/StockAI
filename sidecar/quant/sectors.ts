@@ -4,6 +4,7 @@ import type { SectorBoards, SectorRank } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
 import { fetchWithPolicy } from '../http';
 import { logger, toErrorMessage } from '../utils';
+import { extractSinaJson } from '../parsers/sina-envelope';
 
 /**
  * 板块涨幅榜（东财 push2 clist，与 market-snapshot 同一端点、不同 fs 过滤）。
@@ -129,16 +130,8 @@ const SINA_BOARD_URL: Record<SectorBoardKind, string> = {
  *                     10=领涨股现价 11=领涨股涨跌额 12=领涨股名称
  */
 export function parseSinaSectorPage(text: string, top = SECTOR_TOP_N): SectorRank[] {
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start < 0 || end <= start) throw new Error('新浪板块榜响应不含对象体');
-
-  let table: Record<string, string>;
-  try {
-    table = JSON.parse(text.slice(start, end + 1));
-  } catch {
-    throw new Error('新浪板块榜响应 JSON 解析失败');
-  }
+  const table = extractSinaJson<Record<string, string>>(text, '{');
+  if (!table) throw new Error('新浪板块榜响应不含对象体');
 
   return (
     Object.values(table)

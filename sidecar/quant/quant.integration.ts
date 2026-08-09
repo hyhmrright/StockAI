@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { fetchFinancialHistory } from './fundamental-history';
-import { fetchFundamentals } from './fundamental';
-import { fetchFundFlow } from './fundflow';
-import { fetchMarketSnapshot } from './market-snapshot';
+import { fetchFundamentals, fetchEastmoneyUsFundamentals } from './fundamental';
+import { fetchEastmoneyFundFlow, fetchSinaFundFlow } from './fundflow';
+import { fetchEastmoneySnapshot, fetchSinaSnapshot } from './market-snapshot';
 import { fetchEastmoneyBoards, fetchSinaBoards } from './sectors';
 import { fetchBillboard } from './billboard';
 import { fetchCompanyF10 } from './company-f10';
@@ -42,11 +42,42 @@ describe('量化数据源（真网络）', () => {
     expect(Object.keys(metrics).length).toBeGreaterThan(0);
   });
 
+  it('东财美股 F10（Yahoo 不可达时的备源）——比率要能算出来，不能只是没抛异常', async () => {
+    const m = await fetchEastmoneyUsFundamentals(US_SYMBOL);
+
+    // 绝对值与比率各断一项：只断非空的话，两张表串味也照样绿
+    expect(m.revenue).toBeGreaterThan(0);
+    expect(Number.isFinite(m.grossMargin)).toBe(true);
+    expect(Number.isFinite(m.netMargin)).toBe(true);
+
+    // 口径哨兵：比率是百分数（0..100），不是小数。
+    // 上游若把 AMOUNT 单位改了、或两张表的同码字段串了，这里会炸。
+    for (const v of [m.grossMargin, m.netMargin, m.debtToAsset]) {
+      expect(v).toBeGreaterThan(0);
+      expect(v).toBeLessThan(100);
+    }
+    // currentRatio 是倍数，量级与上面几个不同
+    expect(m.currentRatio).toBeGreaterThan(0);
+    expect(m.currentRatio).toBeLessThan(20);
+  });
+
   it('东财资金流（A 股）——失败会被吞成 null，故断言非 null', async () => {
-    const flow = await fetchFundFlow(CN_SYMBOL);
+    // 直连东财：走 fetchFundFlow 的话新浪备源的成功会掩盖它的失效
+    const flow = await fetchEastmoneyFundFlow(CN_SYMBOL);
     expect(flow).not.toBeNull();
     expect(flow?.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(Number.isFinite(flow?.mainNet)).toBe(true);
+  });
+
+  it('新浪资金流（A 股备源）——同样会被吞成 null', async () => {
+    const flow = await fetchSinaFundFlow(CN_SYMBOL);
+    expect(flow).not.toBeNull();
+    expect(Number.isFinite(flow?.mainNet)).toBe(true);
+    expect(Number.isFinite(flow?.mainNetPct)).toBe(true);
+    // 本源没有日期字段，必须留空而不是被填成"今天"
+    expect(flow?.date).toBeUndefined();
+    // 主力应等于超大单 + 大单；口径算错时这条会炸
+    expect(flow?.mainNet).toBeCloseTo((flow?.superLargeNet ?? 0) + (flow?.largeNet ?? 0), 1);
   });
 
   it('东财财报历史（A 股）', async () => {
@@ -56,12 +87,24 @@ describe('量化数据源（真网络）', () => {
   });
 
   it('东财全市场快照——分页聚合，条数远超单页即证明翻页仍有效', async () => {
-    const snapshot = await fetchMarketSnapshot(noCache);
+    // 直连东财：走 fetchMarketSnapshot 会被新浪备源的成功掩盖
+    const { entries } = await fetchEastmoneySnapshot(noCache);
     // 单页 100 条；A 股全市场约 5900 只。拿到 >1000 条说明分页累加没断，
     // 只断 >0 会让「翻页坏了、只剩第一页」这种退化蒙混过关。
-    expect(snapshot.entries.length).toBeGreaterThan(1000);
-    expect(snapshot.entries[0].symbol).toMatch(/^\d{6}$/);
+    expect(entries.length).toBeGreaterThan(1000);
+    expect(entries[0].symbol).toMatch(/^\d{6}$/);
   }, 60_000); // 分页串行 + 页间抖动，实测约 20s
+
+  it('新浪全市场快照（备源）——同样要证明翻页有效', async () => {
+    const { entries } = await fetchSinaSnapshot(noCache);
+    expect(entries.length).toBeGreaterThan(1000);
+    expect(entries[0].symbol).toMatch(/^\d{6}$/);
+
+    // 市值单位：新浪给万元、东财给元，这里断"看起来像元"。
+    // 漏掉 ×1e4 换算的话最大市值会掉到 1e9 量级，下游按市值筛选整体差 1 万倍。
+    const maxCap = Math.max(...entries.map((e) => e.marketCap ?? 0));
+    expect(maxCap).toBeGreaterThan(1e11);
+  }, 90_000);
 
   it('东财板块涨幅榜——行业与概念各一张', async () => {
     // 直连东财而不走 fetchSectorBoards：后者会用新浪备源的成功掩盖东财的失效
