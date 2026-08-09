@@ -27,8 +27,15 @@ React + TypeScript + Vite。唯一 IPC 入口是 `src/lib/ipc.ts`，它按 `shar
 | `useSymbolScopedAsync` | 按 key（symbol，或 symbol+配置指纹）分桶的异步结果仓库：结果 / error / in-flight 全部隔离，LRI 限容。`useAIAnalysis` / `useDeepAnalysis` / `useChat` 共用。 |
 | `useAnalysisSuite` | 一只股票的完整分析套件——组合上述 hook + 大师权重 + RAG 预热，向 UI 暴露一个 `AnalysisSuite` 对象。`Dashboard` 只传这一个 prop 给 `AnalysisPanel`。 |
 | `useReportIndexWarmup` | 切标的时 fire-and-forget 触发财报 RAG 建索引，把交易所平台抓取挪出 chat 首答关键路径。 |
+| `useQuotes` | 订阅**一组**标的的实时报价（关注列表 / 持仓 / 指数条共用）。自己不轮询——定时器与请求都在 `lib/quotes-store.ts` 的单例里。 |
+| `usePortfolio` | 用户持仓：SQLite 是唯一真源，写操作后整表重读；现价复用 `useQuotes`，估值走 `lib/portfolio.ts` 的纯函数。 |
 
 新增「按 symbol 取数」或「按 symbol 缓存异步结果」的能力时，复用上面两个基础 hook，不要再抄一份竞态守卫。
+
+**报价轮询只有一个**（`src/lib/quotes-store.ts`）。sidecar 是 spawn-per-call，每个消费方各持一个
+10s 定时器就等于按消费方个数放大进程数。各消费方经 `useQuotes` 注册自己关心的代码集合，
+store 取并集后单次批量拉取（`--quotes`），再把整份快照广播出去。**要多标的报价时一律走
+`useQuotes`，不要另起 `setInterval`。** 单股当前标的仍用 `useRealtimeQuote`（它另有 K 线尾根合并逻辑）。
 
 ## 2. Tauri Core (`src-tauri/src/lib.rs`)
 
@@ -45,6 +52,24 @@ Rust 层做三件事：
 **因此新增 Sidecar 能力时本文件无需改动。**
 
 配置解析结果的权威定义是 `sidecar/configResolver.ts` 的 `ResolvedConfig`（含 `roles` 角色分级模型、`selectedMasters`、`language`、`deepMode` 等）。`_version` 与 `CONFIG_VERSION` 不匹配时抛出，提示用户重新保存配置。`ProviderType` 定义在 `shared/types`：`"openai" | "ollama" | "anthropic" | "deepseek" | "glm"`；`deepseek` 与 `glm` 走 OpenAI 兼容协议，在 `providers/registry.ts` 的工厂表中复用 `OpenAIProvider`，仅默认值不同（`shared/constants.ts` 的 `PROVIDER_PROFILES`，`sidecar/config.ts` 仅 re-export）。
+
+### 本地持久化（SQLite，`sqlite:history.db`）
+
+Sidecar **完全不碰这个库**——它是 spawn-per-call 的无状态进程，库由前端经
+`tauri-plugin-sql` 直接读写。建表脚本在 `src-tauri/migrations/`，逐条注册在 `lib.rs`
+的 `migrations` 数组里（新增一张表 = 加一个 `.sql` + 加一条 `Migration`，version 递增）。
+
+| 表 | 内容 | 前端访问模块 |
+|----|------|--------------|
+| `analysis_records` | 每次 AI / 深度分析 / 选股的结果存档 | `src/lib/db.ts` |
+| `master_signals` | 各大师的历史 signal，供虚拟组合命中率与动态权重 | `src/lib/db.ts` |
+| `positions` | **用户真实持仓**（一只标的一行，加权平均成本） | `src/lib/positions-db.ts` |
+
+连接是单例（`db.ts` 的 `getDb`），其他领域模块必须复用它——各自 `Database.load`
+会开出第二条连接，SQLite 下写入相互抢锁。
+
+> `positions` 与 `master_signals` 是两回事：前者是用户自己的钱，后者跟踪的是 AI 判断准不准。
+> i18n 前缀也据此分开（`holdings_*` vs `portfolio_*`）。
 
 ## 3. Sidecar (`sidecar/`)
 
@@ -73,7 +98,7 @@ Bun 进程，主流程两步：
 
 **新增一个能力 = 两处改动**：`shared/actions.ts` 加一条 + `cli-handlers/` 对应领域文件实现 handler + `sidecar/index.ts` 的 `DISPATCH` 加一行。Rust 与 ipc.ts 的调用管道不动。
 
-当前动作：`--list-models` / `--search` / `--kline` / `--quote` / `--bundle` / `--analyze-only` / `--quant` / `--index-reports` / `--backtest` / `--deep-analysis` / `--chat` / `--screen`（以上 `ipc: true`）；`--fundamentals-history` / `--market-snapshot` / `--info`（`ipc: false`，CLI 调试用）；无 flag 时为默认全流程分析模式（`<symbol> <@config>`，向后兼容）。另有 `--check` 健康自检，在参数解析前短路处理。
+当前动作：`--list-models` / `--search` / `--kline` / `--quote` / `--quotes` / `--bundle` / `--analyze-only` / `--quant` / `--sectors` / `--index-reports` / `--backtest` / `--deep-analysis` / `--chat` / `--screen`（以上 `ipc: true`）；`--fundamentals-history` / `--market-snapshot` / `--info`（`ipc: false`，CLI 调试用）；无 flag 时为默认全流程分析模式（`<symbol> <@config>`，向后兼容）。另有 `--check` 健康自检，在参数解析前短路处理。
 
 ### handler 分组（`sidecar/cli-handlers/`）
 
@@ -110,7 +135,7 @@ handler 按领域分文件，各组是一个 `createXxxHandlers(ctx)` 工厂，�
 | 复合分入参 | `technical.ts` / `fundamental.ts` / `valuation.ts` / `volatility.ts` | 前两者产出 composite 信号，后两者分别提供估值快照与风险指标 |
 | 聚合 | `scoring.ts` | 技术 + 基本面加权为基准，blend 估值方向，按风险向中性收敛（缺估值/风险自动降级），产出 1–100 分与 bullish/bearish/neutral |
 | 派生 | `levels.ts` / `fundflow.ts` / `factors.ts` | 价位推导、资金流、给大师 Agent 用的因子集 |
-| 独立能力 | `market-snapshot.ts` / `nl-screen.ts` / `fundamental-history.ts` / `roe-annualize.ts` | 各自对应一个 CLI action 或被选股/财报链路调用，不进复合分 |
+| 独立能力 | `market-snapshot.ts` / `nl-screen.ts` / `sectors.ts` / `fundamental-history.ts` / `roe-annualize.ts` | 各自对应一个 CLI action 或被选股/财报链路调用，不进复合分 |
 
 前端对应 `useQuantData` hook 与 `QuantScoreCard` 组件。**新增维度先想清楚是「进复合分」还是「派生/独立」**——进复合分要改 `scoring.ts` 的权重口径，属于口径变更，不是加法。
 
