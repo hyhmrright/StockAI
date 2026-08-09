@@ -13,3 +13,4 @@ export * from './backtest'; // 策略回测
 export * from './screener'; // 自选股扫描 + 全市场自然语言选股
 export * from './history'; // 本地分析历史（SQLite）
 export * from './portfolio'; // 用户真实持仓与组合估值
+export * from './company'; // 公司基本资料 F10（仅 A 股）：概况、主营构成、股东结构

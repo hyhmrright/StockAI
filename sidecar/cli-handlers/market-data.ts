@@ -129,6 +129,27 @@ export function createMarketDataHandlers({ out, deps, requireSymbol }: HandlerCo
     },
 
     /**
+     * 公司基本资料 F10。**仅 A 股**——数据源是沪深北交易所的 F10 披露，
+     * 美股没有对应形态，与其返回空壳不如明确告诉调用方不适用。
+     */
+    async handleCompany(symbol: string) {
+      if (!requireSymbol(symbol)) return;
+      try {
+        const { detectChinaStock } = await import('../parsers/exchange');
+        const china = detectChinaStock(symbol);
+        if (!china) {
+          out(errorEnvelope('ERR_COMPANY_NOT_A_SHARE', `F10 资料仅支持 A 股，"${symbol}" 不是`));
+          return;
+        }
+        const { fetchCompanyF10 } = await import('../quant/company-f10');
+        const prefixed = `${china.sinaPrefix.toUpperCase()}${china.code}`;
+        out(successEnvelope(await fetchCompanyF10(china.code, prefixed)));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_COMPANY', error));
+      }
+    },
+
+    /**
      * 历史财务时序（按需拉东财 F10，24h 磁盘缓存）— 供 #11 RAG 数值溯源 / #12 因子预计算。
      * periods 为字符串（CLI 传入），非法/缺省时默认 12 期。
      */

@@ -5,6 +5,7 @@ import { fetchFundFlow } from './fundflow';
 import { fetchMarketSnapshot } from './market-snapshot';
 import { fetchSectorBoards } from './sectors';
 import { fetchBillboard } from './billboard';
+import { fetchCompanyF10 } from './company-f10';
 
 /**
  * 量化数据源的真网络冒烟——只跑 `bun run test:integration`，默认套件不含。
@@ -102,5 +103,28 @@ describe('量化数据源（真网络）', () => {
     // 两榜的符号方向：混进反向记录说明按符号过滤失效了
     expect(board.topBuy.every((e) => e.netAmount > 0)).toBe(true);
     expect(board.topSell.every((e) => e.netAmount < 0)).toBe(true);
+  });
+
+  it('东财 F10 公司资料（A 股）——四块并发，逐块断形状', async () => {
+    const f10 = await fetchCompanyF10(CN_SYMBOL, 'SH600519', noCache);
+
+    // 四块是 allSettled 并发、单块失败会静默降级为 undefined，
+    // 所以每一块都得单独断——只断「没抛异常」时，三块挂掉也照样绿。
+    expect(f10.name.length).toBeGreaterThan(0);
+    expect(f10.overview?.fullName.length).toBeGreaterThan(0);
+    expect(f10.overview?.industry.length).toBeGreaterThan(0);
+
+    expect(f10.segments.length).toBeGreaterThan(0);
+    expect(f10.reportDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // 占比是 0..1 的小数（东财 MBI_RATIO 口径）；若上游改成百分数会在这里炸
+    expect(f10.segments.every((s) => s.revenueRatio >= 0 && s.revenueRatio <= 1)).toBe(true);
+    // 只取最新一期：多期混排会让同一 dimension 出现远超实际的条目数
+    expect(new Set(f10.segments.map((s) => s.dimension)).size).toBeLessThanOrEqual(3);
+
+    expect(f10.shareholding?.endDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(f10.shareholding?.topHolders.length).toBeGreaterThan(0);
+    expect(f10.shareholding?.topHolders[0].name.length).toBeGreaterThan(0);
+
+    expect(f10.boards.length).toBeGreaterThan(0);
   });
 });

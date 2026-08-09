@@ -11,6 +11,7 @@ import {
   QuantBundle,
   SectorBoards,
   Billboard,
+  CompanyF10,
   DeepAnalysisResult,
   BacktestResult,
   ChatPayload,
@@ -33,6 +34,7 @@ import {
   MOCK_QUANT,
   MOCK_SECTORS,
   MOCK_BILLBOARD,
+  MOCK_COMPANY,
   MOCK_DEEP_ANALYSIS,
   MOCK_BACKTEST,
   MOCK_CHAT,
@@ -260,6 +262,11 @@ export async function fetchSectorBoards(): Promise<SectorBoards> {
 /** 龙虎榜（最新交易日）；同为全市场榜单，无参数 */
 export async function fetchBillboard(): Promise<Billboard> {
   return callSidecar<Billboard>(SIDECAR_ACTIONS.billboard, {}, MOCK_BILLBOARD);
+}
+
+/** 公司基本资料 F10。仅 A 股——非 A 股会拿到 ERR_COMPANY_NOT_A_SHARE */
+export async function fetchCompanyF10(symbol: string): Promise<CompanyF10> {
+  return callSidecar<CompanyF10>(SIDECAR_ACTIONS.company, { actionParam: symbol }, MOCK_COMPANY);
 }
 
 export async function fetchQuantBundle(symbol: string): Promise<QuantBundle> {

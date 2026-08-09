@@ -55,6 +55,8 @@ export const SIDECAR_ACTIONS = {
   sectors: { flag: '--sectors', slots: [], ipc: true },
   // 龙虎榜（最新交易日的净买入 / 净卖出榜）。同为全市场榜单，无参数。
   billboard: { flag: '--billboard', slots: [], ipc: true },
+  // 公司基本资料 F10（概况 / 主营构成 / 股东 / 所属板块）。仅 A 股，美股由 handler 拒绝。
+  company: { flag: '--company', slots: ['actionParam'], ipc: true },
   indexReports: { flag: '--index-reports', slots: ['actionParam'], ipc: true },
   backtest: { flag: '--backtest', slots: ['actionParam'], ipc: true },
   deepAnalysis: {

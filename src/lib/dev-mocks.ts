@@ -10,6 +10,7 @@ import type {
   QuantBundle,
   SectorBoards,
   Billboard,
+  CompanyF10,
   DeepAnalysisResult,
   BacktestResult,
   ChatResponse,
@@ -273,6 +274,67 @@ export const MOCK_BILLBOARD: Billboard = {
       reason: '日涨幅偏离值达到7%的前5只证券',
     },
   ],
+  fetchedAt: Date.now(),
+};
+
+/** F10 mock：四块各给一点，够验证概况/主营/股东/板块四栏都能渲染 */
+export const MOCK_COMPANY: CompanyF10 = {
+  symbol: '600519',
+  name: '贵州茅台',
+  overview: {
+    fullName: '贵州茅台酒股份有限公司',
+    industry: '食品饮料-饮料-白酒',
+    listingBoard: '上交所主板A股',
+    chairman: '陈华',
+    employees: 34992,
+    registeredCapital: 125008.16,
+    province: '贵州',
+    website: 'www.moutaichina.com',
+    profile: '（mock）公司成立于 1999 年，由茅台集团作为主发起人联合另外七家单位共同发起设立。',
+    businessScope: '茅台酒及系列酒的生产与销售;饮料、食品、包装材料的生产、销售。',
+  },
+  reportDate: '2025-12-31',
+  segments: [
+    {
+      dimension: 'product',
+      name: '茅台酒',
+      revenue: 1.4e11,
+      revenueRatio: 0.83,
+      grossMargin: 0.94,
+    },
+    {
+      dimension: 'product',
+      name: '其他系列酒',
+      revenue: 2.8e10,
+      revenueRatio: 0.17,
+      grossMargin: 0.8,
+    },
+    { dimension: 'region', name: '国内', revenue: 1.6e11, revenueRatio: 0.96 },
+    { dimension: 'region', name: '国外', revenue: 6.8e9, revenueRatio: 0.04 },
+  ],
+  shareholding: {
+    endDate: '2026-03-31',
+    holderCount: 243159,
+    holderCountChange: -4.98,
+    concentration: '非常分散',
+    topHolders: [
+      {
+        rank: 1,
+        name: '中国贵州茅台酒厂(集团)有限责任公司',
+        shares: 681282935,
+        ratio: 54.4,
+        change: '不变',
+      },
+      {
+        rank: 2,
+        name: '香港中央结算有限公司',
+        shares: 88_000_000,
+        ratio: 7.02,
+        change: '-1200000',
+      },
+    ],
+  },
+  boards: ['食品饮料', '白酒', '贵州板块', 'MSCI中国'],
   fetchedAt: Date.now(),
 };
 

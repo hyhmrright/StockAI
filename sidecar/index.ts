@@ -183,6 +183,7 @@ async function run() {
     [SIDECAR_ACTIONS.quant.flag]: () => Handlers.handleQuant(actionParam),
     [SIDECAR_ACTIONS.sectors.flag]: () => Handlers.handleSectors(),
     [SIDECAR_ACTIONS.billboard.flag]: () => Handlers.handleBillboard(),
+    [SIDECAR_ACTIONS.company.flag]: () => Handlers.handleCompany(actionParam),
     [SIDECAR_ACTIONS.indexReports.flag]: () => Handlers.handleIndexReports(actionParam),
     [SIDECAR_ACTIONS.backtest.flag]: () => Handlers.handleBacktest(actionParam),
     [SIDECAR_ACTIONS.marketSnapshot.flag]: () => Handlers.handleMarketSnapshot(),

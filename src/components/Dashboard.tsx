@@ -15,6 +15,7 @@ import AnalysisPanel from './AnalysisPanel';
 import ChatPanel from './ChatPanel';
 import PriceSummaryCards from './PriceSummaryCards';
 import NewsList from './NewsList';
+import CompanySection from './Company/CompanySection';
 import type { ChatContext, BacktestResult } from '../../shared/types';
 
 /**
@@ -124,6 +125,8 @@ const Dashboard: React.FC = () => {
           <PriceSummaryCards stockInfo={stockInfo} />
 
           <NewsList news={news} />
+
+          <CompanySection symbol={currentSymbol} />
         </section>
 
         <AnalysisPanel
