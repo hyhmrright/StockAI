@@ -37,8 +37,10 @@ const BIG_UNITS: Record<Language, { threshold: number; unit: string }[]> = {
 /** 成交量/成交额/市值等大数的紧凑展示；不足最小档位时原样返回 */
 export function formatBig(n: number | undefined, language: Language): string {
   if (n == null || isNaN(n)) return '—';
+  // 按**绝对值**分档：净额类是带符号的，用 n 判断会让负数一档都进不去、退化成十位裸数字
+  const abs = Math.abs(n);
   for (const { threshold, unit } of BIG_UNITS[language]) {
-    if (n >= threshold) return (n / threshold).toFixed(2) + unit;
+    if (abs >= threshold) return (n / threshold).toFixed(2) + unit;
   }
   return n.toString();
 }

@@ -1,5 +1,12 @@
 import { expect, test, describe, beforeEach, spyOn } from 'bun:test';
-import { toErrorMessage, withTimeout, outputJson, _resetOutputGuard } from './utils';
+import {
+  toErrorMessage,
+  withTimeout,
+  outputJson,
+  _resetOutputGuard,
+  runWithConcurrency,
+  parseJsonFromAi,
+} from './utils';
 
 describe('toErrorMessage', () => {
   test('Error 实例返回 message', () => {
@@ -58,5 +65,98 @@ describe('outputJson', () => {
     outputJson({ first: true });
     expect(() => outputJson({ second: true })).toThrow('[PROTOCOL]');
     spy.mockRestore();
+  });
+});
+
+describe('runWithConcurrency', () => {
+  /**
+   * 结果按**输入下标**回填，而非完成顺序。深度分析靠下标把 signal 对回大师
+   * （`masters.map(m => () => m.analyze(ctx))`），错位不会抛异常，只会把巴菲特的
+   * 判断挂到伍德名下——是本仓最难被发现的那类损坏，故单列一条钉住。
+   */
+  test('结果按输入顺序返回，与完成顺序无关', async () => {
+    const resolvers: ((v: string) => void)[] = [];
+    const tasks = [0, 1, 2].map(
+      (i) => () =>
+        new Promise<string>((r) => {
+          resolvers[i] = r;
+        }),
+    );
+
+    const pending = runWithConcurrency(tasks, 3);
+    // 倒着 resolve：完成顺序 2 → 0 → 1，与输入顺序刻意错开
+    resolvers[2]('t2');
+    resolvers[0]('t0');
+    resolvers[1]('t1');
+
+    expect(await pending).toEqual(['t0', 't1', 't2']);
+  });
+
+  test('同时在飞的任务数不超过 limit', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const tasks = Array.from({ length: 6 }, () => async () => {
+      peak = Math.max(peak, ++inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      inFlight--;
+    });
+
+    await runWithConcurrency(tasks, 2);
+    expect(peak).toBe(2);
+  });
+
+  test('limit 大于任务数时照常跑完，不空转也不挂起', async () => {
+    expect(await runWithConcurrency([() => Promise.resolve('a')], 8)).toEqual(['a']);
+  });
+
+  test('空任务表直接返回空数组', async () => {
+    expect(await runWithConcurrency([], 4)).toEqual([]);
+  });
+
+  /** 本函数**不做**逐任务容错——getQuotes 正是因此才自己逐个 try/catch */
+  test('任一任务 reject 即整批 reject', async () => {
+    await expect(
+      runWithConcurrency([() => Promise.reject(new Error('boom')), () => Promise.resolve(1)], 2),
+    ).rejects.toThrow('boom');
+  });
+});
+
+describe('parseJsonFromAi', () => {
+  test('裸 JSON 直接解析', () => {
+    expect(parseJsonFromAi('{"signal":"buy"}')).toEqual({ signal: 'buy' });
+  });
+
+  test('剥掉 ```json 围栏', () => {
+    expect(parseJsonFromAi('```json\n{"a":1}\n```')).toEqual({ a: 1 });
+  });
+
+  test('剥掉无语言标注的裸围栏', () => {
+    expect(parseJsonFromAi('```\n{"a":1}\n```')).toEqual({ a: 1 });
+  });
+
+  test('围栏后面还跟着解说时仍能取出 JSON', () => {
+    expect(parseJsonFromAi('```json\n{"a":1}\n```\n以上是分析结果。')).toEqual({ a: 1 });
+  });
+
+  test('JSON 前后的散文被丢弃', () => {
+    expect(parseJsonFromAi('分析如下：{"a":1} 以上。')).toEqual({ a: 1 });
+  });
+
+  test('嵌套对象不被 lastIndexOf 截断', () => {
+    expect(parseJsonFromAi('{"a":{"b":2}}')).toEqual({ a: { b: 2 } });
+  });
+
+  /**
+   * 抽取靠「第一个 `{` 到最后一个 `}`」，所以 JSON 之后再出现花括号会连带截进来。
+   * 钉住它是**响亮抛出**而非静默返回半个对象：三个 provider 与选股都靠这一抛来降级。
+   */
+  test('JSON 之后的散文里带花括号时抛出，而不是静默返回错数据', () => {
+    expect(() => parseJsonFromAi('{"signal":"buy"}\n注意：{} 表示无数据')).toThrow(
+      'AI 返回格式非 JSON',
+    );
+  });
+
+  test('非 JSON 文本抛出统一错误信息', () => {
+    expect(() => parseJsonFromAi('模型拒绝回答')).toThrow('AI 返回格式非 JSON');
   });
 });
