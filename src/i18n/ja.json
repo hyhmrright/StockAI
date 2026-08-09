@@ -377,5 +377,14 @@
   "sectors_concept": "テーマ",
   "sectors_main_inflow": "主力資金純流入",
   "sectors_leader": "主導銘柄",
-  "sectors_breadth": "上昇/下落"
+  "sectors_breadth": "上昇/下落",
+  "billboard_error": "売買代金上位ランキングの読み込みに失敗しました。再試行してください。",
+  "billboard": "売買代金上位ランキング",
+  "billboard_top_buy": "買い越し上位",
+  "billboard_top_sell": "売り越し上位",
+  "billboard_net": "純額",
+  "billboard_reason": "掲載理由",
+  "billboard_trade_date": "取引日",
+  "billboard_empty": "この取引日に掲載銘柄はありません",
+  "billboard_multi_listing": "同一銘柄が同日に複数回掲載されることがあり、純額はそれぞれの集計期間に基づきます"
 }

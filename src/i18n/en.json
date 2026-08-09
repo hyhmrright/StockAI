@@ -377,5 +377,14 @@
   "sectors_concept": "Concepts",
   "sectors_main_inflow": "Main net inflow",
   "sectors_leader": "Leader",
-  "sectors_breadth": "Up/Down"
+  "sectors_breadth": "Up/Down",
+  "billboard_error": "Failed to load the Dragon-Tiger list. Please retry.",
+  "billboard": "Dragon-Tiger List",
+  "billboard_top_buy": "Top Net Buys",
+  "billboard_top_sell": "Top Net Sells",
+  "billboard_net": "Net",
+  "billboard_reason": "Listing reason",
+  "billboard_trade_date": "Session",
+  "billboard_empty": "No entries for this session",
+  "billboard_multi_listing": "A stock can be listed more than once a day; each net figure covers its own criterion window"
 }

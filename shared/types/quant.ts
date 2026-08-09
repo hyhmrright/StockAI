@@ -271,3 +271,32 @@ export interface SectorBoards {
   concept: SectorRank[];
   fetchedAt: number; // 拉取时刻（Unix 毫秒）
 }
+
+/**
+ * 龙虎榜单条记录。
+ *
+ * **一只股票一天可能出现多条**——同日触发多个上榜标准（如「日涨幅偏离7%」与
+ * 「连续三日累计20%」）会各出一条，且净额按各自的统计窗口计算，彼此不等
+ * （实测 000603 同日两条为 +1.13 亿 / −0.29 亿）。因此这里以「一条上榜记录」
+ * 而非「一只股票」为单位，`reason` 必须与数字一起显示。
+ */
+export interface BillboardEntry {
+  symbol: string; // 6 位代码
+  name: string;
+  price: number; // 当日收盘价
+  changePercent: number; // 当日涨跌幅(%)
+  netAmount: number; // 龙虎榜净买额(元)，负数为净卖出
+  buyAmount: number; // 龙虎榜买入额(元)
+  sellAmount: number; // 龙虎榜卖出额(元)
+  turnover: number; // 当日总成交额(元)
+  netRatio: number; // 净买额占总成交额比(%)
+  reason: string; // 上榜原因（交易所口径原文）
+}
+
+/** 龙虎榜：最新交易日的净买入 / 净卖出两张榜 */
+export interface Billboard {
+  tradeDate: string; // 榜单归属交易日，YYYY-MM-DD
+  topBuy: BillboardEntry[]; // 净买入额降序
+  topSell: BillboardEntry[]; // 净卖出额降序（netAmount 升序）
+  fetchedAt: number; // 拉取时刻（Unix 毫秒）
+}

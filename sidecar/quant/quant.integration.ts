@@ -4,6 +4,7 @@ import { fetchFundamentals } from './fundamental';
 import { fetchFundFlow } from './fundflow';
 import { fetchMarketSnapshot } from './market-snapshot';
 import { fetchSectorBoards } from './sectors';
+import { fetchBillboard } from './billboard';
 
 /**
  * 量化数据源的真网络冒烟——只跑 `bun run test:integration`，默认套件不含。
@@ -76,5 +77,30 @@ describe('量化数据源（真网络）', () => {
 
     // 行业与概念必须是两份不同的榜单——fs 过滤写错会让两边拉回同一张
     expect(boards.industry[0].code).not.toBe(boards.concept[0].code);
+  });
+
+  it('东财龙虎榜——最新交易日的买卖两榜', async () => {
+    const board = await fetchBillboard();
+
+    // 交易日必须是「最近」的：该 report 是全历史表（约 8.8 万页），
+    // 少了 TRADE_DATE 过滤会静默拉回 2015 年的榜单——形状完全合法，只是过期十年。
+    // 放宽到 30 天是为容纳长假；这条正是本模块要防的那个坑的哨兵。
+    expect(board.tradeDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const ageDays = (Date.now() - Date.parse(board.tradeDate)) / 86_400_000;
+    expect(ageDays).toBeLessThan(30);
+
+    // 非空是必断项：单边为空还说得过去（极端单边行情），两边同时空只可能是链路挂了
+    expect(board.topBuy.length + board.topSell.length).toBeGreaterThan(0);
+
+    for (const e of [...board.topBuy, ...board.topSell]) {
+      expect(e.symbol).toMatch(/^\d{6}$/);
+      expect(e.name.length).toBeGreaterThan(0);
+      expect(Number.isFinite(e.netAmount)).toBe(true);
+      expect(e.reason.length).toBeGreaterThan(0); // 上榜原因必须有，否则数字没法解读
+    }
+
+    // 两榜的符号方向：混进反向记录说明按符号过滤失效了
+    expect(board.topBuy.every((e) => e.netAmount > 0)).toBe(true);
+    expect(board.topSell.every((e) => e.netAmount < 0)).toBe(true);
   });
 });

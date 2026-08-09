@@ -3,7 +3,7 @@ import { SettingsModal } from './SettingsModal';
 import OnboardingGuide from './OnboardingGuide';
 import NlScreenerModal from './Screener/NlScreenerModal';
 import PortfolioModal from './Portfolio/PortfolioModal';
-import MarketOverviewModal from './MarketOverviewModal';
+import MarketOverviewModal from './Market/MarketOverviewModal';
 import { useSettings } from '../hooks/useSettings';
 import type { ModalName } from '../hooks/useModalRouter';
 

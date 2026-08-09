@@ -53,6 +53,8 @@ export const SIDECAR_ACTIONS = {
   quant: { flag: '--quant', slots: ['actionParam'], ipc: true },
   // 板块涨幅榜（行业 + 概念）。无参数：榜单是全市场的，不针对某只标的。
   sectors: { flag: '--sectors', slots: [], ipc: true },
+  // 龙虎榜（最新交易日的净买入 / 净卖出榜）。同为全市场榜单，无参数。
+  billboard: { flag: '--billboard', slots: [], ipc: true },
   indexReports: { flag: '--index-reports', slots: ['actionParam'], ipc: true },
   backtest: { flag: '--backtest', slots: ['actionParam'], ipc: true },
   deepAnalysis: {
