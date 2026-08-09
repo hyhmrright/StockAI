@@ -1,6 +1,10 @@
 /**
  * 图表主题色板：把 ChartCanvas / SubChart 之前散落的硬编码颜色集中。
- * 未来若新增 light 主题，只需在此扩展第二份字典 + 暴露切换器，调用方零改动。
+ *
+ * 目前只有暗色一套。真要加 light 主题，**光在此加第二份字典是不够的**——各消费方
+ * 都在建 series 时一次性读取本对象（`useChartInstance` / `SubChart` / 各 overlay），
+ * 运行时切换需要它们能重读并重建，即改成 context/hook 下发。加主题时按这个来，
+ * 不要被"再加一份字典即可"的印象误导。
  */
 
 export interface ChartTheme {
@@ -45,10 +49,10 @@ export interface ChartTheme {
 }
 
 /**
- * 暗色主题：当前唯一主题。颜色与 v0.6.0 之前散落在 ChartCanvas / SubChart 的硬编码完全一致，
+ * 当前应用的主题（暗色）。颜色与 v0.6.0 之前散落在 ChartCanvas / SubChart 的硬编码完全一致，
  * 保证视觉零回归。
  */
-export const DARK_CHART_THEME: ChartTheme = {
+export const CHART_THEME: ChartTheme = {
   background: 'transparent',
   text: 'rgba(255,255,255,0.55)',
   textMuted: 'rgba(255,255,255,0.45)',
@@ -74,6 +78,3 @@ export const DARK_CHART_THEME: ChartTheme = {
     cyan: '#4FC3F7',
   },
 };
-
-/** 当前应用的主题。预留切换接口，目前只有 dark。 */
-export const CHART_THEME: ChartTheme = DARK_CHART_THEME;
