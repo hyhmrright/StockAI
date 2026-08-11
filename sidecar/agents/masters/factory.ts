@@ -1,5 +1,11 @@
 import type { MasterAgent, MasterAnalysisContext, MasterSignal } from '../types';
-import type { MasterMeta, Language, StockNews, MasterFactors } from '../../../shared/types';
+import type {
+  MasterMeta,
+  Language,
+  StockNews,
+  MasterFactors,
+  FundFlowData,
+} from '../../../shared/types';
 import { logger, toErrorMessage } from '../../utils';
 
 /** deepMode 抓到的正文注入大师 prompt 时的截断长度（防 13 大师 token 膨胀） */
@@ -18,6 +24,43 @@ export function formatNewsForPrompt(
     const body = n.content?.trim();
     return body ? `${i + 1}. ${n.title}\n   ${body.slice(0, bodyChars)}` : `${i + 1}. ${n.title}`;
   });
+}
+
+/** 元 → 亿元带符号标签。资金流原始单位是元，9 位数字直接进 prompt，LLM 易读错量级 */
+function yi(v: number): string {
+  return `${v >= 0 ? '+' : ''}${(v / 1e8).toFixed(2)}亿`;
+}
+
+/**
+ * 消费 quant.fundFlow 的大师（3 位）——system prompt 里把「市场行为」当判断输入的那几位：
+ * 德鲁肯米勒的动能共振、伯里的逆向背离、伍德的动能验证叙事。价值派的框架里日频资金流是噪声，
+ * 喂了只会污染多期财报得出的结论。这也让 13 位大师的输入真正分化：共识度才有统计意义，
+ * 否则同一份输入错了就一起错。
+ *
+ * 与 VALUE_FACTOR_CONSUMER_IDS 同为「谁吃哪份数据」的可执行声明——**改这三个文件的
+ * buildUserPrompt 时必须同步改这里**，否则 deep-analysis 的缓存 key 会漏算（新消费者的
+ * 资金流变化命中旧结果）或多算（非消费者被无谓击穿缓存，白跑一轮 LLM）。
+ */
+export const FUND_FLOW_CONSUMER_IDS: ReadonlySet<string> = new Set([
+  'stanley-druckenmiller',
+  'michael-burry',
+  'cathie-wood',
+]);
+
+/**
+ * 个股资金流向 → prompt 段。只给 FUND_FLOW_CONSUMER_IDS 里的大师调用。
+ *
+ * A 股专属，美股 quant.fundFlow 恒为空 → 返回空数组（大师完全回退今天的行为）。
+ */
+export function formatFundFlowForPrompt(fundFlow?: FundFlowData): string[] {
+  if (!fundFlow) return [];
+  const date = fundFlow.date ? `（${fundFlow.date}）` : '';
+  return [
+    `[资金流向]${date}`,
+    `主力净流入: ${yi(fundFlow.mainNet)}（占成交额 ${signed(fundFlow.mainNetPct, '%')}）`,
+    `超大单 ${yi(fundFlow.superLargeNet)} | 大单 ${yi(fundFlow.largeNet)} | ` +
+      `中单 ${yi(fundFlow.mediumNet)} | 小单 ${yi(fundFlow.smallNet)}`,
+  ];
 }
 
 const MARGIN_DIR_ZH: Record<string, string> = { up: '上升', down: '下降', flat: '持平' };

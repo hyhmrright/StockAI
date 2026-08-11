@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFundFlowForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -19,6 +19,9 @@ const SYSTEM_PROMPT = `你是斯坦利·德鲁肯米勒。根据提供的量化�
 - 敢于重仓：当信号清晰时，集中仓位大胆押注
 - 快速止损：信号逆转时，立刻减仓，不恋战
 - 综合评分验证：量化综合评分是动能与基本面共振的量化验证
+
+若提供[资金流向]，把它当作动能是否有真实资金支撑的验证：主力（超大单+大单）持续净流入印证趋势，
+上涨但主力净流出属量价背离，应下调置信度。单日数据噪声大，权重低于 MACD/ADX 的趋势判断。
 
 信号规则：
 - bullish：MACD 扩张 + 营收增长加速 + 宏观顺风 + 综合评分>60
@@ -56,6 +59,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     fd.roe != null ? `ROE: ${fd.roe}%` : null,
     fd.pe != null ? `PE: ${fd.pe}` : null,
     '',
+    ...formatFundFlowForPrompt(quant.fundFlow),
     ...(quant.risk
       ? [
           '[风险调整]',

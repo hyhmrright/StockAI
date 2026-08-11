@@ -1,4 +1,4 @@
-import { createMasterAgent, formatNewsForPrompt } from './factory';
+import { createMasterAgent, formatFundFlowForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -19,6 +19,9 @@ const SYSTEM_PROMPT = `你是凯西·伍德。根据提供的量化数据和新�
 - 5 年愿景优先于当前估值：高 PE 不是障碍，低增长才是障碍
 - 技术动能：价格动能是否支持创新叙事？
 - 综合评分辅助：量化评分反映短期，创新叙事决定长期
+
+若提供[资金流向]，仅用于判断市场是否开始为创新叙事定价（主力持续净流入 = 叙事获得认可）。
+它是短期信号，权重远低于增长与颠覆性判断——单日资金流出绝不构成看空高成长标的的理由。
 
 信号规则：
 - bullish：营收增长>20%，涉及颠覆性赛道，技术动能向上
@@ -56,6 +59,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     td.macd_trend != null ? `MACD 趋势: ${td.macd_trend}` : null,
     td.volume_ratio != null ? `成交量比: ${td.volume_ratio}` : null,
     '',
+    ...formatFundFlowForPrompt(quant.fundFlow),
     `[近期新闻 (${news.length} 条，关注颠覆主题)]`,
     ...formatNewsForPrompt(news),
   ]

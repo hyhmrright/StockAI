@@ -12,6 +12,7 @@ import { getSelectedMasters, DEFAULT_MASTER_IDS } from './agents/registry';
 import { analyzeSentiment } from './agents/sentiment';
 import { synthesize } from './agents/synthesizer';
 import { cacheKey, readCache, writeCache, type CacheOptions } from './cache';
+import { FUND_FLOW_CONSUMER_IDS } from './agents/masters/factory';
 import { computeFactors, FACTOR_HISTORY_PERIODS, VALUE_FACTOR_CONSUMER_IDS } from './quant/factors';
 import { fetchFinancialHistory } from './quant/fundamental-history';
 import { logger, toErrorMessage, runWithConcurrency } from './utils';
@@ -66,6 +67,13 @@ function buildCacheKey(
     quant.valuation?.signal ?? '',
     quant.valuation?.confidence ?? '',
   ].join(',');
+  // 资金流只有 FUND_FLOW_CONSUMER_IDS 那几位读得到，故仅在选中他们时才参与 key——
+  // 否则纯价值派的组合会因日频资金流翻转被无谓击穿缓存，白跑一轮大师 LLM。
+  // 取「数据日 + 主力方向」而非元级净额：净额盘中持续抖动，纳入等于给这三位禁用缓存。
+  const flowFingerprint =
+    quant.fundFlow && masterIds.some((id) => FUND_FLOW_CONSUMER_IDS.has(id))
+      ? `${quant.fundFlow.date ?? ''}:${Math.sign(quant.fundFlow.mainNet)}`
+      : '';
   const newsParts = news.flatMap((n) => [n.title, n.content ?? '']);
   return cacheKey([
     symbol,
@@ -73,6 +81,7 @@ function buildCacheKey(
     [...masterIds].sort().join(','),
     fingerprint,
     quantFingerprint,
+    flowFingerprint,
     ...newsParts,
   ]);
 }

@@ -2,15 +2,24 @@ import { describe, test, expect } from 'bun:test';
 import {
   createMasterAgent,
   formatFactorsForPrompt,
+  formatFundFlowForPrompt,
   formatNewsForPrompt,
   PARSE_FAIL_MSG,
   SERVICE_UNAVAIL_MSG,
 } from './factory';
 import { agent as buffettAgent } from './warren-buffett';
 import { agent as cathieAgent } from './cathie-wood';
+import { agent as burryAgent } from './michael-burry';
+import { agent as druckenmillerAgent } from './stanley-druckenmiller';
 import { createMockQuantBundle, createMockNews } from '../../../shared/test-utils';
 import type { MasterAgent, MasterAnalysisContext } from '../types';
-import type { MasterFactors, MasterMeta, StockNews } from '../../../shared/types';
+import type {
+  FundFlowData,
+  MasterFactors,
+  MasterMeta,
+  QuantBundle,
+  StockNews,
+} from '../../../shared/types';
 
 function makeNews(title: string, content: string): StockNews {
   return { title, content, source: 'test', date: '2026-05-31', url: 'https://example.com' };
@@ -177,11 +186,15 @@ describe('formatFactorsForPrompt', () => {
   });
 });
 
-async function captureUserPrompt(agent: MasterAgent, factors?: MasterFactors): Promise<string> {
+async function captureUserPrompt(
+  agent: MasterAgent,
+  factors?: MasterFactors,
+  quant: QuantBundle = createMockQuantBundle(),
+): Promise<string> {
   let captured = '';
   const ctx: MasterAnalysisContext = {
     symbol: 'TEST',
-    quant: createMockQuantBundle(),
+    quant,
     news: [createMockNews()],
     chat: {
       chat: async (_s, u) => {
@@ -209,5 +222,66 @@ describe('因子接线（消费者 vs 非消费者）', () => {
   test('非消费者（cathie-wood）：即便传入因子也不注入 prompt', async () => {
     const prompt = await captureUserPrompt(cathieAgent, FACTORS_AVAILABLE);
     expect(prompt).not.toContain('[预计算因子]');
+  });
+});
+
+const FUND_FLOW: FundFlowData = {
+  date: '2026-08-10',
+  mainNet: -1.23e8,
+  superLargeNet: -8e7,
+  largeNet: -4.3e7,
+  mediumNet: 3e7,
+  smallNet: 9.3e7,
+  mainNetPct: -5.2,
+};
+
+describe('formatFundFlowForPrompt', () => {
+  test('undefined（美股无资金流）→ 返回空数组', () => {
+    expect(formatFundFlowForPrompt(undefined)).toEqual([]);
+  });
+
+  test('有数据 → 首行含 [资金流向] 与数据日期，净额换算为亿元且带符号', () => {
+    const lines = formatFundFlowForPrompt(FUND_FLOW);
+    expect(lines[0]).toContain('[资金流向]');
+    expect(lines[0]).toContain('2026-08-10');
+    const joined = lines.join('\n');
+    // 元 → 亿元：-1.23e8 必须显示为 -1.23亿，而非 9 位原始数字
+    expect(joined).toContain('-1.23亿');
+    expect(joined).not.toContain('123000000');
+    expect(joined).toContain('-5.2%');
+    // 流入方向靠符号表达，正数必须带 +（LLM 才能一眼分辨流入/流出）
+    expect(joined).toContain('+0.30亿');
+  });
+
+  test('新浪备源无 date → 首行不带括号日期，其余照常', () => {
+    const lines = formatFundFlowForPrompt({ ...FUND_FLOW, date: undefined });
+    expect(lines[0]).toBe('[资金流向]');
+    expect(lines.join('\n')).toContain('-1.23亿');
+  });
+});
+
+describe('资金流接线（市场行为派 vs 价值派）', () => {
+  const withFlow = createMockQuantBundle({ fundFlow: FUND_FLOW });
+
+  for (const [name, agent] of [
+    ['stanley-druckenmiller', druckenmillerAgent],
+    ['michael-burry', burryAgent],
+    ['cathie-wood', cathieAgent],
+  ] as const) {
+    test(`消费者（${name}）：有资金流时注入 prompt`, async () => {
+      const prompt = await captureUserPrompt(agent, undefined, withFlow);
+      expect(prompt).toContain('[资金流向]');
+      expect(prompt).toContain('-1.23亿');
+    });
+
+    test(`消费者（${name}）：美股无资金流时 prompt 不含该段`, async () => {
+      const prompt = await captureUserPrompt(agent, undefined, createMockQuantBundle());
+      expect(prompt).not.toContain('[资金流向]');
+    });
+  }
+
+  test('非消费者（warren-buffett）：即便有资金流也不注入——日频资金流是价值框架的噪声', async () => {
+    const prompt = await captureUserPrompt(buffettAgent, undefined, withFlow);
+    expect(prompt).not.toContain('[资金流向]');
   });
 });

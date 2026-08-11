@@ -1,4 +1,9 @@
-import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
+import {
+  createMasterAgent,
+  formatFactorsForPrompt,
+  formatFundFlowForPrompt,
+  formatNewsForPrompt,
+} from './factory';
 import type { MasterAnalysisContext } from '../types';
 import type { MasterMeta } from '../../../shared/types';
 
@@ -21,6 +26,9 @@ const SYSTEM_PROMPT = `你是迈克尔·伯里。根据提供的量化数据和�
 - 尾部风险：识别市场忽视的系统性风险
 
 若提供[预计算因子]，以多期年报的负债趋势、简化DCF 与利润率持续性判断被抛售资产的真实基本面强健度，而非仅凭单期 PE/PB；无因子段时才回退单期数据。
+
+若提供[资金流向]，把它当作「谁在抛售」的证据：主力大幅净流出而基本面数据依然强健，正是你要找的错误定价；
+主力净流入配合高估值则是需要警惕的追捧。单日数据噪声大，不可单独作为判断依据。
 
 信号规则：
 - bullish：RSI<35（超卖）且 PE/PB 低（被错误抛售的价值股）
@@ -59,6 +67,7 @@ function buildUserPrompt(ctx: MasterAnalysisContext): string {
     fd.net_margin != null ? `净利率: ${fd.net_margin}%` : null,
     fd.revenue_growth != null ? `营收增长: ${fd.revenue_growth}%` : null,
     '',
+    ...formatFundFlowForPrompt(quant.fundFlow),
     ...formatFactorsForPrompt(ctx.factors),
     `[近期新闻 (${news.length} 条，注意炒作信号)]`,
     ...formatNewsForPrompt(news),

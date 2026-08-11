@@ -165,6 +165,55 @@ describe('runDeepAnalysis 结果缓存', () => {
     expect(second).toEqual(first); // 命中结果与首次一致
   });
 
+  // 资金流参与缓存 key 的两面：消费者必须 miss（否则拿旧资金流的结论顶新数据），
+  // 非消费者必须 hit（否则纯价值派组合被日频资金流白白击穿，每次多烧一轮 LLM）
+  const flowIn = createMockQuantBundle({
+    fundFlow: {
+      date: '2026-08-10',
+      mainNet: 1e8,
+      superLargeNet: 6e7,
+      largeNet: 4e7,
+      mediumNet: 0,
+      smallNet: 0,
+      mainNetPct: 4.1,
+    },
+  });
+  const flowOut = createMockQuantBundle({
+    fundFlow: { ...flowIn.fundFlow!, mainNet: -1e8, mainNetPct: -4.1 },
+  });
+
+  test('消费者选中时主力方向翻转 → 缓存 miss（不能拿净流入的结论顶净流出）', async () => {
+    const c = countingChat();
+    const base = {
+      symbol: 'SH600519',
+      news: mockNews,
+      chat: c.provider,
+      selectedMasters: ['cathie-wood'],
+      cacheFingerprint: 'openai:gpt-4o',
+      cache: { dir },
+    };
+    await runDeepAnalysis({ ...base, quant: flowIn });
+    const afterFirst = c.calls();
+    await runDeepAnalysis({ ...base, quant: flowOut });
+    expect(c.calls()).toBeGreaterThan(afterFirst);
+  });
+
+  test('只选非消费者时资金流翻转 → 仍命中缓存（价值派读不到它，不该重算）', async () => {
+    const c = countingChat();
+    const base = {
+      symbol: 'SZ000001',
+      news: mockNews,
+      chat: c.provider,
+      selectedMasters: ['warren-buffett', 'ben-graham'],
+      cacheFingerprint: 'openai:gpt-4o',
+      cache: { dir },
+    };
+    await runDeepAnalysis({ ...base, quant: flowIn });
+    const afterFirst = c.calls();
+    await runDeepAnalysis({ ...base, quant: flowOut });
+    expect(c.calls()).toBe(afterFirst);
+  });
+
   test('不传 cacheFingerprint 时禁用缓存（每次都重跑）', async () => {
     const c = countingChat();
     const opts = {
