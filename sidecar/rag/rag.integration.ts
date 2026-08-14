@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import type { ReportChunk } from '../../shared/types';
 import { searchIrmQa } from './irm';
 import { fetchSseFeeds, resolveSseUid } from './sse';
+import { warnUnverified } from '../smoke-helpers';
 
 /**
  * 财报 RAG 数据源（交易所投资者互动平台）的真网络冒烟——只跑 `bun run test:integration`。
@@ -24,11 +25,6 @@ const SSE_CODE = '600519'; // 贵州茅台——uid 519，本平台内的稳定�
 const SSE_UID = '519';
 const IRM_CODE = '000001';
 const IRM_NAME = '平安银行';
-
-/** 扫日志时能一眼捞出来的标记 */
-function warnUnverified(source: string, reason: string): void {
-  console.warn(`[冒烟未验证] ${source}：${reason}`);
-}
 
 /** 问答 chunk 的形状契约：正文含问答两段 + 有位置标记 */
 function expectQaContract(chunks: ReportChunk[]): void {

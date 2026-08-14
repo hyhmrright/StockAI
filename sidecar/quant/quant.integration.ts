@@ -6,6 +6,7 @@ import { fetchEastmoneySnapshot, fetchSinaSnapshot } from './market-snapshot';
 import { fetchEastmoneyBoards, fetchSinaBoards } from './sectors';
 import { fetchBillboard } from './billboard';
 import { fetchCompanyF10 } from './company-f10';
+import { fetchOrSkip } from '../smoke-helpers';
 
 /**
  * 量化数据源的真网络冒烟——只跑 `bun run test:integration`，默认套件不含。
@@ -61,9 +62,12 @@ describe('量化数据源（真网络）', () => {
     expect(m.currentRatio).toBeLessThan(20);
   });
 
-  it('东财资金流（A 股）——失败会被吞成 null，故断言非 null', async () => {
-    // 直连东财：走 fetchFundFlow 的话新浪备源的成功会掩盖它的失效
-    const flow = await fetchEastmoneyFundFlow(CN_SYMBOL);
+  it('东财资金流（A 股）——失败会被吞成 null，故断言非 null；限流则跳过', async () => {
+    // 直连东财：走 fetchFundFlow 的话新浪备源的成功会掩盖它的失效。
+    // push2 对 CI 出口 IP 限流是常态，降级理由与代价见 smoke-helpers.ts；
+    // 前提是下面那条新浪资金流仍是硬断言。undefined = 没够着源，null = 源说没有数据。
+    const flow = await fetchOrSkip('东财资金流', () => fetchEastmoneyFundFlow(CN_SYMBOL));
+    if (flow === undefined) return;
     expect(flow).not.toBeNull();
     expect(flow?.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(Number.isFinite(flow?.mainNet)).toBe(true);
@@ -106,9 +110,13 @@ describe('量化数据源（真网络）', () => {
     expect(maxCap).toBeGreaterThan(1e11);
   }, 90_000);
 
-  it('东财板块涨幅榜——行业与概念各一张', async () => {
-    // 直连东财而不走 fetchSectorBoards：后者会用新浪备源的成功掩盖东财的失效
-    const [industry, concept] = await fetchEastmoneyBoards(noCache);
+  it('东财板块涨幅榜——行业与概念各一张；限流则跳过断言', async () => {
+    // 直连东财而不走 fetchSectorBoards：后者会用新浪备源的成功掩盖东财的失效。
+    // push2 clist 对 CI 出口 IP 限流是常态，降级理由与代价见 smoke-helpers.ts；
+    // 前提是下面那条新浪板块榜仍是硬断言。
+    const boards = await fetchOrSkip('东财板块榜', () => fetchEastmoneyBoards(noCache));
+    if (boards === undefined) return;
+    const [industry, concept] = boards;
 
     // 非空是必断项：漏掉 np=1 时 diff 会退化成对象，parseSectorPage 静默返回空表，
     // 只断「没抛异常」等于完全没监控这条链路。
