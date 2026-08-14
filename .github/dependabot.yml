@@ -10,6 +10,15 @@ updates:
     groups:
       bun-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # chromium-bidi 的版本不是我们选的，由 playwright-core 的预打包产物决定：
+      # coreBundle.js 硬编码 require("chromium-bidi/lib/cjs/bidiMapper/BidiMapper")，
+      # 而该目录自 16.0.0 起就没了（16 挪到 lib/、17 的 gn migration 挪到
+      # out/Default/gen/src/）。升任何 ≥16 的版本都让 sidecar 的 bun build --compile
+      # 直接报 "Could not resolve"——PR #6（15→17.0.2）实测三平台全挂。
+      # 换句话说它是 playwright-core 的隐式对等依赖，只能跟着 playwright-core 一起动：
+      # 升级 playwright-core 后请对照其 coreBundle.js 里的 require 路径再定版本。
+      - dependency-name: chromium-bidi
 
   - package-ecosystem: cargo
     directory: /src-tauri

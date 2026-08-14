@@ -80,7 +80,7 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 - **Adding an AI provider**: 兼容 OpenAI 协议时，在 `shared/constants.ts` 的 `PROVIDER_PROFILES` 加默认值（`sidecar/config.ts` 仅 re-export，勿在此加）+ `providers/registry.ts` 的 `PROVIDER_FACTORIES` 追加一行；协议不兼容时在 `sidecar/providers/` 实现 `AIProvider` 接口（`sidecar/ai.ts`）。最后同步 `shared/types/provider.ts` 的 `ProviderType`。
 - **i18n**: 多语言通过 `Language` 类型（`shared/types`）传递；前端用 `useLanguage()` hook 获取翻译函数；`src/i18n/zh.json` 是翻译 key 的 TypeScript 类型来源（编译期校验），新增 UI 文字须先在此文件加 key。
 - Sidecar stderr is for debug logging; stdout must only contain the final JSON output.
-- **构建期依赖，勿当死依赖删**：`chromium-bidi` 在全仓源码里零引用，但 `bun build --compile` 会静态解析 `playwright-core/lib/coreBundle.js` 里的 `require("chromium-bidi/...")`，缺它则 sidecar 编译直接失败。源码级引用扫描看不见 `node_modules` 内的预打包产物——删依赖前请以「干净 node_modules 下 `bun run sidecar:build` 能否通过」为准，而不是只看 import 引用数。
+- **构建期依赖，勿当死依赖删、也勿独立升**：`chromium-bidi` 在全仓源码里零引用，但 `bun build --compile` 会静态解析 `playwright-core/lib/coreBundle.js` 里的 `require("chromium-bidi/...")`，缺它则 sidecar 编译直接失败。源码级引用扫描看不见 `node_modules` 内的预打包产物——删依赖前请以「干净 node_modules 下 `bun run sidecar:build` 能否通过」为准，而不是只看 import 引用数。**版本同样不由我们做主**：coreBundle 硬编码的是 `chromium-bidi/lib/cjs/...`，而该目录自 16.0.0 起已不存在（16 挪到 `lib/`、17 的 gn migration 挪到 `out/Default/gen/src/`），升任何 ≥16 的版本都会让编译报 `Could not resolve`（PR #6 实测三平台全挂）。故 package.json 精确锁 `15.0.0`、dependabot 已 ignore；**只能跟着 `playwright-core` 一起动**——升级它之后对照新的 `coreBundle.js` 里的 require 路径再定版本。
 - **Formatting**: biome 统一格式（单引号 / 2 空格 / lineWidth 100，配置见 `biome.json`，仅 formatter 不开 linter）。改完跑 `bun run format`；用 Claude Code 时 `.claude/hooks/` 会在编辑时自动 format + 跑相关测试 + 拦截硬编码 API key。
 
 ## Workflow
