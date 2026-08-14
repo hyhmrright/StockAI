@@ -18,7 +18,10 @@ updates:
       # 直接报 "Could not resolve"——PR #6（15→17.0.2）实测三平台全挂。
       # 换句话说它是 playwright-core 的隐式对等依赖，只能跟着 playwright-core 一起动：
       # 升级 playwright-core 后请对照其 coreBundle.js 里的 require 路径再定版本。
+      # 只挡 >=16，15.x 内的更新（含安全补丁）照常提 PR：搬走 lib/cjs 的是 16.0.0，
+      # 15 线内没有该变更；万一有，PR 的 CI 会因 sidecar 编译失败挡下，不会自动合入。
       - dependency-name: chromium-bidi
+        versions: ['>=16']
 
   - package-ecosystem: cargo
     directory: /src-tauri
