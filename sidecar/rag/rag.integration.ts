@@ -3,6 +3,7 @@ import type { ReportChunk } from '../../shared/types';
 import { searchIrmQa } from './irm';
 import { fetchSseFeeds, resolveSseUid } from './sse';
 import { warnUnverified } from '../smoke-helpers';
+import { toErrorMessage } from '../utils';
 
 /**
  * 财报 RAG 数据源（交易所投资者互动平台）的真网络冒烟——只跑 `bun run test:integration`。
@@ -56,8 +57,7 @@ describe('财报 RAG 数据源（真网络）', () => {
     try {
       chunks = await fetchSseFeeds(SSE_CODE, uid, 10);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('HTTP 403')) {
+      if (toErrorMessage(err).includes('HTTP 403')) {
         warnUnverified('上证e互动 userfeeds', '403（整站级反爬限流）');
         return;
       }
