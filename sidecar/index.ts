@@ -86,11 +86,25 @@ async function resolveConfigStr(str: string): Promise<string> {
   return str;
 }
 
+/**
+ * 前端 10 秒一次的报价轮询会打的 action。
+ *
+ * 启动横幅的用处只有一个：进程没走到任何异常处理器就死了（缺 dylib、段错误）时，
+ * 证明它至少被拉起过。轮询 action 每十秒来一次，横幅对它们既没有取证价值，又会把
+ * 日志刷成纯噪音——实测本机那份日志 1377 行里 1244 行（90%）都是这两个打出来的。
+ */
+// 显式标注 string：flag 是字面量类型，不标注则 has() 收不下 argv 里的任意字符串
+const POLLING_ACTIONS: ReadonlySet<string> = new Set([
+  SIDECAR_ACTIONS.quote.flag,
+  SIDECAR_ACTIONS.quotes.flag,
+]);
+
 async function run() {
   const args = process.argv;
-  logToFile(
-    `Argv: [${args.length} items] action=${args.find((a) => a.startsWith('--')) ?? 'default'}`,
-  );
+  const flag = args.find((a) => a.startsWith('--'));
+  if (!flag || !POLLING_ACTIONS.has(flag)) {
+    logToFile(`Argv: [${args.length} items] action=${flag ?? 'default'}`);
+  }
 
   // 健康自检逻辑 - 优先运行，不需要加载业务模块
   if (args.includes('--check')) {

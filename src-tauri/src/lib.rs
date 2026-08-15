@@ -1,3 +1,4 @@
+use tauri::Manager;
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::StoreExt;
@@ -76,12 +77,29 @@ impl SidecarManager {
             .map(|l| l.to_string())
     }
 
+    /**
+     * Sidecar 的诊断日志落点，经 `STOCKAI_LOG_DIR` 传给子进程（见 sidecar/utils.ts）。
+     *
+     * 目录在这里建而不在 setup 里建：日志目录存在是「设置 → 打开日志目录」按钮的前提，
+     * 而这里是唯一必然先于用户点它发生的位置。`create_dir_all` 幂等，多调几次无妨。
+     * 取不到路径就返回 None——Sidecar 会自己退到临时目录，不该因为日志而让调用失败。
+     */
+    fn log_dir(app_handle: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+        let dir = app_handle.path().app_log_dir().ok()?;
+        std::fs::create_dir_all(&dir).ok()?;
+        Some(dir)
+    }
+
     async fn run(app_handle: &tauri::AppHandle, args: Vec<String>) -> Result<String, String> {
-        let sidecar_command = app_handle
+        let mut sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
             .map_err(|e| coded(ERR_SIDECAR_SPAWN, format!("sidecar not found: {}", e)))?
             .args(&args);
+
+        if let Some(dir) = Self::log_dir(app_handle) {
+            sidecar_command = sidecar_command.env("STOCKAI_LOG_DIR", dir);
+        }
 
         let (mut rx, child) = sidecar_command
             .spawn()
