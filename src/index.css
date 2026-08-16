@@ -1,13 +1,63 @@
 @import "tailwindcss";
 
+/**
+ * 全局样式的唯一来源。
+ *
+ * 曾经还有一份 src/App.css，里面定义了 .setting-row 一族与 .scrollbar-hide 等类，
+ * 但**没有任何文件 import 它**——那些类在构建产物里根本不存在，用到它们的组件
+ * （设置页 5 行、3 处滚动容器）一直在裸奔。样式表不像 ts 有编译器兜底，漏了
+ * import 不会报错，只会安静地少一批规则，所以这里合并成一份，不再分家。
+ */
+
 @theme {
   --color-background: #0a0a0a;
   --color-panel: #1a1a1a;
-  --color-accent: #3b82f6;
 }
 
-/* 全局样式定义 */
 body {
   @apply bg-background text-white antialiased overflow-hidden m-0 p-0;
   min-height: 100vh;
+}
+
+/* 浮层入场动画 */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+/* 隐藏滚动条但保留滚动功能 */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 设置页的一行：左侧标题+说明，右侧控件 */
+.setting-row {
+  @apply flex items-center justify-between py-4 border-b border-white/5 last:border-0;
+}
+
+.setting-label {
+  @apply flex flex-col;
+}
+
+.setting-title {
+  @apply text-sm font-medium text-gray-100;
+}
+
+.setting-desc {
+  @apply text-xs text-gray-500 mt-0.5;
 }

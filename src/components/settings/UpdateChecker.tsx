@@ -35,8 +35,8 @@ export const UpdateChecker: React.FC = () => {
   return (
     <div className="setting-row">
       <div className="setting-label">
-        <span className="setting-title text-gray-200">{t('update_check_label')}</span>
-        <span className="setting-desc text-gray-500 text-xs">{statusDesc()}</span>
+        <span className="setting-title">{t('update_check_label')}</span>
+        <span className="setting-desc">{statusDesc()}</span>
       </div>
       {canInstall ? (
         <button

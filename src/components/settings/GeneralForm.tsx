@@ -57,8 +57,8 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
     <div className="space-y-6">
       <div className="setting-row">
         <div className="setting-label">
-          <span className="setting-title text-gray-200">{t('auto_analyze_label')}</span>
-          <span className="setting-desc text-gray-500 text-xs">{t('auto_analyze_desc')}</span>
+          <span className="setting-title">{t('auto_analyze_label')}</span>
+          <span className="setting-desc">{t('auto_analyze_desc')}</span>
         </div>
         <Toggle
           enabled={settings.autoAnalyze}
@@ -67,8 +67,8 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
       </div>
       <div className="setting-row">
         <div className="setting-label">
-          <span className="setting-title text-gray-200">{t('deep_mode_label')}</span>
-          <span className="setting-desc text-gray-500 text-xs">{t('deep_mode_desc')}</span>
+          <span className="setting-title">{t('deep_mode_label')}</span>
+          <span className="setting-desc">{t('deep_mode_desc')}</span>
         </div>
         <Toggle
           enabled={settings.deepMode}
@@ -77,8 +77,8 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
       </div>
       <div className="setting-row">
         <div className="setting-label">
-          <span className="setting-title text-gray-200">{t('language_label')} / Language</span>
-          <span className="setting-desc text-gray-500 text-xs">{t('language_desc')}</span>
+          <span className="setting-title">{t('language_label')} / Language</span>
+          <span className="setting-desc">{t('language_desc')}</span>
         </div>
         <div className="flex gap-2">
           {LANGUAGES.map(({ value, label }) => (
@@ -99,8 +99,8 @@ export const GeneralForm: React.FC<GeneralFormProps> = ({ settings, onChange }) 
       </div>
       <div className="setting-row">
         <div className="setting-label">
-          <span className="setting-title text-gray-200">{t('log_dir_label')}</span>
-          <span className="setting-desc text-gray-500 text-xs">{t('log_dir_desc')}</span>
+          <span className="setting-title">{t('log_dir_label')}</span>
+          <span className="setting-desc">{t('log_dir_desc')}</span>
         </div>
         <button
           type="button"
