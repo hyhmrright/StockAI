@@ -16,19 +16,11 @@ import { needsNameLookup, enhanceSymbol } from './symbol';
 import { createProvider as realCreateProvider } from './providers/registry';
 import { toErrorMessage } from './utils';
 import { logger } from './log';
+import { ScrapeEmptyError } from './errors';
 
 /** 中性评分基准 */
 const NEUTRAL_RATING = 50;
 
-/** 未抓到新闻时抛出，供 cli-handlers 识别并映射到 ERR_SCRAPE_EMPTY 错误码 */
-export class ScrapeEmptyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ScrapeEmptyError';
-  }
-}
-
-/** 测试注入点；生产不传。避开 bun:test 全局 mock.module 导致的跨文件状态泄漏。 */
 /**
  * 等公司名的上限。
  *
@@ -41,6 +33,7 @@ export class ScrapeEmptyError extends Error {
  */
 const NAME_WAIT_MS = 3_000;
 
+/** 测试注入点；生产不传。避开 bun:test 全局 mock.module 导致的跨文件状态泄漏。 */
 export interface AnalysisDeps {
   scrape?: typeof realScrape;
   fetchInfo?: (parsed: ParsedSymbol) => Promise<StockInfo | null>;

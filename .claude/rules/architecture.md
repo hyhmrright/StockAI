@@ -119,7 +119,9 @@ handler 按领域分文件，各组是一个 `createXxxHandlers(ctx)` 工厂，�
 
 **两条铁律**：
 
-- **重依赖必须留在函数体内 `await import()`**。各文件顶层只准 import `utils` / `log` / `protocol` / `shared/constants` / 类型——`cli-handlers` 在启动路径上，顶层拖入 playwright 一系会让 Bun `--compile` 的二进制在无浏览器环境直接崩（历史事故）。
+- **重依赖必须留在函数体内 `await import()`**。各文件顶层只准 import `utils` / `log` / `protocol` / `errors` / `shared/constants` / 类型——`cli-handlers` 在启动路径上，顶层拖入 playwright 一系会让 Bun `--compile` 的二进制在无浏览器环境直接崩（历史事故）。
+
+  **看直接 import 是不够的**：`cli-handlers/analysis.ts` 曾顶层 `import { ScrapeEmptyError } from '../analysis'`，说明符本身平平无奇，重量全在传递依赖里——scraper → 五个抓取策略 → browser-manager，外加 `openai` / `ollama` / `@anthropic-ai/sdk` 三个 SDK，急加载 38 个模块 / 46ms，而 `--quotes` 每 10 秒轮询一次、根本不抓新闻。故「抛出方与分类方共用」的领域错误类一律放叶子模块 `sidecar/errors.ts`。守这条规则的是 `sidecar/startup-graph.test.ts`：它从 `index.ts` 与 `cli-handlers/index.ts` 两个入口算**传递闭包**并与名单逐项比对，闭包一变即失败并列出多出来的模块。
 - **每个 handler 的所有出口都要写一次且仅一次信封**（`successEnvelope` / `errorEnvelope`）。`outputJson` 有重复写入检测，会抛 `[PROTOCOL]`。
 
 ## Multi-Agent 系统（`sidecar/agents/`）

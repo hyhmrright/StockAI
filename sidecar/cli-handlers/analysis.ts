@@ -1,7 +1,7 @@
 import { toErrorMessage } from '../utils';
 import { logger } from '../log';
 import { outputJson, successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from '../protocol';
-import { ScrapeEmptyError } from '../analysis';
+import { ScrapeEmptyError } from '../errors';
 import type { ResolvedConfig } from '../configResolver';
 import type { StockNews, QuantBundle, MasterWeightInput } from '../../shared/types';
 import type { HandlerContext } from './context';

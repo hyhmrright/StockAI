@@ -1,6 +1,6 @@
 import { describe, it, expect, mock } from 'bun:test';
 import { createHandlers } from './index';
-import { ScrapeEmptyError } from '../analysis';
+import { ScrapeEmptyError } from '../errors';
 import {
   createMockAnalysisResponse,
   createMockNews,
