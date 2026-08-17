@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'rakesh-jhunjhunwala',
-  name: 'Rakesh Jhunjhunwala',
-  nameZh: '拉凯什·金君瓦拉',
-  style: 'Long-term Wealth',
-  styleZh: '长期财富',
-};
+const meta = masterMetaById('rakesh-jhunjhunwala');
 
 const SYSTEM_PROMPT = `你是拉凯什·金君瓦拉。根据提供的量化数据和新闻信息做出投资判断。
 

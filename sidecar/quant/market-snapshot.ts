@@ -4,7 +4,8 @@ import type { MarketSnapshot, MarketSnapshotEntry } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
 import { HTTP_DEFAULTS } from '../config';
 import { fetchWithPolicy } from '../http';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 import { extractSinaJson } from '../parsers/sina-envelope';
 
 /**

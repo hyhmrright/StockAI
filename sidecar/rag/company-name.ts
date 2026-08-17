@@ -1,6 +1,7 @@
 import { HTTP_DEFAULTS } from '../config';
 import { fetchWithPolicy } from '../http';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 
 /**
  * 巨潮 topSearch/query——沪深通用的股票代码→公司简称解析，免鉴权公开端点。

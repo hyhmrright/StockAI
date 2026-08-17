@@ -3,11 +3,11 @@ import type { KlinePoint } from '../../../shared/types';
 import { upColor, downColor } from '../../lib/market-hours';
 import { useLanguage } from '../../hooks/useLanguage';
 import { localeOf } from '../../lib/locale';
-import { MA_COLORS } from './types';
+import { MA_COLORS, type Market } from './types';
 
 interface Props {
   point: KlinePoint | null;
-  market: 'A股' | '美股';
+  market: Market;
   prevClose?: number;
   maValues?: { short: number | null; mid: number | null; long: number | null };
 }

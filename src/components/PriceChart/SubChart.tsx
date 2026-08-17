@@ -11,7 +11,7 @@ import {
   LineSeries,
 } from 'lightweight-charts';
 import type { KlinePoint } from '../../../shared/types';
-import type { SubChartIndicator } from './types';
+import type { Market, SubChartIndicator } from './types';
 import { CHART_THEME } from './chart-theme';
 import { macd, rsi, kdj, obv, vwap } from '../../lib/indicators';
 import { upColor, downColor } from '../../lib/market-hours';
@@ -19,7 +19,7 @@ import { upColor, downColor } from '../../lib/market-hours';
 interface Props {
   data: KlinePoint[];
   indicator: SubChartIndicator;
-  market: 'A股' | '美股';
+  market: Market;
   height?: number;
 }
 

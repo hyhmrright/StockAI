@@ -1,6 +1,6 @@
 ---
 name: new-master-agent
-description: 在 sidecar/agents/masters/ 新增投资大师 Agent，覆盖实现、registry 注册、公共测试清单与前端 meta 副本四处
+description: 在 sidecar/agents/masters/ 新增投资大师 Agent，覆盖 shared 元数据表、实现与 registry 注册三处
 ---
 
 # 新增投资大师 Agent
@@ -13,18 +13,18 @@ description: 在 sidecar/agents/masters/ 新增投资大师 Agent，覆盖实现
 - **核心理念**：2–3 句话描述其投资哲学（写进 SYSTEM_PROMPT）
 - **是否加入默认选中列表**（当前默认 5 位，见下）
 
-## 四处改动
+## 三处改动
 
 | # | 文件 | 内容 | 漏了会怎样 |
 |---|------|------|-----------|
-| 1 | `sidecar/agents/masters/<id>.ts` | 新建实现 | —— |
-| 2 | `sidecar/agents/registry.ts` | import + `REGISTRY` Map 追加 | 大师不参与分析 |
-| 3 | `sidecar/agents/masters/masters-common.test.ts` | `ALL_MASTER_FILES` 数组追加 | ⚠️ **测试不会失败**，新大师静默漏出公共测试覆盖 |
-| 4 | `src/components/DeepAnalysis/master-meta.ts` | `MASTER_META` 数组追加 | ⚠️ **不报错**：前端展示不出姓名/风格 |
+| 1 | `shared/constants.ts` | `MASTER_META` 数组追加五字段对象 | 第 2 步的 `masterMetaById` 在模块加载时抛，提示补这张表 |
+| 2 | `sidecar/agents/masters/<id>.ts` | 新建实现 | `masters-common.test.ts` 的「目录里的文件与 MASTER_META 的 id 完全对应」失败 |
+| 3 | `sidecar/agents/registry.ts` | import + `REGISTRY` Map 追加 | 同套件的「registry 注册的大师与 MASTER_META 的 id 完全对应」失败 |
 
-> 第 4 处是 meta 的第二份副本——前端不能 import `sidecar/`（单向依赖），当前只能各存一份。新增时**两边字段必须逐字一致**。
+> **三处都漏不掉**——每一处都有响亮的失败。元数据只此一份（`shared/` 两侧都能 import），
+> 前端 `src/components/DeepAnalysis/master-meta.ts` 只做取用，**不要往那里加数据**。
 
-可选第 5 处：`shared/constants.ts` 的 `DEFAULT_SELECTED_MASTERS`（当前是 `warren-buffett` / `ben-graham` / `michael-burry` / `cathie-wood` / `aswath-damodaran` 五位）。仅当用户明确要把新大师设为默认选中时才加——13 位全默认会让每次深度分析都跑满 LLM 调用。
+可选第 4 处：`shared/constants.ts` 的 `DEFAULT_SELECTED_MASTERS`（当前是 `warren-buffett` / `ben-graham` / `michael-burry` / `cathie-wood` / `aswath-damodaran` 五位）。仅当用户明确要把新大师设为默认选中时才加——13 位全默认会让每次深度分析都跑满 LLM 调用。
 
 ## 实施步骤
 
@@ -32,11 +32,18 @@ description: 在 sidecar/agents/masters/ 新增投资大师 Agent，覆盖实现
 
 读 `sidecar/agents/masters/ben-graham.ts` 作结构参考，读 `shared/types/masters.ts` 确认 `MasterMeta`，读 `sidecar/agents/types.ts` 确认 `MasterAgent` / `MasterAnalysisContext`。
 
-### 2. 创建大师文件
+### 2. 登记元数据（第 1 处）
+
+`shared/constants.ts` 的 `MASTER_META` 数组追加，恰好五个字段：`id` / `name` / `nameZh` / `style` / `styleZh`。**没有 `description` 字段**，多写会编译报错。数组顺序即前端设置页的展示顺序。
+
+### 3. 创建大师文件（第 2 处）
 
 `sidecar/agents/masters/<id>.ts`：
 
-- **`meta: MasterMeta`** —— 恰好五个字段：`id` / `name` / `nameZh` / `style` / `styleZh`。**没有 `description` 字段**，多写会编译报错。
+- **`const meta = masterMetaById('<id>');`** —— 从 shared 取，不要在这里写字面量。
+  ```ts
+  import { masterMetaById } from '../../../shared/constants';
+  ```
 - **`SYSTEM_PROMPT`** —— 用该大师第一人称口吻，含分析框架、信号规则（bullish/bearish/neutral）、置信度标准；结尾要求只返回 `{"signal": "...", "confidence": 0-100, "reasoning": "..."}`。
   语言指令由 `createMasterAgent` 自动追加（`LANG_INSTRUCTION`），**prompt 里不要自己写「请用中文回答」**。
 - **`buildUserPrompt(ctx: MasterAnalysisContext)`** —— 从 `ctx.quant` / `ctx.news` 提取数据。复用 `factory.ts` 的两个辅助函数，别手搓格式化：
@@ -47,7 +54,7 @@ description: 在 sidecar/agents/masters/ 新增投资大师 Agent，覆盖实现
 - 末尾：`export const agent = createMasterAgent(meta, SYSTEM_PROMPT, buildUserPrompt);`
 - 行内注释用**简体中文**。
 
-### 3. 注册（第 2–4 处）
+### 4. 注册（第 3 处）
 
 **`sidecar/agents/registry.ts`**：
 ```ts
@@ -56,27 +63,14 @@ import { agent as <camelId> } from './masters/<id>';
 [<camelId>.meta.id, <camelId>],
 ```
 
-**`sidecar/agents/masters/masters-common.test.ts`**：在 `ALL_MASTER_FILES` 数组追加 `'<id>'`。
-
-**`src/components/DeepAnalysis/master-meta.ts`**：在 `MASTER_META` 数组追加与第 2 步 `meta` **完全相同**的五字段对象。
-
-### 4. 验证
+### 5. 验证
 
 ```bash
 cd sidecar && bun test agents
-bun tsc --noEmit
 ```
-
-`masters-common.test.ts` 会对清单里每位大师跑公共契约测试（meta 完整性、prompt 构建不崩、解析容错）。确认输出里的大师数量已 +1——**数量没变说明第 3 处漏了**。
-
-再核对两份 meta 一致：
 
 ```bash
-python3 -c "
-import re
-s=open('sidecar/agents/masters/<id>.ts').read()
-f=open('src/components/DeepAnalysis/master-meta.ts').read()
-fields=dict(re.findall(r\"(\w+): '([^']*)'\", re.search(r'const meta[^{]*\{(.*?)\};', s, re.S).group(1)))
-print(fields)
-print('前端已同步:', all(f\"'{v}'\" in f for v in fields.values()))"
+bunx tsc --noEmit
 ```
+
+`masters-common.test.ts` 先跑「三处登记必须彼此一致」双向校验（目录 ↔ MASTER_META ↔ registry），再对每位大师跑公共契约测试（meta 完整性、prompt 构建不崩、解析容错）。三处齐全时全绿，漏任何一处都会指名道姓地失败——不必再手工核对两份 meta 是否逐字一致。

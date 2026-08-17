@@ -1,4 +1,4 @@
-import { outputJson, errorEnvelope } from '../utils';
+import { outputJson, errorEnvelope } from '../protocol';
 import type {
   performFullAnalysis as AnalysisFn,
   fetchMarketBundle as FetchBundleFn,
@@ -34,6 +34,21 @@ export interface HandlerDeps {
   /** 测试注入：替换对话补全，避开真实 LLM 调用（保持 handleChat 离线可测） */
   _runChat?: typeof RunChatFn;
 }
+
+/**
+ * **不要把 handler 的 `try/catch/信封` 样板抽成 `withEnvelope(code, fn)`**（已评估，结论是别抽）。
+ *
+ * 看起来 20 个 handler 都在重复同一组四行，实际只有 8 个是「一个 try、一次成功 out、
+ * 一句 catch」的纯形状；另外 12 个各有额外出口——`handleCompany` 非 A 股时用
+ * `ERR_COMPANY_NOT_A_SHARE` 提前返回、`handleBacktest` K 线不足时用
+ * `ERR_INSUFFICIENT_DATA`、`handleChat` 与 `handleScreen` 各有两个 catch 分类不同错因、
+ * `handleListModels` 有五个出口。包装器吃不下这 12 个，于是要么同一文件里并存两种写法
+ * （比现在更难读），要么让包装器支持「提前以别的码返回」——那得靠抛特定异常或返回哨兵，
+ * 是把复杂度搬家而不是消除。
+ *
+ * 更要紧的是架构铁律「每个 handler 的所有出口都要写一次且仅一次信封」：出口摆在明面上
+ * 才能一眼核对，藏进包装层就只能靠读包装器的实现来推断。
+ */
 
 /** 各领域 handler 模块共享的上下文：输出通道 + 注入点 + 通用守卫 */
 export interface HandlerContext {

@@ -8,7 +8,8 @@ import type {
 } from '../../shared/types';
 import type { ChatProvider } from './types';
 import { computeMasterWeights, type MasterWeight } from './weights';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 
 const SYSTEM_PROMPTS: Record<Language, string> = {
   zh: `你是投资委员会主席。综合所有分析师的独立研判，给出最终投资建议。

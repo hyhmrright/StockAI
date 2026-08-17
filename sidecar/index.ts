@@ -2,15 +2,9 @@ import type { StockNews, ChatPayload } from '../shared/types';
 import type { SidecarActionDef, SlotName } from '../shared/actions';
 import { SIDECAR_ACTIONS, DEFAULT_ANALYSIS_SLOTS } from '../shared/actions';
 import type { RawConfig } from './cli-handlers';
-import {
-  logger,
-  toErrorMessage,
-  outputJson,
-  exitAfterFlush,
-  logToFile,
-  errorEnvelope,
-  errorEnvelopeFromUnknown,
-} from './utils';
+import { toErrorMessage } from './utils';
+import { logger, logToFile } from './log';
+import { outputJson, exitAfterFlush, errorEnvelope, errorEnvelopeFromUnknown } from './protocol';
 import { tmpdir } from 'os';
 import { resolve, basename } from 'path';
 

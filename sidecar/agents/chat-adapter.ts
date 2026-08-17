@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import type { ChatProvider } from './types';
 import { PROVIDER_PROFILES } from '../../shared/constants';
 import type { ResolvedRole } from '../configResolver';
-import { logger } from '../utils';
+import { logger } from '../log';
 
 interface CompletionDep {
   createCompletion: (opts: {

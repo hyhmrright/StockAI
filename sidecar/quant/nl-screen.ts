@@ -13,7 +13,8 @@ import type {
 } from '../../shared/types';
 import type { ChatProvider } from '../agents/types';
 import { buildScreenPrompt } from '../prompts';
-import { logger, parseJsonFromAi, toErrorMessage, withTimeout } from '../utils';
+import { parseJsonFromAi, toErrorMessage, withTimeout } from '../utils';
+import { logger } from '../log';
 import { fetchQuantBundle } from './index';
 import { fetchMarketSnapshot } from './market-snapshot';
 

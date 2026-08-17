@@ -1,3 +1,4 @@
+import { masterMetaById } from '../../../shared/constants';
 import {
   createMasterAgent,
   formatFactorsForPrompt,
@@ -5,15 +6,8 @@ import {
   formatNewsForPrompt,
 } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'michael-burry',
-  name: 'Michael Burry',
-  nameZh: '迈克尔·伯里',
-  style: 'Contrarian Value',
-  styleZh: '逆向价值',
-};
+const meta = masterMetaById('michael-burry');
 
 const SYSTEM_PROMPT = `你是迈克尔·伯里。根据提供的量化数据和新闻信息做出投资判断。
 

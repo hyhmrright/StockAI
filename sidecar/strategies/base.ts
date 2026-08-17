@@ -1,7 +1,8 @@
 import type { Page } from 'playwright-core';
 import type { StockNews } from '../../shared/types';
 import { TIMEOUTS } from '../config';
-import { toErrorMessage, logger } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 
 /**
  * 抓取上下文——策略按需调用 getPage() 触发浏览器启动；

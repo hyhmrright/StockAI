@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuotes } from '../hooks/useQuotes';
 import { useLanguage } from '../hooks/useLanguage';
 import { upColor, downColor } from '../lib/market-hours';
+import type { TranslationKey } from '../i18n';
 import type { Market } from '../../shared/types';
 
 /**
@@ -11,16 +12,17 @@ import type { Market } from '../../shared/types';
  * `v_sh000001` 形态返回，美股指数由 Yahoo 返回，两侧 parser 的字段位置与个股完全一致
  * （已实测：上证 / 深证成指 / 创业板指 / 标普 500 / 纳斯达克 / 道琼斯 六个全部解析正常）。
  *
- * 名称不取接口返回值而是写死：数据源给的是「上证指数」「S&P 500」这类混合语言的原名，
- * 摆在一条里长短不一；这里要的是等宽的简称。
+ * 名称不取接口返回值而是走 i18n：数据源给的是「上证指数」「S&P 500」这类混合语言的原名，
+ * 摆在一条里长短不一；这里要的是各语言下等宽的简称。`index_sp500` 三语同值，
+ * 但仍占一个 key——让这张表只有一种取名方式，比省一条译文值钱。
  */
-const INDICES: { symbol: string; label: string; market: Market }[] = [
-  { symbol: 'sh000001', label: '上证', market: 'A股' },
-  { symbol: 'sz399001', label: '深证', market: 'A股' },
-  { symbol: 'sz399006', label: '创业板', market: 'A股' },
-  { symbol: '^GSPC', label: 'S&P 500', market: '美股' },
-  { symbol: '^IXIC', label: '纳斯达克', market: '美股' },
-  { symbol: '^DJI', label: '道琼斯', market: '美股' },
+const INDICES: { symbol: string; label: TranslationKey; market: Market }[] = [
+  { symbol: 'sh000001', label: 'index_sh', market: 'A股' },
+  { symbol: 'sz399001', label: 'index_sz', market: 'A股' },
+  { symbol: 'sz399006', label: 'index_cyb', market: 'A股' },
+  { symbol: '^GSPC', label: 'index_sp500', market: '美股' },
+  { symbol: '^IXIC', label: 'index_nasdaq', market: '美股' },
+  { symbol: '^DJI', label: 'index_dji', market: '美股' },
 ];
 
 const SYMBOLS = INDICES.map((i) => i.symbol);
@@ -47,7 +49,7 @@ const IndexBar: React.FC<Props> = ({ onOpenOverview }) => {
 
         return (
           <div key={symbol} className="flex items-baseline gap-1.5 whitespace-nowrap">
-            <span className="text-[11px] text-gray-500">{label}</span>
+            <span className="text-[11px] text-gray-500">{t(label)}</span>
             <span className="text-[11px] font-mono font-semibold" style={{ color }}>
               {q ? q.price.toFixed(2) : '—'}
             </span>

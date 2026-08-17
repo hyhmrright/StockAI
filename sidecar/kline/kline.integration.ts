@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import type { KlinePoint, NormalizedRequest, RealtimeQuote } from './types';
+import type { KlinePoint, Market, NormalizedRequest, RealtimeQuote } from './types';
 import { fetchEastmoneyKline } from './eastmoney';
 import { fetchTencentKline, fetchTencentQuote, fetchTencentUsQuote } from './tencent';
 import { fetchYahooKline, fetchYahooQuote } from './yahoo';
@@ -24,7 +24,7 @@ const CN_SYMBOL = '600519'; // 贵州茅台——沪市超大盘，退市/停牌
 const US_SYMBOL = 'AAPL';
 
 /** 逐源直连需要 sidecar 内部规范化后的参数，这里手工构造（正常由 kline/index.ts 的 normalize 产出） */
-function req(rawSymbol: string, market: 'A股' | '美股'): NormalizedRequest {
+function req(rawSymbol: string, market: Market): NormalizedRequest {
   return { rawSymbol, period: '1d', range: '3m', adjust: 'qfq', market };
 }
 

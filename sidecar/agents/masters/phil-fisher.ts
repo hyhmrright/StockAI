@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'phil-fisher',
-  name: 'Phil Fisher',
-  nameZh: '菲利普·费雪',
-  style: 'Growth Investing',
-  styleZh: '成长投资',
-};
+const meta = masterMetaById('phil-fisher');
 
 const SYSTEM_PROMPT = `你是菲利普·费雪。根据提供的量化数据和新闻信息做出投资判断。
 

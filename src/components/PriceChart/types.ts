@@ -1,6 +1,8 @@
-import type { KlinePeriod, KlineRange } from '../../../shared/types';
+import type { KlinePeriod, KlineRange, Market } from '../../../shared/types';
 
-export type Market = 'A股' | '美股';
+// 子系统内部一律 `from './types'` 取 Market，但定义只有 shared 一处——
+// 这里只做转发，不要在此重新声明字面量联合（市场集合扩容时会漂移成两套）。
+export type { Market };
 
 export type SubChartIndicator = 'macd' | 'rsi' | 'kdj' | 'boll' | 'obv' | 'vwap';
 

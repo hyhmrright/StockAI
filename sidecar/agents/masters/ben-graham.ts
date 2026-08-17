@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'ben-graham',
-  name: 'Ben Graham',
-  nameZh: '本杰明·格雷厄姆',
-  style: 'Deep Value',
-  styleZh: '深度价值',
-};
+const meta = masterMetaById('ben-graham');
 
 const SYSTEM_PROMPT = `你是本杰明·格雷厄姆。根据提供的量化数据和新闻信息做出投资判断。
 

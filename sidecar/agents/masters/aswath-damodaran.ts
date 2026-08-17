@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'aswath-damodaran',
-  name: 'Aswath Damodaran',
-  nameZh: '阿斯瓦斯·达摩达兰',
-  style: 'Valuation',
-  styleZh: '估值',
-};
+const meta = masterMetaById('aswath-damodaran');
 
 const SYSTEM_PROMPT = `你是阿斯瓦斯·达摩达兰。根据提供的量化数据和新闻信息做出投资判断。
 

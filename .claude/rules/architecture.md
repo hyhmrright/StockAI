@@ -119,16 +119,24 @@ handler 按领域分文件，各组是一个 `createXxxHandlers(ctx)` 工厂，�
 
 **两条铁律**：
 
-- **重依赖必须留在函数体内 `await import()`**。各文件顶层只准 import `utils` / `shared/constants` / 类型——`cli-handlers` 在启动路径上，顶层拖入 playwright 一系会让 Bun `--compile` 的二进制在无浏览器环境直接崩（历史事故）。
+- **重依赖必须留在函数体内 `await import()`**。各文件顶层只准 import `utils` / `log` / `protocol` / `shared/constants` / 类型——`cli-handlers` 在启动路径上，顶层拖入 playwright 一系会让 Bun `--compile` 的二进制在无浏览器环境直接崩（历史事故）。
 - **每个 handler 的所有出口都要写一次且仅一次信封**（`successEnvelope` / `errorEnvelope`）。`outputJson` 有重复写入检测，会抛 `[PROTOCOL]`。
 
 ## Multi-Agent 系统（`sidecar/agents/`）
 
 13 位投资大师 Agent（巴菲特、芒格、格雷厄姆、伯里、伍德等）各自持有独立的分析视角，统一实现 `MasterAgent` 接口（`agents/types.ts`）。数据流：`agents/registry.ts`（注册表）→ `agents/synthesizer.ts`（聚合评分）→ `agents/sentiment.ts`（情绪综合）。`agents/masters/factory.ts` 的 `createMasterAgent` 统一处理语言指令注入、响应解析与容错，各大师只提供 `meta` + `SYSTEM_PROMPT` + `buildUserPrompt`。`agents/chat-adapter.ts` 适配各 AI provider 的对话格式。
 
-新增大师要动**四处**（其中两处漏了不报错）：`agents/masters/<id>.ts` 实现、`agents/registry.ts` 注册、`agents/masters/masters-common.test.ts` 的 `ALL_MASTER_FILES`（漏了静默漏测）、`src/components/DeepAnalysis/master-meta.ts` 的 `MASTER_META`（漏了前端不显示姓名）。走 `/new-master-agent` 技能可自动覆盖。
+新增大师要动**三处**：`shared/constants.ts` 的 `MASTER_META` 加一条、`agents/masters/<id>.ts` 实现、`agents/registry.ts` 注册。走 `/new-master-agent` 技能可自动覆盖。
 
-> **`MasterMeta` 是 shared 单一来源的一处已知例外**：数据在 `agents/masters/*.ts` 与 `src/components/DeepAnalysis/master-meta.ts` 各存一份。前端不能 import `sidecar/`（单向依赖），当前只能双写。**这不是待修的违规**——真要收敛，得把 `MASTER_META` 表挪进 `shared/constants.ts` 供两侧取用。
+**三处都漏不掉**，各有响亮的失败：
+
+| 漏了哪处 | 什么时候炸 |
+|----------|-----------|
+| `MASTER_META` | 大师文件的 `masterMetaById('<id>')` 在模块加载时抛，提示补哪张表 |
+| `masters/<id>.ts` | `masters-common.test.ts` 的「目录里的文件与 MASTER_META 的 id 完全对应」失败 |
+| `registry.ts` | 同一套件的「registry 注册的大师与 MASTER_META 的 id 完全对应」失败 |
+
+> `MasterMeta` 曾经在 `agents/masters/*.ts` 与 `src/components/DeepAnalysis/master-meta.ts` 各存一份，漏改前端那份的表现是「深度分析卡片不显示姓名」且不报错。现已收敛进 `shared/constants.ts`——前端不能 import `sidecar/`，但两侧都能 import `shared/`，所以双写从来不是必需的。`src/components/DeepAnalysis/master-meta.ts` 现在只剩「按语言选 name/nameZh」这类前端取用逻辑。
 
 ## 量化评分子系统（`sidecar/quant/`）
 

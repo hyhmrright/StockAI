@@ -10,7 +10,8 @@ import type {
 } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
 import { fetchWithPolicy } from '../http';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 
 /**
  * 公司基本资料 F10（东财 emweb `PC_HSF10/*\/PageAjax`）。

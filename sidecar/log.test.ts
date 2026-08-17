@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { logToFile, logger } from './utils';
+import { logToFile, logger } from './log';
 
 /**
  * 诊断日志是打包后应用**唯一**的一手证据——GUI 启动没有终端，stderr 无处可去。

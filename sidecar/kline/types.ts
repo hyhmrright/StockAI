@@ -4,9 +4,10 @@ import type {
   KlinePeriod,
   KlineRange,
   AdjustMode,
+  Market,
 } from '../../shared/types';
 
-export type { KlinePoint, RealtimeQuote, KlinePeriod, KlineRange, AdjustMode };
+export type { KlinePoint, RealtimeQuote, KlinePeriod, KlineRange, AdjustMode, Market };
 
 /**
  * 各数据源共用的注入点：替换真实网络，让「A 源失败→回退 B 源」这条容错逻辑可离线测试。
@@ -24,5 +25,5 @@ export interface NormalizedRequest {
   period: KlinePeriod;
   range: KlineRange;
   adjust: AdjustMode;
-  market: 'A股' | '美股';
+  market: Market;
 }

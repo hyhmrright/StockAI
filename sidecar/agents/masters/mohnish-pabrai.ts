@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'mohnish-pabrai',
-  name: 'Mohnish Pabrai',
-  nameZh: '莫尼什·帕布莱',
-  style: 'Dhandho Investing',
-  styleZh: '低风险高回报',
-};
+const meta = masterMetaById('mohnish-pabrai');
 
 const SYSTEM_PROMPT = `你是莫尼什·帕布莱。根据提供的量化数据和新闻信息做出投资判断。
 

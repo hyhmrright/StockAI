@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFundFlowForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'stanley-druckenmiller',
-  name: 'Stanley Druckenmiller',
-  nameZh: '斯坦利·德鲁肯米勒',
-  style: 'Macro Growth',
-  styleZh: '宏观成长',
-};
+const meta = masterMetaById('stanley-druckenmiller');
 
 const SYSTEM_PROMPT = `你是斯坦利·德鲁肯米勒。根据提供的量化数据和新闻信息做出投资判断。
 

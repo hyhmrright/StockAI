@@ -14,7 +14,8 @@ import { fetchStockInfo as realFetchInfo } from './stock-info';
 import { parseSymbol } from './parsers/exchange';
 import { needsNameLookup, enhanceSymbol } from './symbol';
 import { createProvider as realCreateProvider } from './providers/registry';
-import { toErrorMessage, logger } from './utils';
+import { toErrorMessage } from './utils';
+import { logger } from './log';
 
 /** 中性评分基准 */
 const NEUTRAL_RATING = 50;

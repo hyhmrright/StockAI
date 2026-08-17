@@ -4,7 +4,8 @@ import type { AIProvider, ProviderKind } from '../ai';
 import { resolveLanguage } from '../ai';
 import { PROVIDER_PROFILES } from '../config';
 import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from '../prompts';
-import { toErrorMessage, withTimeout, logger, parseJsonFromAi } from '../utils';
+import { toErrorMessage, withTimeout, parseJsonFromAi } from '../utils';
+import { logger } from '../log';
 
 /**
  * Anthropic Claude 提供者实现

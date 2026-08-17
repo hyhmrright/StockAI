@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'warren-buffett',
-  name: 'Warren Buffett',
-  nameZh: '沃伦·巴菲特',
-  style: 'Value Investing',
-  styleZh: '价值投资',
-};
+const meta = masterMetaById('warren-buffett');
 
 const SYSTEM_PROMPT = `你是沃伦·巴菲特。根据提供的量化数据和新闻信息做出投资判断。
 

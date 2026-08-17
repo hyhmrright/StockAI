@@ -1,13 +1,86 @@
-import {
-  withTimeout,
-  logger,
-  classifyListModelsError,
-  successEnvelope,
-  errorEnvelope,
-} from '../utils';
+import { withTimeout, toErrorMessage } from '../utils';
+import { logger } from '../log';
+import { successEnvelope, errorEnvelope } from '../protocol';
 import { STATIC_MODELS, PROVIDER_CAPS, PROVIDER_PROFILES } from '../../shared/constants';
 import type { ProviderType } from '../../shared/types';
 import type { HandlerContext } from './context';
+
+/**
+ * 列模型错误码（与前端 ProviderForm 显示提示对齐）
+ * - TIMEOUT：请求超时
+ * - AUTH：401/403，鉴权失败
+ * - NETWORK：连接拒绝/DNS/网络层异常
+ * - SERVER：5xx，服务器内部错误
+ * - BAD_REQUEST：4xx 非鉴权（多为配置错误）
+ * - UNKNOWN：兜底
+ */
+export type ListModelsErrorCode =
+  | 'ERR_LIST_MODELS_TIMEOUT'
+  | 'ERR_LIST_MODELS_AUTH'
+  | 'ERR_LIST_MODELS_NETWORK'
+  | 'ERR_LIST_MODELS_SERVER'
+  | 'ERR_LIST_MODELS_BAD_REQUEST'
+  | 'ERR_LIST_MODELS';
+
+/**
+ * 把列模型链路抛出的各种错误（fetch / Ollama / OpenAI SDK）映射到稳定错误码。
+ * 入参 unknown，永不抛出。
+ *
+ * 住在这里而不是 `utils.ts`：它只服务 `--list-models` 这一条链路，放进通用工具模块
+ * 等于让另外 40 个 importer 也依赖某个 provider 的报错形状。
+ */
+export function classifyListModelsError(error: unknown): {
+  code: ListModelsErrorCode;
+  message: string;
+} {
+  const message = toErrorMessage(error);
+
+  // 超时（withTimeout 抛出，name 已标记）
+  if (error instanceof Error && error.name === 'TimeoutError') {
+    return { code: 'ERR_LIST_MODELS_TIMEOUT', message };
+  }
+
+  // 优先匹配 HTTP 状态码（OpenAI SDK 错误带 status，fetch Response 也带）
+  const status =
+    typeof (error as { status?: unknown })?.status === 'number'
+      ? (error as { status: number }).status
+      : undefined;
+  if (status !== undefined) {
+    if (status === 401 || status === 403) {
+      return { code: 'ERR_LIST_MODELS_AUTH', message };
+    }
+    if (status >= 500) {
+      return { code: 'ERR_LIST_MODELS_SERVER', message };
+    }
+    if (status >= 400) {
+      return { code: 'ERR_LIST_MODELS_BAD_REQUEST', message };
+    }
+  }
+
+  // 网络层关键词：connection refused / ECONNREFUSED / fetch failed / ENOTFOUND
+  const lowered = message.toLowerCase();
+  if (
+    lowered.includes('econnrefused') ||
+    lowered.includes('connection refused') ||
+    lowered.includes('fetch failed') ||
+    lowered.includes('enotfound') ||
+    lowered.includes('network') ||
+    lowered.includes('getaddrinfo')
+  ) {
+    return { code: 'ERR_LIST_MODELS_NETWORK', message };
+  }
+
+  // 文本兜底：消息里含 unauthorized / invalid api key
+  if (
+    lowered.includes('unauthorized') ||
+    lowered.includes('invalid api key') ||
+    lowered.includes('invalid_api_key')
+  ) {
+    return { code: 'ERR_LIST_MODELS_AUTH', message };
+  }
+
+  return { code: 'ERR_LIST_MODELS', message };
+}
 
 /** Rust/前端传来的未经 resolveConfig 校验的裸配置（列模型走表单当前编辑值，可能尚未保存） */
 export interface RawConfig {

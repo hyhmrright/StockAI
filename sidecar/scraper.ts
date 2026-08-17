@@ -4,7 +4,8 @@ import type { ScrapeStrategy, ScrapeContext } from './strategies/base';
 import { StrategyRegistry } from './strategies/registry';
 import { DEEP_MODE_MAX_ARTICLES, TIMEOUTS } from './config';
 import { extractFullContent } from './content-extractor';
-import { toErrorMessage, logger, withTimeout, runWithConcurrency } from './utils';
+import { toErrorMessage, withTimeout, runWithConcurrency } from './utils';
+import { logger } from './log';
 import { BrowserManager } from './browser-manager';
 
 /** 测试注入点；生产不传。避开 bun:test 全局 mock.module 导致的跨文件状态泄漏。 */

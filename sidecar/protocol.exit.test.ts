@@ -16,10 +16,10 @@ import { describe, test, expect } from 'bun:test';
  */
 describe('exitAfterFlush', () => {
   test('有残留子进程句柄时仍立即退出，且大输出不被截断', async () => {
-    const utilsPath = `${import.meta.dir}/utils.ts`;
+    const protocolPath = `${import.meta.dir}/protocol.ts`;
     // sleep 20s 的子进程 = 清理超时后残留的孤儿 Chromium 的等价物
     const script = `
-      import { outputJson, exitAfterFlush } from ${JSON.stringify(utilsPath)};
+      import { outputJson, exitAfterFlush } from ${JSON.stringify(protocolPath)};
       Bun.spawn(['sleep', '20'], { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' });
       outputJson({ pad: 'x'.repeat(200_000), tail: 'END' });
       await exitAfterFlush(0);

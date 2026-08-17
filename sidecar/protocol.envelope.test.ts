@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'bun:test';
-import { successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from './utils';
+import { describe, it, expect, beforeEach, spyOn } from 'bun:test';
+import {
+  successEnvelope,
+  errorEnvelope,
+  errorEnvelopeFromUnknown,
+  outputJson,
+  _resetOutputGuard,
+} from './protocol';
 
 describe('信封工厂', () => {
   it('successEnvelope 只有 data，没有 error', () => {
@@ -29,5 +35,26 @@ describe('信封工厂', () => {
     const env = successEnvelope([1, 2, 3]);
     const roundTrip = JSON.parse(JSON.stringify(env));
     expect(roundTrip).toEqual({ data: [1, 2, 3] });
+  });
+});
+
+describe('outputJson', () => {
+  beforeEach(() => {
+    _resetOutputGuard();
+  });
+
+  it('首次调用应写入 stdout', () => {
+    const spy = spyOn(process.stdout, 'write').mockImplementation(() => true);
+    outputJson({ ok: true });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0]).toBe('{"ok":true}\n');
+    spy.mockRestore();
+  });
+
+  it('第二次调用应抛出协议违规错误', () => {
+    const spy = spyOn(process.stdout, 'write').mockImplementation(() => true);
+    outputJson({ first: true });
+    expect(() => outputJson({ second: true })).toThrow('[PROTOCOL]');
+    spy.mockRestore();
   });
 });

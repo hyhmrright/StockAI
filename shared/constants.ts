@@ -1,4 +1,4 @@
-import { ProviderType, Language } from './types';
+import { ProviderType, Language, MasterMeta } from './types';
 
 /**
  * 每个 Provider 的完整档案——baseUrl、model、内容截断、超时都在同一处。
@@ -121,6 +121,124 @@ export const DEFAULT_SELECTED_MASTERS: string[] = [
   'cathie-wood',
   'aswath-damodaran',
 ];
+
+/**
+ * 13 位投资大师的展示元数据——**两侧唯一来源**。
+ *
+ * 曾经这张表在 `sidecar/agents/masters/*.ts`（每人一份字面量）与
+ * `src/components/DeepAnalysis/master-meta.ts`（整表重抄）各存一份。前端不能 import
+ * `sidecar/`（单向依赖），但两侧都能 import `shared/`——所以双写从来不是必需的，
+ * 漏改前端那份的表现是「深度分析卡片不显示姓名」，且不报任何错。
+ *
+ * 顺序即前端设置页的展示顺序。新增大师改这里 + 加 `agents/masters/<id>.ts` 两处，
+ * `masters-common.test.ts` 会双向校验「表里每个 id 都有文件、目录里每个文件都在表里」。
+ */
+export const MASTER_META: MasterMeta[] = [
+  {
+    id: 'warren-buffett',
+    name: 'Warren Buffett',
+    nameZh: '沃伦·巴菲特',
+    style: 'Value Investing',
+    styleZh: '价值投资',
+  },
+  {
+    id: 'ben-graham',
+    name: 'Ben Graham',
+    nameZh: '本杰明·格雷厄姆',
+    style: 'Deep Value',
+    styleZh: '深度价值',
+  },
+  {
+    id: 'charlie-munger',
+    name: 'Charlie Munger',
+    nameZh: '查理·芒格',
+    style: 'Quality Investing',
+    styleZh: '品质投资',
+  },
+  {
+    id: 'michael-burry',
+    name: 'Michael Burry',
+    nameZh: '迈克尔·伯里',
+    style: 'Contrarian Value',
+    styleZh: '逆向价值',
+  },
+  {
+    id: 'cathie-wood',
+    name: 'Cathie Wood',
+    nameZh: '凯西·伍德',
+    style: 'Disruptive Innovation',
+    styleZh: '颠覆式创新',
+  },
+  {
+    id: 'peter-lynch',
+    name: 'Peter Lynch',
+    nameZh: '彼得·林奇',
+    style: 'Growth at Value',
+    styleZh: '成长价值',
+  },
+  {
+    id: 'phil-fisher',
+    name: 'Phil Fisher',
+    nameZh: '菲利普·费雪',
+    style: 'Growth Investing',
+    styleZh: '成长投资',
+  },
+  {
+    id: 'bill-ackman',
+    name: 'Bill Ackman',
+    nameZh: '比尔·阿克曼',
+    style: 'Activist Investing',
+    styleZh: '激进投资',
+  },
+  {
+    id: 'mohnish-pabrai',
+    name: 'Mohnish Pabrai',
+    nameZh: '莫尼什·帕布莱',
+    style: 'Dhandho Investing',
+    styleZh: '低风险高回报',
+  },
+  {
+    id: 'nassim-taleb',
+    name: 'Nassim Taleb',
+    nameZh: '纳西姆·塔勒布',
+    style: 'Antifragility',
+    styleZh: '反脆弱',
+  },
+  {
+    id: 'stanley-druckenmiller',
+    name: 'Stanley Druckenmiller',
+    nameZh: '斯坦利·德鲁肯米勒',
+    style: 'Macro Growth',
+    styleZh: '宏观成长',
+  },
+  {
+    id: 'aswath-damodaran',
+    name: 'Aswath Damodaran',
+    nameZh: '阿斯瓦斯·达摩达兰',
+    style: 'Valuation',
+    styleZh: '估值',
+  },
+  {
+    id: 'rakesh-jhunjhunwala',
+    name: 'Rakesh Jhunjhunwala',
+    nameZh: '拉凯什·金君瓦拉',
+    style: 'Long-term Wealth',
+    styleZh: '长期财富',
+  },
+];
+
+/**
+ * 按 id 取元数据；查不到即抛。
+ *
+ * 大师文件用它取自己的 meta，所以「文件建了但忘了加进 MASTER_META」会在模块加载时
+ * 立刻炸掉，而不是安静地跑出一个没名字的大师。
+ */
+export function masterMetaById(id: string): MasterMeta {
+  const meta = MASTER_META.find((m) => m.id === id);
+  if (!meta)
+    throw new Error(`未登记的大师 id: ${id}——请先在 shared/constants.ts 的 MASTER_META 加一条`);
+  return meta;
+}
 
 /** 年化交易日数 */
 export const TRADING_DAYS_PER_YEAR = 252;

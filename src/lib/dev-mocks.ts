@@ -18,8 +18,13 @@ import type {
 } from '../../shared/types';
 
 /**
- * Dev / 浏览器模式专用 mock 数据集合
- * 只在 `!isTauri()` 分支与 dev bridge 不在线时使用，生产桌面构建路径不会引用本文件。
+ * Dev / 浏览器模式专用 mock 数据集合。
+ *
+ * 只在「dev 模式 + 非 Tauri + dev bridge 不在线」三者同时成立时使用。
+ * **引用方式是本文件能不能进生产包的唯一决定因素**：`ipc.ts` 必须动态 `import()` 它、
+ * 且整条分支包在 `import.meta.env.DEV` 里，Rollup 才会在生产构建中把它整个剔除。
+ * 曾经这里是顶层静态 import，注释也写着「生产不引用」——而实测每个包里都有这些假数据。
+ * 改动 `ipc.ts` 的 mock 引用方式后，务必 `bun run build:frontend` 再 grep 一遍 `dist/`。
  */
 
 export const MOCK_STOCKS: StockSearchResult[] = [

@@ -1,11 +1,6 @@
-import {
-  toErrorMessage,
-  outputJson,
-  logger,
-  successEnvelope,
-  errorEnvelope,
-  errorEnvelopeFromUnknown,
-} from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
+import { outputJson, successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from '../protocol';
 import { ScrapeEmptyError } from '../analysis';
 import type { ResolvedConfig } from '../configResolver';
 import type { StockNews, QuantBundle, MasterWeightInput } from '../../shared/types';

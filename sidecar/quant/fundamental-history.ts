@@ -4,7 +4,8 @@ import type { FinancialHistory, FinancialSnapshot } from '../../shared/types';
 import { type CacheOptions, cacheKey, readCache, writeCache } from '../cache';
 import { fetchWithPolicy } from '../http';
 import { detectMarket } from '../../shared/market';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 import { annualizeRoe } from './roe-annualize';
 
 /**

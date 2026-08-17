@@ -20,7 +20,8 @@ import {
   sinaUsSupportsPeriod,
   sinaCnSupportsPeriod,
 } from './sina';
-import { logger, toErrorMessage, runWithConcurrency } from '../utils';
+import { toErrorMessage, runWithConcurrency } from '../utils';
+import { logger } from '../log';
 
 interface KlineSource {
   name: string;

@@ -1,4 +1,5 @@
-import { toErrorMessage, successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from '../utils';
+import { toErrorMessage } from '../utils';
+import { successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from '../protocol';
 import type { ResolvedConfig } from '../configResolver';
 import type { HandlerContext } from './context';
 

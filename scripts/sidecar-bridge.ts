@@ -2,7 +2,7 @@ import { spawnSync } from 'child_process';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { writeFileSync, unlinkSync } from 'fs';
-import { errorEnvelope } from '../sidecar/utils';
+import { errorEnvelope } from '../sidecar/protocol';
 import { CONFIG_VERSION } from '../shared/constants';
 import { CONFIG_SLOT, PAYLOAD_SLOT } from '../shared/actions';
 

@@ -6,7 +6,8 @@ import type {
   MasterFactors,
   FundFlowData,
 } from '../../../shared/types';
-import { logger, toErrorMessage } from '../../utils';
+import { toErrorMessage } from '../../utils';
+import { logger } from '../../log';
 
 /** deepMode 抓到的正文注入大师 prompt 时的截断长度（防 13 大师 token 膨胀） */
 const NEWS_BODY_MAX_CHARS = 200;

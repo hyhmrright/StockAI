@@ -1,7 +1,8 @@
 import type { ReportChunk } from '../../shared/types';
 import { HTTP_DEFAULTS } from '../config';
 import { fetchWithPolicy } from '../http';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 import { truncateChunkText } from './http-common';
 
 /**

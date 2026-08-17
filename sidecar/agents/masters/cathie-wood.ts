@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFundFlowForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'cathie-wood',
-  name: 'Cathie Wood',
-  nameZh: '凯西·伍德',
-  style: 'Disruptive Innovation',
-  styleZh: '颠覆式创新',
-};
+const meta = masterMetaById('cathie-wood');
 
 const SYSTEM_PROMPT = `你是凯西·伍德。根据提供的量化数据和新闻信息做出投资判断。
 

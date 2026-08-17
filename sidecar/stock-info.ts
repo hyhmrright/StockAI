@@ -2,7 +2,8 @@ import type { StockInfo } from '../shared/types';
 import { type ParsedSymbol, parseSymbol } from './parsers/exchange';
 import { searchStocks } from './search';
 import { fetchWithPolicy } from './http';
-import { toErrorMessage, logger } from './utils';
+import { toErrorMessage } from './utils';
+import { logger } from './log';
 
 // 代码前缀 → 交易所名称
 const EXCHANGE_NAME: Record<string, string> = {

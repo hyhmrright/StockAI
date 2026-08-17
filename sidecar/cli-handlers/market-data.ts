@@ -1,4 +1,4 @@
-import { successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from '../utils';
+import { successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from '../protocol';
 import type { HandlerContext } from './context';
 
 /**

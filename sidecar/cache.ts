@@ -2,7 +2,8 @@ import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
-import { logger, toErrorMessage } from './utils';
+import { toErrorMessage } from './utils';
+import { logger } from './log';
 
 /**
  * 磁盘结果缓存。
@@ -12,6 +13,14 @@ import { logger, toErrorMessage } from './utils';
  * 跨进程可命中——这才是 13 大师深度分析「同股重复点全量重跑 15 次 LLM」漏钱点的有效修法。
  *
  * 设计原则：缓存永远不阻断主流程——任何 IO/解析错误都吞掉并降级为「未命中」。
+ *
+ * **两种绕过缓存的约定并存，按需要绕过的是谁来选**（照抄邻居会选错）：
+ * - 想让**集成测试**跳过缓存 → 模块的 deps 暴露 `readCacheImpl` / `writeCacheImpl`，
+ *   测试注入 `quant.integration.ts` 的 `noCache`。五个 quant 模块走这条：它们的缓存
+ *   是无条件的，不注入就没有别的关法，而每日数据源冒烟一旦命中本地缓存就退化成空断言。
+ * - 缓存本身受**业务参数**支配 → 用 `CacheOptions` 即可，不必再加注入点。
+ *   `deep-analysis.ts` 走这条：它的 key 由 `cacheFingerprint` 拼出，缺省即禁用缓存，
+ *   测试默认就不命中，再加一对 `xxxImpl` 是给已经关掉的东西再加一个开关。
  */
 
 const DEFAULT_DIR = path.join(tmpdir(), 'stockai-analysis-cache');

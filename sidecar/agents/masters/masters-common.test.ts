@@ -1,22 +1,37 @@
+import { readdirSync } from 'fs';
 import { describe, test, expect } from 'bun:test';
 import type { MasterAgent, MasterAnalysisContext } from '../types';
 import type { QuantBundle, StockNews } from '../../../shared/types';
+import { MASTER_META } from '../../../shared/constants';
+import { getAllMasters } from '../registry';
 
-const ALL_MASTER_FILES = [
-  'warren-buffett',
-  'ben-graham',
-  'charlie-munger',
-  'michael-burry',
-  'cathie-wood',
-  'peter-lynch',
-  'phil-fisher',
-  'bill-ackman',
-  'mohnish-pabrai',
-  'nassim-taleb',
-  'stanley-druckenmiller',
-  'aswath-damodaran',
-  'rakesh-jhunjhunwala',
-];
+/**
+ * 从 `shared/constants.ts` 的 MASTER_META 推导，**不再手工登记**。
+ *
+ * 手工表的失败模式是静默的：新增大师时漏加一行，这个套件照跑照绿，只是少测一位。
+ * 现在表是唯一来源，下面 §「三处登记必须彼此一致」再双向钉住表 / 文件 / registry。
+ */
+const ALL_MASTER_FILES = MASTER_META.map((m) => m.id);
+
+describe('三处登记必须彼此一致', () => {
+  const filesOnDisk = readdirSync(import.meta.dir)
+    .filter((f) => f.endsWith('.ts') && f !== 'factory.ts' && !f.includes('.test.'))
+    .map((f) => f.slice(0, -3))
+    .sort();
+
+  /** 建了文件却忘了加进 MASTER_META——过去表现为「大师存在但前端不显示姓名」 */
+  test('masters/ 目录里的文件与 MASTER_META 的 id 完全对应', () => {
+    expect(filesOnDisk).toEqual([...ALL_MASTER_FILES].sort());
+  });
+
+  /** 加进表也建了文件，却忘了在 registry.ts 注册——表现为「设置里选得到，分析时静默跳过」 */
+  test('registry 注册的大师与 MASTER_META 的 id 完全对应', () => {
+    const registered = getAllMasters()
+      .map((a) => a.meta.id)
+      .sort();
+    expect(registered).toEqual([...ALL_MASTER_FILES].sort());
+  });
+});
 
 const mockQuant: QuantBundle = {
   symbol: 'AAPL',

@@ -1,6 +1,7 @@
 import type { Browser, BrowserContext, Page } from 'playwright-core';
 import { BROWSER_CONTEXT_DEFAULTS, BROWSER_LAUNCH_ARGS, TIMEOUTS } from './config';
-import { logger, toErrorMessage, getExecutableDir, withTimeout } from './utils';
+import { toErrorMessage, getExecutableDir, withTimeout } from './utils';
+import { logger } from './log';
 import * as path from 'path';
 import * as fs from 'fs';
 

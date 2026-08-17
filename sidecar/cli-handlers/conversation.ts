@@ -1,10 +1,6 @@
-import {
-  toErrorMessage,
-  logger,
-  successEnvelope,
-  errorEnvelope,
-  errorEnvelopeFromUnknown,
-} from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
+import { successEnvelope, errorEnvelope, errorEnvelopeFromUnknown } from '../protocol';
 import type { ResolvedConfig } from '../configResolver';
 import type { ChatPayload } from '../../shared/types';
 import type { HandlerContext } from './context';

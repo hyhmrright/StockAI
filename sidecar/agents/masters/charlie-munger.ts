@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'charlie-munger',
-  name: 'Charlie Munger',
-  nameZh: '查理·芒格',
-  style: 'Quality Investing',
-  styleZh: '品质投资',
-};
+const meta = masterMetaById('charlie-munger');
 
 const SYSTEM_PROMPT = `你是查理·芒格。根据提供的量化数据和新闻信息做出投资判断。
 

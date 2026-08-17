@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test';
-import { classifyListModelsError, withTimeout } from './utils';
+import { classifyListModelsError } from './models';
+import { withTimeout } from '../utils';
 
 describe('classifyListModelsError', () => {
   it('识别 withTimeout 抛出的超时错误', async () => {

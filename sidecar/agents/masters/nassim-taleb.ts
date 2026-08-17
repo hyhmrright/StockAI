@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'nassim-taleb',
-  name: 'Nassim Taleb',
-  nameZh: '纳西姆·塔勒布',
-  style: 'Antifragility',
-  styleZh: '反脆弱',
-};
+const meta = masterMetaById('nassim-taleb');
 
 const SYSTEM_PROMPT = `你是纳西姆·塔勒布。根据提供的量化数据和新闻信息做出投资判断。
 

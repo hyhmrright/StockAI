@@ -1,5 +1,5 @@
 import React from 'react';
-import { getAllMasterMeta, masterName, masterStyle } from '../DeepAnalysis/master-meta';
+import { MASTER_META, masterName, masterStyle } from '../DeepAnalysis/master-meta';
 import { useLanguage } from '../../hooks/useLanguage';
 
 interface DeepAnalysisSettingsProps {
@@ -15,7 +15,6 @@ const DeepAnalysisSettings: React.FC<DeepAnalysisSettingsProps> = ({
   onMasterAnalysisChange,
   onSelectedMastersChange,
 }) => {
-  const allMasters = getAllMasterMeta();
   const { language, t } = useLanguage();
 
   function toggleMaster(id: string) {
@@ -42,7 +41,7 @@ const DeepAnalysisSettings: React.FC<DeepAnalysisSettingsProps> = ({
         <div className="space-y-2">
           <p className="text-xs text-gray-500">{t('deep_select_hint')}</p>
           <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto">
-            {allMasters.map((m) => (
+            {MASTER_META.map((m) => (
               <label
                 key={m.id}
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer"

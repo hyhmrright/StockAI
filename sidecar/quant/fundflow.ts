@@ -1,7 +1,8 @@
 import type { FundFlowData } from '../../shared/types';
 import { parseChinaSymbol, chinaPrefixToEastmoneyMarket } from '../kline/symbol';
 import { fetchWithPolicy } from '../http';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 import { extractSinaJson } from '../parsers/sina-envelope';
 
 /** 东财资金流接口响应结构 */

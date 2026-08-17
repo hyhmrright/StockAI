@@ -2,14 +2,16 @@ import type { QuantBundle } from '../../shared/types';
 import type { FinancialMetrics } from './types';
 import { getKline, getQuote } from '../kline';
 import { analyzeTechnical } from './technical';
-import { fetchFundamentals, scoreFundamentals } from './fundamental';
+import { fetchFundamentals } from './fundamental';
+import { scoreFundamentals } from './fundamental-scoring';
 import { computeComposite } from './scoring';
 import { computeValuation } from './valuation';
 import { computeRiskMetrics } from './volatility';
 import { deriveLevels } from './levels';
 import { fetchFundFlow } from './fundflow';
 import { detectMarket } from '../../shared/market';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 
 export interface QuantDeps {
   getKline?: typeof getKline;

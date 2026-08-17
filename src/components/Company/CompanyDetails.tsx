@@ -4,6 +4,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useAsyncOnce } from '../../hooks/useAsyncOnce';
 import { fetchCompanyF10 } from '../../lib/ipc';
 import { formatServiceError } from '../../lib/service-errors';
+import { formatBig } from '../../lib/locale';
 import type { CompanyF10, SegmentDimension } from '../../../shared/types';
 
 const DIMENSION_KEYS = {
@@ -11,11 +12,6 @@ const DIMENSION_KEYS = {
   product: 'f10_seg_product',
   region: 'f10_seg_region',
 } as const;
-
-/** 收入按亿元收敛。原始单位是元，主营构成动辄十一位数字，摞成表格完全读不出量级 */
-function yi(v: number): string {
-  return `${(v / 1e8).toFixed(2)} 亿`;
-}
 
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex gap-2 text-xs">
@@ -39,7 +35,7 @@ const Section: React.FC<{ title: string; note?: string; children: React.ReactNod
 );
 
 const Overview: React.FC<{ data: CompanyF10 }> = ({ data }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const o = data.overview;
   if (!o) return null;
 
@@ -54,8 +50,11 @@ const Overview: React.FC<{ data: CompanyF10 }> = ({ data }) => {
         {o.employees !== undefined && (
           <Field label={t('f10_employees')}>{o.employees.toLocaleString()}</Field>
         )}
+        {/* 源数据以万元计，先还原成元再交给 formatBig，否则英日用户的分档会整体差 1e4 */}
         {o.registeredCapital !== undefined && (
-          <Field label={t('f10_reg_capital')}>{o.registeredCapital.toLocaleString()} 万</Field>
+          <Field label={t('f10_reg_capital')}>
+            {formatBig(o.registeredCapital * 1e4, language)}
+          </Field>
         )}
         {o.website && <Field label={t('f10_website')}>{o.website}</Field>}
       </div>
@@ -70,7 +69,7 @@ const Overview: React.FC<{ data: CompanyF10 }> = ({ data }) => {
 };
 
 const Segments: React.FC<{ data: CompanyF10 }> = ({ data }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   if (data.segments.length === 0) return null;
 
   // 维度顺序固定，不随数据源返回顺序漂移
@@ -95,7 +94,7 @@ const Segments: React.FC<{ data: CompanyF10 }> = ({ data }) => {
                 >
                   <span className="truncate text-gray-300">{s.name}</span>
                   <span className="shrink-0 font-mono text-gray-500">
-                    {(s.revenueRatio * 100).toFixed(1)}% · {yi(s.revenue)}
+                    {(s.revenueRatio * 100).toFixed(1)}% · {formatBig(s.revenue, language)}
                     {s.grossMargin !== undefined && (
                       <span className="ml-1.5 text-gray-600">
                         {t('f10_gross_margin')} {(s.grossMargin * 100).toFixed(1)}%

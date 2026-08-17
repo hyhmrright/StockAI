@@ -1,6 +1,6 @@
 import type { AIProvider } from '../ai';
 import { PROVIDER_PROFILES } from '../config';
-import { logger } from '../utils';
+import { logger } from '../log';
 import { OpenAIProvider } from './openai';
 import { OllamaProvider } from './ollama';
 import { AnthropicProvider } from './anthropic';

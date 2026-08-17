@@ -1,5 +1,6 @@
 import type { StockNews } from '../../shared/types';
-import { todayISO, toErrorMessage, logger } from '../utils';
+import { todayISO, toErrorMessage } from '../utils';
+import { logger } from '../log';
 import { fetchWithPolicy } from '../http';
 import type { ScrapeContext, ScrapeStrategy } from './base';
 import { parseSymbol } from '../parsers/exchange';

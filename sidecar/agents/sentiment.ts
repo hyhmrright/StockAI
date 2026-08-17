@@ -1,6 +1,7 @@
 import type { SentimentSignal, Language, StockNews } from '../../shared/types';
 import type { ChatProvider } from './types';
-import { logger, toErrorMessage } from '../utils';
+import { toErrorMessage } from '../utils';
+import { logger } from '../log';
 
 const SYSTEM_PROMPTS: Record<Language, string> = {
   zh: `你是金融新闻情绪分析专家。对每条新闻标注情绪倾向并给出整体判断。只返回 JSON。`,

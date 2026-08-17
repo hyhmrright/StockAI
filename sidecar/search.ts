@@ -1,6 +1,6 @@
 import type { StockSearchResult } from '../shared/types';
 import { fetchWithPolicy } from './http';
-import { logger } from './utils';
+import { logger } from './log';
 
 /** 新浪财经行情接口的防盗链要求 */
 const SINA_HEADERS = { Referer: 'https://finance.sina.com.cn' };

@@ -1,14 +1,8 @@
+import { masterMetaById } from '../../../shared/constants';
 import { createMasterAgent, formatFactorsForPrompt, formatNewsForPrompt } from './factory';
 import type { MasterAnalysisContext } from '../types';
-import type { MasterMeta } from '../../../shared/types';
 
-const meta: MasterMeta = {
-  id: 'bill-ackman',
-  name: 'Bill Ackman',
-  nameZh: '比尔·阿克曼',
-  style: 'Activist Investing',
-  styleZh: '激进投资',
-};
+const meta = masterMetaById('bill-ackman');
 
 const SYSTEM_PROMPT = `你是比尔·阿克曼。根据提供的量化数据和新闻信息做出投资判断。
 

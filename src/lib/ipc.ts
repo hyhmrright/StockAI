@@ -23,23 +23,20 @@ import { ServiceError } from './service-errors';
 import type { SidecarActionDef, SlotName } from '../../shared/actions';
 import { SIDECAR_ACTIONS, CONFIG_SLOT, PAYLOAD_SLOT, buildActionArgs } from '../../shared/actions';
 import { MAX_BATCH_QUOTES } from '../../shared/constants';
-import {
-  MOCK_STOCKS,
-  MOCK_MODELS,
-  MOCK_KLINE,
-  MOCK_QUOTE,
-  MOCK_QUOTES,
-  MOCK_BUNDLE,
-  MOCK_AI_RESULT,
-  MOCK_QUANT,
-  MOCK_SECTORS,
-  MOCK_BILLBOARD,
-  MOCK_COMPANY,
-  MOCK_DEEP_ANALYSIS,
-  MOCK_BACKTEST,
-  MOCK_CHAT,
-  MOCK_SCREEN,
-} from './dev-mocks';
+
+/**
+ * dev-mocks **只能**这样引用——动态 import + `import.meta.env.DEV` 守卫。
+ *
+ * 早先它是顶层静态 import、各调用点把 `MOCK_XXX` 当实参传进 callSidecar，于是那 443 行
+ * 假数据无法被 tree-shake，实测每个生产包里都能 grep 到「贵州茅台」「AAPL Q2 财报超预期」。
+ * 文件顶部当时还写着「生产桌面构建路径不会引用本文件」——运行时确实不会（桌面端
+ * `isTauri()` 恒真），但打包结果与这句话相反。
+ *
+ * 现在 fallback 是接收 mocks 模块的工厂函数，模块本身按需动态加载，
+ * 且整个分支被 `import.meta.env.DEV` 静态判死——生产构建里 Rollup 直接剔除。
+ */
+type DevMocks = typeof import('./dev-mocks');
+type DevFallback<T> = (mocks: DevMocks) => T;
 
 // ServiceError 的定义已挪到 service-errors.ts（与码表同处），这里再导出保持调用方 import 不变
 export { ServiceError };
@@ -92,7 +89,11 @@ interface CallOptions {
 
 /** 通过开发桥接器（3001）尝试拉真实数据；bridge 不在线时退回 mock，避免阻塞浏览器调试 */
 let bridgeWarnLogged = false;
-async function devBridgeInvoke<T>(args: string[], opts: CallOptions, fallback: T): Promise<T> {
+async function devBridgeInvoke<T>(
+  args: string[],
+  opts: CallOptions,
+  fallback: DevFallback<T>,
+): Promise<T> {
   try {
     const resp = await fetch('http://localhost:3001/invoke', {
       method: 'POST',
@@ -108,7 +109,7 @@ async function devBridgeInvoke<T>(args: string[], opts: CallOptions, fallback: T
       );
       bridgeWarnLogged = true;
     }
-    return fallback;
+    return fallback(await import('./dev-mocks'));
   }
 }
 
@@ -137,12 +138,13 @@ export function toServiceError(error: unknown): Error {
 async function callSidecar<T>(
   action: SidecarActionDef,
   values: Partial<Record<SlotName, string>>,
-  devFallback: T,
+  devFallback: DevFallback<T>,
   opts: CallOptions = {},
 ): Promise<T> {
   const args = buildActionArgs(action, values);
   try {
-    if (!isTauri()) return await devBridgeInvoke<T>(args, opts, devFallback);
+    // DEV 守卫让生产构建静态判死整条桥接分支，dev-mocks 因此不进包（见文件顶部说明）
+    if (import.meta.env.DEV && !isTauri()) return await devBridgeInvoke<T>(args, opts, devFallback);
     return parseServiceResponse<T>(await invoke<string>('invoke_sidecar', { args, ...opts }));
   } catch (error) {
     throw toServiceError(error);
@@ -157,7 +159,7 @@ export async function searchStocks(keyword: string): Promise<StockSearchResult[]
     return await callSidecar<StockSearchResult[]>(
       SIDECAR_ACTIONS.search,
       { actionParam: keyword },
-      MOCK_STOCKS,
+      (m) => m.MOCK_STOCKS,
     );
   } catch (error) {
     // 搜索是辅助功能，失败退化为空建议列表而非打断输入
@@ -180,7 +182,7 @@ export async function listModels(
     const data = await callSidecar<{ models: string[] }>(
       SIDECAR_ACTIONS.listModels,
       { configStr: CONFIG_SLOT },
-      { models: MOCK_MODELS },
+      (m) => ({ models: m.MOCK_MODELS }),
       { configOverride: { provider, baseUrl, apiKey: apiKey ?? '' } },
     );
     return data.models || [];
@@ -198,7 +200,7 @@ export function fetchMarketBundle(symbol: string): Promise<MarketBundle> {
   return callSidecar<MarketBundle>(
     SIDECAR_ACTIONS.bundle,
     { configStr: CONFIG_SLOT, actionParam: symbol },
-    MOCK_BUNDLE,
+    (m) => m.MOCK_BUNDLE,
   );
 }
 
@@ -218,7 +220,7 @@ export async function analyzeNews(
       newsJson: PAYLOAD_SLOT,
       quantJson: quant ? JSON.stringify(quant) : '',
     },
-    MOCK_AI_RESULT,
+    (m) => m.MOCK_AI_RESULT,
     { payload: news },
   );
 }
@@ -239,7 +241,7 @@ export async function deepAnalyze(
       // 权重摘要无敏感数据，直接内联 argv；空/缺省 → sidecar 退化默认权重
       weightsJson: weights?.length ? JSON.stringify(weights) : '',
     },
-    MOCK_DEEP_ANALYSIS,
+    (m) => m.MOCK_DEEP_ANALYSIS,
     { payload: news },
   );
 }
@@ -249,28 +251,36 @@ export async function chat(payload: ChatPayload): Promise<ChatResponse> {
   return callSidecar<ChatResponse>(
     SIDECAR_ACTIONS.chat,
     { configStr: CONFIG_SLOT, actionParam: PAYLOAD_SLOT },
-    MOCK_CHAT,
+    (m) => m.MOCK_CHAT,
     { payload },
   );
 }
 
 /** 板块涨幅榜（行业 + 概念）；无参数，榜单是全市场的 */
 export async function fetchSectorBoards(): Promise<SectorBoards> {
-  return callSidecar<SectorBoards>(SIDECAR_ACTIONS.sectors, {}, MOCK_SECTORS);
+  return callSidecar<SectorBoards>(SIDECAR_ACTIONS.sectors, {}, (m) => m.MOCK_SECTORS);
 }
 
 /** 龙虎榜（最新交易日）；同为全市场榜单，无参数 */
 export async function fetchBillboard(): Promise<Billboard> {
-  return callSidecar<Billboard>(SIDECAR_ACTIONS.billboard, {}, MOCK_BILLBOARD);
+  return callSidecar<Billboard>(SIDECAR_ACTIONS.billboard, {}, (m) => m.MOCK_BILLBOARD);
 }
 
 /** 公司基本资料 F10。仅 A 股——非 A 股会拿到 ERR_COMPANY_NOT_A_SHARE */
 export async function fetchCompanyF10(symbol: string): Promise<CompanyF10> {
-  return callSidecar<CompanyF10>(SIDECAR_ACTIONS.company, { actionParam: symbol }, MOCK_COMPANY);
+  return callSidecar<CompanyF10>(
+    SIDECAR_ACTIONS.company,
+    { actionParam: symbol },
+    (m) => m.MOCK_COMPANY,
+  );
 }
 
 export async function fetchQuantBundle(symbol: string): Promise<QuantBundle> {
-  return callSidecar<QuantBundle>(SIDECAR_ACTIONS.quant, { actionParam: symbol }, MOCK_QUANT);
+  return callSidecar<QuantBundle>(
+    SIDECAR_ACTIONS.quant,
+    { actionParam: symbol },
+    (m) => m.MOCK_QUANT,
+  );
 }
 
 /**
@@ -282,7 +292,7 @@ export async function indexReports(symbol: string): Promise<void> {
     await callSidecar<{ indexed: boolean; docCount: number }>(
       SIDECAR_ACTIONS.indexReports,
       { actionParam: symbol },
-      { indexed: false, docCount: 0 },
+      () => ({ indexed: false, docCount: 0 }),
     );
   } catch (error) {
     console.warn(`财报 RAG 预热失败（不影响主流程） [${symbol}]:`, error);
@@ -294,13 +304,17 @@ export async function fetchKline(req: KlineRequest): Promise<KlinePoint[]> {
   return callSidecar<KlinePoint[]>(
     SIDECAR_ACTIONS.kline,
     { actionParam: JSON.stringify(req) },
-    MOCK_KLINE,
+    (m) => m.MOCK_KLINE,
   );
 }
 
 /** 拉取实时报价 */
 export async function fetchRealtimeQuote(symbol: string): Promise<RealtimeQuote> {
-  return callSidecar<RealtimeQuote>(SIDECAR_ACTIONS.quote, { actionParam: symbol }, MOCK_QUOTE);
+  return callSidecar<RealtimeQuote>(
+    SIDECAR_ACTIONS.quote,
+    { actionParam: symbol },
+    (m) => m.MOCK_QUOTE,
+  );
 }
 
 /**
@@ -322,10 +336,8 @@ export async function fetchRealtimeQuotes(symbols: string[]): Promise<BatchQuote
 
   const results = await Promise.all(
     batches.map((batch) =>
-      callSidecar<BatchQuoteResult>(
-        SIDECAR_ACTIONS.quotes,
-        { actionParam: batch.join(',') },
-        MOCK_QUOTES(batch),
+      callSidecar<BatchQuoteResult>(SIDECAR_ACTIONS.quotes, { actionParam: batch.join(',') }, (m) =>
+        m.MOCK_QUOTES(batch),
       ),
     ),
   );
@@ -341,7 +353,7 @@ export async function runBacktest(symbol: string): Promise<BacktestResult> {
   return callSidecar<BacktestResult>(
     SIDECAR_ACTIONS.backtest,
     { actionParam: symbol },
-    MOCK_BACKTEST,
+    (m) => m.MOCK_BACKTEST,
   );
 }
 
@@ -354,6 +366,6 @@ export async function screenStocks(query: string): Promise<ScreenResponse> {
   return callSidecar<ScreenResponse>(
     SIDECAR_ACTIONS.screen,
     { configStr: CONFIG_SLOT, actionParam: query },
-    MOCK_SCREEN,
+    (m) => m.MOCK_SCREEN,
   );
 }

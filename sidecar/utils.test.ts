@@ -1,12 +1,5 @@
-import { expect, test, describe, beforeEach, spyOn } from 'bun:test';
-import {
-  toErrorMessage,
-  withTimeout,
-  outputJson,
-  _resetOutputGuard,
-  runWithConcurrency,
-  parseJsonFromAi,
-} from './utils';
+import { expect, test, describe } from 'bun:test';
+import { toErrorMessage, withTimeout, runWithConcurrency, parseJsonFromAi } from './utils';
 
 describe('toErrorMessage', () => {
   test('Error 实例返回 message', () => {
@@ -44,27 +37,6 @@ describe('withTimeout', () => {
     // 验证返回值正确，同时间接证明 timer 已清理（进程不挂起）
     const result = await withTimeout(Promise.resolve(42), 100, '不应超时');
     expect(result).toBe(42);
-  });
-});
-
-describe('outputJson', () => {
-  beforeEach(() => {
-    _resetOutputGuard();
-  });
-
-  test('首次调用应写入 stdout', () => {
-    const spy = spyOn(process.stdout, 'write').mockImplementation(() => true);
-    outputJson({ ok: true });
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy.mock.calls[0][0]).toBe('{"ok":true}\n');
-    spy.mockRestore();
-  });
-
-  test('第二次调用应抛出协议违规错误', () => {
-    const spy = spyOn(process.stdout, 'write').mockImplementation(() => true);
-    outputJson({ first: true });
-    expect(() => outputJson({ second: true })).toThrow('[PROTOCOL]');
-    spy.mockRestore();
   });
 });
 

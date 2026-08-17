@@ -15,7 +15,8 @@ import { cacheKey, readCache, writeCache, type CacheOptions } from './cache';
 import { FUND_FLOW_CONSUMER_IDS } from './agents/masters/factory';
 import { computeFactors, FACTOR_HISTORY_PERIODS, VALUE_FACTOR_CONSUMER_IDS } from './quant/factors';
 import { fetchFinancialHistory } from './quant/fundamental-history';
-import { logger, toErrorMessage, runWithConcurrency } from './utils';
+import { toErrorMessage, runWithConcurrency } from './utils';
+import { logger } from './log';
 
 const DEFAULT_CONCURRENCY = 4;
 
