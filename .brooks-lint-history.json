@@ -3,7 +3,22 @@
     "date": "2026-08-08",
     "mode": "Architecture Audit",
     "score": 40,
-    "findings": { "critical": 2, "warning": 5, "suggestion": 5 },
+    "findings": {
+      "critical": 2,
+      "warning": 5,
+      "suggestion": 5
+    },
     "scope": "whole project (169 non-test .ts/.tsx + 2 .rs)"
+  },
+  {
+    "date": "2026-08-17",
+    "mode": "Tech Debt Assessment",
+    "score": 66,
+    "findings": {
+      "critical": 0,
+      "warning": 6,
+      "suggestion": 4
+    },
+    "scope": "whole project (~24.8k non-test lines, 358 .ts/.tsx/.rs)"
   }
 ]
