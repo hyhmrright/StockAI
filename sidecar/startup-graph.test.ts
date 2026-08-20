@@ -51,6 +51,10 @@ const EXPECTED_EAGER_MODULES = [
 const NODE_BUILTINS = new Set(builtinModules);
 
 const TYPES_BARREL_DIR = '../shared/types';
+
+/** Windows 的 `relative()` 吐反斜杠，而名单与下面的 barrel 收拢都按 POSIX 写死——不归一化则两者全部失配 */
+const toPosix = (p: string) => p.replaceAll('\\', '/');
+
 /** 纯类型 barrel 的 `export *` 子文件收拢成 barrel 一个节点——运行时零成本，逐条列出只是噪声。
  *  这个收拢的前提由下面 `TypesBarrel_ContainsNoRuntimeValue` 钉住。 */
 function collapseTypesBarrel(rel: string): string {
@@ -99,7 +103,9 @@ function walkEagerGraph(): { modules: string[]; barePackages: string[] } {
       else if (!spec.startsWith('.')) bare.add(spec);
     }
   }
-  const modules = new Set([...visited].map((f) => collapseTypesBarrel(relative(SIDECAR_ROOT, f))));
+  const modules = new Set(
+    [...visited].map((f) => collapseTypesBarrel(toPosix(relative(SIDECAR_ROOT, f)))),
+  );
   return { modules: [...modules].sort(), barePackages: [...bare].sort() };
 }
 
