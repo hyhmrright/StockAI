@@ -33,6 +33,21 @@ describe('GoogleNewsRSSStrategy', () => {
     expect(results).toEqual([]);
   });
 
+  it('港股：查询词用归一后的 5 位代码，而非整串 "0700.HK"', async () => {
+    // 实测 "0700.HK 股票" 稳定 0 条、"00700 股票" 56 条——查询词退化是港股新闻
+    // 长期落空的根因（2026-09-03 数据源冒烟即因此挂在 HK 用例上）。
+    let seen = '';
+    const mockFetch = (async (url: string) => {
+      seen = url;
+      return { ok: true, text: async () => '<rss></rss>' } as Response;
+    }) as unknown as typeof fetch;
+
+    await new GoogleNewsRSSStrategy(mockFetch).scrape('0700.HK', {} as any);
+
+    expect(decodeURIComponent(seen)).toContain('00700 股票');
+    expect(decodeURIComponent(seen)).not.toContain('0700.HK');
+  });
+
   it('走 fetchWithPolicy：请求必须带中止信号', async () => {
     // 防回归：此前用裸 globalThis.fetch，**完全没有超时**。news.google.com 在部分地区
     // 不可达，裸 fetch 会挂到操作系统 TCP 超时（70s+），吃光 scrapeBudget 的 60s 预算——

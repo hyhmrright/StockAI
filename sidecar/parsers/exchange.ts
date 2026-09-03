@@ -19,6 +19,13 @@ export interface USStockInfo {
 }
 
 /**
+ * 港股信息
+ */
+export interface HKStockInfo {
+  code: string; // 补零后的 5 位标准代码，如 "00700"
+}
+
+/**
  * 解析后的输入结构，支持中文名+代码混合输入（如 "锴威特688693"）
  */
 export interface ParsedSymbol {
@@ -26,11 +33,12 @@ export interface ParsedSymbol {
   displayName?: string; // 从输入中提取的中文名（如 "锴威特"）
   chinaInfo?: ChinaStockInfo;
   usInfo?: USStockInfo;
+  hkInfo?: HKStockInfo;
 }
 
 /**
  * 解析用户输入，提取股票名称与股票代码
- * 支持格式：纯代码 "688693"、纯名称 "AAPL"、混合 "锴威特688693"、带前缀 "sh601012" / "gb_aapl"
+ * 支持格式：纯代码 "688693"、纯名称 "AAPL"、混合 "锴威特688693"、带前缀 "sh601012" / "gb_aapl"、港股 "0700.HK" / "hk00700"
  */
 export function parseSymbol(input: string): ParsedSymbol {
   if (!input) return { rawInput: '' };
@@ -58,7 +66,13 @@ export function parseSymbol(input: string): ParsedSymbol {
     }
   }
 
-  // 1. 尝试识别 A 股（数字匹配）
+  // 1. 尝试识别港股（须带显式港股标记）
+  const hkCode = detectHKStock(trimmed);
+  if (hkCode) {
+    return { rawInput: trimmed, hkInfo: { code: hkCode } };
+  }
+
+  // 2. 尝试识别 A 股（数字匹配）
   const chinaInfo = detectChinaStock(trimmed);
   if (chinaInfo) {
     // 提取 6 位代码前后的非数字文本作为显示名称
@@ -70,7 +84,7 @@ export function parseSymbol(input: string): ParsedSymbol {
     };
   }
 
-  // 2. 尝试识别美股（通常为纯字母，2-5位）
+  // 3. 尝试识别美股（通常为纯字母，2-5位）
   // 注意：此处简化处理，非 A 股且不含非法字符的即尝试作为美股处理
   const usMatch = trimmed.match(/^[A-Za-z]+$/);
   if (usMatch) {
@@ -85,6 +99,18 @@ export function parseSymbol(input: string): ParsedSymbol {
   }
 
   return { rawInput: trimmed };
+}
+
+/**
+ * 尝试识别港股，返回补零后的 5 位标准代码；非港股返回 null。
+ *
+ * 只认带显式港股标记的两种写法（Yahoo 的 "0700.HK"、新浪/腾讯的 "hk00700"）。
+ * **裸数字一律不认**：4–5 位裸数字更可能是 A 股代码少打一位，认成港股会把一次输入
+ * 失误变成一份查错了标的、却看不出异常的分析。
+ */
+function detectHKStock(symbol: string): string | null {
+  const match = symbol.match(/^(\d{1,5})\.hk$/i) ?? symbol.match(/^hk(\d{1,5})$/i);
+  return match ? match[1].padStart(5, '0') : null;
 }
 
 /**

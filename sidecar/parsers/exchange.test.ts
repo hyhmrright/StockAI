@@ -127,6 +127,31 @@ describe('parseSymbol', () => {
     expect(parsed.rawInput).toBe('苹果');
   });
 
+  test('港股 0700.HK：补零成 5 位标准代码', () => {
+    const parsed = parseSymbol('0700.HK');
+    expect(parsed.hkInfo?.code).toBe('00700');
+    expect(parsed.chinaInfo).toBeUndefined();
+    expect(parsed.usInfo).toBeUndefined();
+  });
+
+  test('港股 hk00700：新浪/腾讯的前缀写法同样识别', () => {
+    expect(parseSymbol('hk00700').hkInfo?.code).toBe('00700');
+    expect(parseSymbol('00700.hk').hkInfo?.code).toBe('00700');
+  });
+
+  test('裸数字不认作港股——更可能是 A 股代码少打一位', () => {
+    // 认了就会把一次输入失误变成一份查错标的、却看不出异常的分析
+    expect(parseSymbol('00700').hkInfo).toBeUndefined();
+    expect(parseSymbol('0700').hkInfo).toBeUndefined();
+  });
+
+  test('6 位 A 股代码不被港股分支截胡', () => {
+    // 000700 是模塑科技（深市），港股代码最长 5 位，正则须把它排除在外
+    const parsed = parseSymbol('000700');
+    expect(parsed.hkInfo).toBeUndefined();
+    expect(parsed.chinaInfo?.code).toBe('000700');
+  });
+
   test('空字符串或 nullish 输入：返回空 rawInput 而不崩溃', () => {
     const parsedEmpty = parseSymbol('');
     expect(parsedEmpty.rawInput).toBe('');

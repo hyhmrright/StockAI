@@ -103,6 +103,22 @@ describe('EastmoneyNewsStrategy', () => {
     expect(results[0].title).toBe('三星门店之困');
   });
 
+  test('港股：关键词归一成 5 位代码，且按该代码判定相关性', async () => {
+    // 东财站内一律写作"腾讯控股(00700.HK)"。关键词用原样 "0700.HK" 时实测 8 条里
+    // 只有 1 条真属于本标的，其余是别家港股的回购公告；换成 "00700" 则 8 条全中。
+    const { impl, calls } = makeFetch(
+      jsonpBody([
+        { ...ARTICLE, title: '中国旺旺(00151.HK)连续29日回购', content: '累计回购7312.90万股' },
+        { ...ARTICLE, title: '腾讯控股(00700.HK)9月2日回购1.00亿港元', content: '年内累计回购' },
+      ]),
+    );
+    const results = await new EastmoneyNewsStrategy(impl).scrape('0700.HK', {} as never);
+
+    expect(decodeURIComponent(calls[0].url)).toContain('"keyword":"00700"');
+    expect(results).toHaveLength(1);
+    expect(results[0].title).toContain('腾讯控股');
+  });
+
   test('HTTP 失败时返回空列表，交由 scraper 回退到下一策略', async () => {
     const { impl } = makeFetch('', false);
     const results = await new EastmoneyNewsStrategy(impl).scrape('600519', {} as never);

@@ -108,6 +108,18 @@ describe('EastmoneyNewsStrategy Integration (唯一的非 Google/Yahoo 新闻源
   );
 
   test(
+    '港股：0700.HK 返回非空——港股此前只有 Google 一条命',
+    async () => {
+      // 港股解析分支补齐前，关键词退化成整串 "0700.HK"，东财召回的几乎全是别家港股的
+      // 公告、被相关性过滤清空；港股新闻于是只剩 Google 一条链，Google 不可达即全空。
+      const news = await strategy.scrape('0700.HK', noBrowser);
+      expect(news.length).toBeGreaterThan(0);
+      expect(news[0].url).toContain('eastmoney.com');
+    },
+    INTEGRATION_TEST_TIMEOUT,
+  );
+
+  test(
     '新闻足够新——过期十年的形状同样合法，只有日期能拆穿',
     async () => {
       const news = await strategy.scrape('贵州茅台600519', noBrowser);

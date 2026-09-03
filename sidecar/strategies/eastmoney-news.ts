@@ -25,11 +25,15 @@ export class EastmoneyNewsStrategy implements ScrapeStrategy {
   constructor(private readonly fetchImpl?: typeof fetch) {}
 
   async scrape(symbol: string, _ctx: ScrapeContext): Promise<StockNews[]> {
-    // 关键词直接用上游 getEnhancedSymbol 增强过的输入（如"贵州茅台600519"）——
+    // 关键词默认用上游 getEnhancedSymbol 增强过的输入（如"贵州茅台600519"）——
     // 实测公司名 + 代码的召回与相关性都优于单独任一形式。
+    // 港股是唯一的例外，要归一成 5 位代码：东财站内一律写作"腾讯控股(00700.HK)"，
+    // 关键词用原样的 "0700.HK" 时实测 8 条里只有 1 条真属于该标的（其余是别家港股的
+    // 回购公告，随后被相关性过滤清空），换成 "00700" 则 8 条全中。
+    const keyword = parseSymbol(symbol).hkInfo?.code ?? symbol;
     const param = {
       uid: '',
-      keyword: symbol,
+      keyword,
       type: ['cmsArticleWebOld'],
       client: 'web',
       clientType: 'web',
@@ -97,8 +101,10 @@ export class EastmoneyNewsStrategy implements ScrapeStrategy {
  */
 function relevanceTokens(symbol: string): string[] {
   const parsed = parseSymbol(symbol);
-  const tokens = [parsed.displayName, parsed.chinaInfo?.code].filter((t): t is string => !!t);
-  // 解析不出结构（美股 / 港股 / 无效输入）时退回原始输入整体匹配
+  const tokens = [parsed.displayName, parsed.chinaInfo?.code, parsed.hkInfo?.code].filter(
+    (t): t is string => !!t,
+  );
+  // 解析不出结构（美股 / 无效输入）时退回原始输入整体匹配
   return (tokens.length > 0 ? tokens : [symbol]).map((t) => t.toLowerCase());
 }
 

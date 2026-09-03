@@ -17,9 +17,13 @@ export class GoogleNewsRSSStrategy implements ScrapeStrategy {
 
   async scrape(symbol: string, _ctx: ScrapeContext): Promise<StockNews[]> {
     const parsed = parseSymbol(symbol);
+    // 港股要落到归一后的 5 位代码上：原样的 "0700.HK 股票" 实测返回 0 条，
+    // "00700 股票" 返回 56 条。港股此前没有解析分支，查询词退化成整串输入，
+    // 召回极不稳定——CI 冒烟里它曾烧满 60s 抓取预算才勉强出结果（2026-09-02），
+    // 次日整条链彻底落空。
     const query = parsed.displayName
       ? `"${parsed.displayName}" 股票`
-      : `${parsed.chinaInfo?.code || symbol} 股票`;
+      : `${parsed.chinaInfo?.code || parsed.hkInfo?.code || symbol} 股票`;
 
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
 
