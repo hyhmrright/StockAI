@@ -90,9 +90,13 @@ describe('量化数据源（真网络）', () => {
     expect(history.snapshots[0].reportDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('东财全市场快照——分页聚合，条数远超单页即证明翻页仍有效', async () => {
-    // 直连东财：走 fetchMarketSnapshot 会被新浪备源的成功掩盖
-    const { entries } = await fetchEastmoneySnapshot(noCache);
+  it('东财全市场快照——分页聚合，条数远超单页即证明翻页仍有效；限流则跳过断言', async () => {
+    // 直连东财：走 fetchMarketSnapshot 会被新浪备源的成功掩盖。
+    // 同属 push2 clist 限流面，且约 60 页串行最易触发（2026-09-21 起每日稳定 502，本机国内 IP
+    // 连打几十次后同样整段 502）；降级前提是下面那条新浪快照仍是硬断言。
+    const snapshot = await fetchOrSkip('东财全市场快照', () => fetchEastmoneySnapshot(noCache));
+    if (snapshot === undefined) return;
+    const { entries } = snapshot;
     // 单页 100 条；A 股全市场约 5900 只。拿到 >1000 条说明分页累加没断，
     // 只断 >0 会让「翻页坏了、只剩第一页」这种退化蒙混过关。
     expect(entries.length).toBeGreaterThan(1000);
