@@ -1,6 +1,9 @@
-import { expect, test, describe } from 'bun:test';
+import { afterAll, expect, test, describe } from 'bun:test';
 import { scrapeStockNews } from './scraper';
+import { BrowserManager } from './browser-manager';
 import { EastmoneyNewsStrategy } from './strategies/eastmoney-news';
+import { GoogleNewsSearchStrategy } from './strategies/google-news';
+import { warnUnverified } from './smoke-helpers';
 
 // 75s：scrapeStockNews 整体已被 TIMEOUTS.scrapeBudget（60s）兜底——策略链与正文提取共享
 // 这份预算，只有 browserMgr.close() 在预算之外，留 15s 足够。**不要再往上调**——这条超时
@@ -141,4 +144,47 @@ describe('EastmoneyNewsStrategy Integration (唯一的非 Google/Yahoo 新闻源
     },
     INTEGRATION_TEST_TIMEOUT,
   );
+});
+
+/**
+ * Google News Search 同样必须**直接打策略**：链路上 RSS 永远先命中，它只在无效代码那条
+ * 用例里才轮得到——而那条断的是「0 条」，解析器被 Google 改版弄瞎时也照样是 0 条。
+ * 没有这组正向断言，「真结果页还能解析出新闻」就是结构性失明。
+ *
+ * CI 出口 IP 常被 Google 重定向到 /sorry/ 验证码页：**验证码 = 未验证，不是失败**
+ * （同 smoke-helpers 的取舍）。判据看落地 URL 而非结果条数——空结果既可能是验证码，
+ * 也可能是解析器瞎了，只有后者该判红。
+ */
+describe('GoogleNewsSearchStrategy Integration (真结果页的解析契约)', () => {
+  const browserMgr = new BrowserManager();
+  afterAll(() => browserMgr.close());
+
+  const strategy = new GoogleNewsSearchStrategy();
+  // 关键词沿用链路上游增强后的形态（名称 + 代码），与生产调用一致
+  const cases = [
+    { symbol: 'AAPL', label: '美股' },
+    { symbol: '贵州茅台600519', label: 'A 股（zh-CN 查询分支）' },
+  ];
+
+  for (const { symbol, label } of cases) {
+    test(
+      `${label}：${symbol} 返回带真实标题的外链新闻；遇验证码跳过`,
+      async () => {
+        const news = await strategy.scrape(symbol, browserMgr);
+        const landedUrl = (await browserMgr.getPage()).url();
+        if (landedUrl.includes('/sorry/')) {
+          warnUnverified(`Google News Search (${symbol})`, '被重定向到验证码页');
+          return;
+        }
+
+        expect(news.length).toBeGreaterThan(0);
+        for (const n of news) {
+          expect(n.title.length).toBeGreaterThanOrEqual(10);
+          expect(n.url).toMatch(/^https?:\/\//);
+          expect(n.url).not.toContain('google.com');
+        }
+      },
+      INTEGRATION_TEST_TIMEOUT,
+    );
+  }
 });
