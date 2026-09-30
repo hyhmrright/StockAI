@@ -1,5 +1,6 @@
 import type { StockNews } from '../../shared/types';
 import { todayISO } from '../utils';
+import { relevanceTokens } from './exchange';
 
 /**
  * 提取链接的信息接口
@@ -157,27 +158,6 @@ export async function parseYahooNews(
 }
 
 /**
- * 从 HTML 字符串中提取非 google.com 的外部 HTTP 链接（已去重）
- */
-export function extractExternalLinks(html: string): string[] {
-  const seen = new Set<string>();
-  const results: string[] = [];
-  // 一遍扫描匹配两种格式：
-  //   直接外链  href="https://..."
-  //   Google 跳转  href="/url?q=https://..."（Google News 常见格式）
-  const linkRegex = /href="(?:(https?:\/\/[^"]+)|\/url\?q=(https?:\/\/[^&"]+))/g;
-  let m: RegExpExecArray | null;
-  while ((m = linkRegex.exec(html)) !== null) {
-    const href = m[1] ?? decodeURIComponent(m[2]);
-    if (!href.includes('google.com') && !seen.has(href)) {
-      seen.add(href);
-      results.push(href);
-    }
-  }
-  return results;
-}
-
-/**
  * 从 URL 中提取域名（去除 www. 前缀）
  */
 export function extractDomain(url: string): string {
@@ -188,33 +168,75 @@ export function extractDomain(url: string): string {
   }
 }
 
+/** 单页最多取回的条数 */
+const GOOGLE_SEARCH_MAX_RESULTS = 8;
+/** 标题最短长度——比这短的多是页脚、分页之类的导航文字 */
+const MIN_SEARCH_TITLE_LENGTH = 10;
+
+/** 还原结果链接的真实地址（直接外链或 /url?q= 跳转）；google.com 自家链接与非 http 链接返回 null */
+function resolveSearchResultUrl(href: string): string | null {
+  const url = href.startsWith('/url?') ? new URLSearchParams(href.slice(5)).get('q') : href;
+  if (!url || !/^https?:\/\//.test(url) || url.includes('google.com')) return null;
+  return url;
+}
+
 /**
- * 从 Google News 搜索结果页面解析新闻列表
+ * 从 Google News 搜索结果页面解析新闻列表。
+ *
+ * 标题只取**同一个 `<a>` 内部**的标题元素（新版 `role="heading"` / 基础版 `.vvjwJb`），
+ * 拿不到标题的链接直接丢弃，不填占位。曾经的做法是「页面上任意非 google.com 外链 +
+ * 全页另扫一遍标题、数量一致才对齐，否则填 `<symbol> 相关新闻 N`」——无结果页、验证页里
+ * 的零星外链因此被伪造成新闻，毁掉 `fetchMarketBundle` 依赖的「查无此股 → 0 条」不变量
+ * （数据源冒烟 run 36731049524）。再叠一层相关性过滤：Google 对引号查询也会放宽匹配，
+ * 链接文本里没有标的识别词元的结果一律视为无关。
  */
-export function parseGoogleNewsSearch(html: string, symbol: string): StockNews[] {
-  const links = extractExternalLinks(html);
-  if (links.length === 0) return [];
+export async function parseGoogleNewsSearch(html: string, symbol: string): Promise<StockNews[]> {
+  // Google 查询用的就是原始输入（如 "0700.HK"），归一后的词元（"00700"）未必出现在结果里
+  const tokens = [...relevanceTokens(symbol), symbol.trim().toLowerCase()];
+  const anchors: { url: string; title: string; text: string }[] = [];
+  let current: (typeof anchors)[number] | null = null;
+
+  const appendTitle = {
+    text(t: HTMLRewriterTypes.Text) {
+      if (current) current.title += t.text;
+    },
+  };
+  const rewriter = new HTMLRewriter()
+    .on('a[href]', {
+      element(el) {
+        const url = resolveSearchResultUrl(el.getAttribute('href') ?? '');
+        if (!url) return;
+        const anchor = { url, title: '', text: '' };
+        current = anchor;
+        el.onEndTag(() => {
+          anchors.push(anchor);
+          current = null;
+        });
+      },
+      text(t) {
+        if (current) current.text += t.text;
+      },
+    })
+    .on('a[href] [role="heading"]', appendTitle)
+    .on('a[href] .vvjwJb', appendTitle);
+  await rewriter.transform(new Response(html)).text();
 
   const seen = new Set<string>();
-  const titleRegex = /<div[^>]*class="[^"]*BNeawe[^"]*"[^>]*>([^<]{10,120})<\/div>/g;
-  const titles: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = titleRegex.exec(html)) !== null) {
-    const t = m[1].trim();
-    if (!t.includes('http') && !seen.has(t)) {
-      seen.add(t);
-      titles.push(t);
-    }
+  const news: StockNews[] = [];
+  for (const { url, title, text } of anchors) {
+    const cleanTitle = title.replace(/\s+/g, ' ').trim();
+    if (cleanTitle.length < MIN_SEARCH_TITLE_LENGTH || seen.has(url)) continue;
+    const haystack = text.toLowerCase();
+    if (!tokens.some((t) => haystack.includes(t))) continue;
+    seen.add(url);
+    news.push({
+      title: cleanTitle,
+      source: extractDomain(url),
+      date: todayISO(),
+      content: '',
+      url,
+    });
+    if (news.length === GOOGLE_SEARCH_MAX_RESULTS) break;
   }
-
-  const pairedLinks = links.slice(0, 8);
-  // titles 和 links 来自不同正则，仅在数量完全一致时才可能对齐，否则全部使用占位标题
-  const titlesAligned = titles.length === pairedLinks.length;
-  return pairedLinks.map((url, i) => ({
-    title: titlesAligned ? titles[i] : `${symbol} 相关新闻 ${i + 1}`,
-    source: extractDomain(url),
-    date: todayISO(),
-    content: '',
-    url,
-  }));
+  return news;
 }

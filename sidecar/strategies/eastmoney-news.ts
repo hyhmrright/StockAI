@@ -2,7 +2,7 @@ import type { StockNews } from '../../shared/types';
 import { todayISO, toErrorMessage } from '../utils';
 import { logger } from '../log';
 import { fetchWithPolicy } from '../http';
-import { parseSymbol } from '../parsers/exchange';
+import { parseSymbol, relevanceTokens } from '../parsers/exchange';
 import type { ScrapeContext, ScrapeStrategy } from './base';
 
 /** 单次取回的最大条数，与 Google News RSS 对齐 */
@@ -89,23 +89,6 @@ export class EastmoneyNewsStrategy implements ScrapeStrategy {
       }))
       .filter((n) => n.title && n.url && isRelevant(n, tokens));
   }
-}
-
-/**
- * 标的的识别性词元——文章命中其一才算与本标的有关。
- *
- * 东财搜索是**全文子串匹配**，什么都能命中：实测 'NON_EXISTENT_99999' 靠正文里的
- * "39999"、"99999" 匹配到炒鞋和温州经济两条新闻。放行这类命中会毁掉
- * `fetchMarketBundle` 依赖的"查无此股 → 0 条"不变量，让用户拿到一份基于无关新闻的分析，
- * 而不是"请确认代码是否正确"的提示。
- */
-function relevanceTokens(symbol: string): string[] {
-  const parsed = parseSymbol(symbol);
-  const tokens = [parsed.displayName, parsed.chinaInfo?.code, parsed.hkInfo?.code].filter(
-    (t): t is string => !!t,
-  );
-  // 解析不出结构（美股 / 无效输入）时退回原始输入整体匹配
-  return (tokens.length > 0 ? tokens : [symbol]).map((t) => t.toLowerCase());
 }
 
 function isRelevant(news: StockNews, tokens: string[]): boolean {

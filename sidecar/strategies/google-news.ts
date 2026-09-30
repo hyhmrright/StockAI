@@ -33,7 +33,7 @@ export class GoogleNewsSearchStrategy extends PlaywrightStrategy {
     return `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=nws&hl=${lang}`;
   }
 
-  protected parse(html: string, symbol: string): StockNews[] {
+  protected parse(html: string, symbol: string): Promise<StockNews[]> {
     return parseGoogleNewsSearch(html, symbol);
   }
 }
