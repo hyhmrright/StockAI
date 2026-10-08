@@ -4,6 +4,18 @@ All notable changes to StockAI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-10-08
+
+### Fixed
+
+- **桌面端 SQLite 写入自引入起全部被拒**：capabilities 只授予了 `sql:default`，而 tauri-plugin-sql 的该集合仅含 load / select / close。前端 6 处 `db.execute` 因此全部报 `sql.execute not allowed`：分析历史、大师 signal（虚拟组合命中率与净值曲线的数据源）静默丢失，添加持仓报错。补授 `sql:allow-execute`，并新增跨层契约用例 `shared/capabilities.test.ts`，校验前端用到的每个 sql 命令均已授权。此前浏览器 dev 走 mock、单测 mock 掉 DB，任何自动化测试都看不见这条链路。
+- **Google 新闻搜索不再伪造占位新闻**：无结果页上的零星外链曾被当作新闻并配上「XXX 相关新闻 1」的占位标题，破坏「查无此股 → 0 条」的不变量。现只收录同一链接内带真实标题、且通过标的相关性过滤的结果。
+
+### Changed
+
+- Tauri 2.11 → 2.12，opener / notification / shell / sql / store / process / updater 七个插件跨 minor 升级（npm 与 Rust 两侧同一提交）；@anthropic-ai/sdk 0.131、openai 7.28。
+- 修复构建期依赖 source-map-js 的高危公告 GHSA-68fv-2mgg-jv7q（仅经 postcss / tailwind 进入构建链路，不进入安装包）。
+
 ## [0.17.0] - 2026-09-13
 
 ### Added
