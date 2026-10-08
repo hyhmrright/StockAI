@@ -22,6 +22,7 @@
     "shell:allow-spawn",
     "notification:default",
     "sql:default",
+    "sql:allow-execute",
     "store:default",
     "updater:default",
     "process:default"
