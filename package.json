@@ -35,7 +35,7 @@
     "lucide-react": "^1.52.0",
     "node-html-markdown": "^2.0.0",
     "ollama": "^0.6.4",
-    "openai": "^7.28.0",
+    "openai": "^7.30.0",
     "playwright-core": "^1.63.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -57,7 +57,7 @@
     "postcss": "^8.5.29",
     "tailwindcss": "^4.3.3",
     "typescript": "~7.0.2",
-    "vite": "^8.3.2",
+    "vite": "^8.3.3",
     "vitest": "^5.0.3"
   },
   "overrides": {
