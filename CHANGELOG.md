@@ -4,6 +4,14 @@ All notable changes to StockAI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-10-24
+
+### Changed
+
+- 同步升级 Tauri Rust / JavaScript 两侧依赖：notification 2.6.0、shell 2.5.0、opener 2.7.1、updater 2.13.3，避免两侧 minor 版本不一致导致桌面构建失败。
+- 更新 AI 接口依赖至 OpenAI SDK 7.33.0、Anthropic SDK 0.133.0；新闻抓取浏览器依赖升级至 Playwright 1.64.1，保留构建所需的 chromium-bidi 15.0.0。
+- 更新 Rust 兼容依赖及前端构建、测试工具；happy-dom 升级至 21.0.1（含 cookie 作用域安全修复，默认禁用外部 CSS / iframe 加载，仅用于开发测试）。
+
 ## [0.17.1] - 2026-10-08
 
 ### Fixed
