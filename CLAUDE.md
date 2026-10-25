@@ -109,3 +109,5 @@ Three-layer architecture: **UI → Tauri Core (Rust) → Sidecar (Bun)**
 **五个 Agent**：四个审查维度 —— `layer-boundary-reviewer`（架构边界）、`api-key-security-reviewer`（key 传递链）、`code-quality-reviewer`（逻辑 bug 与项目硬约束）、`i18n-consistency-reviewer`（三语一致性）；外加 `release-manager`（发版门禁编排）。
 
 各 Agent 的清单彼此不重叠，可并行调用后自行汇总；日常单点改动直接处理即可，不必起 Agent。
+
+- **Zod 安全覆盖**：`overrides.zod` 要求 ≥4.6.7，修复 GHSA-mrhx-c7xc-m3w5。`chromium-bidi@15.0.0` 仍为 Playwright 编译所需版本；`patches/` 里的 Bun 补丁将 CJS/ESM 错误读取从 Zod 3 的 `errors` 改为两代都支持的 `issues`。升级或移除补丁后须跑 `sidecar/bidi-compat.test.ts`、Sidecar 编译和浏览器冒烟，不能只看 audit 通过。
