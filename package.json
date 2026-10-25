@@ -61,6 +61,10 @@
     "vitest": "^5.0.5"
   },
   "overrides": {
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "zod": "^4.6.7"
+  },
+  "patchedDependencies": {
+    "chromium-bidi@15.0.0": "patches/chromium-bidi@15.0.0.patch"
   }
 }
