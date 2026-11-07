@@ -14,7 +14,7 @@
 
 > **Bring your own model.** OpenAI, Anthropic, DeepSeek, GLM, or a fully local Ollama. This project hosts nothing and proxies nothing.
 
-## Research workspace (development branch)
+## Research workspace (v0.18.0)
 
 The research workspace adds investment theses, snapshot comparisons, an event inbox, transaction ledgers and cashflow-aware performance, peer comparisons, portfolio concentration/correlation, source documents, task progress/usage, and credential-free backups.
 

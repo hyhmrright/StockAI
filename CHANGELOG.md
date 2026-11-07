@@ -4,6 +4,8 @@ All notable changes to StockAI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-07
+
 ### Added
 
 - Research workspace: persistent investment theses, snapshot changes, event inbox, transaction CSV import/export, realized P/L, cashflow-aware TWR, peer comparisons, concentration/correlation, report documents, and backup/merge restore without credentials.
