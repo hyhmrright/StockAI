@@ -1,6 +1,6 @@
 import type { QuantBundle } from '../../shared/types';
 import type { FinancialMetrics } from './types';
-import { getKline, getQuote } from '../kline';
+import { getKline, getKlineDetailed, getQuote } from '../kline';
 import { analyzeTechnical } from './technical';
 import { fetchFundamentals } from './fundamental';
 import { scoreFundamentals } from './fundamental-scoring';
@@ -21,7 +21,12 @@ export interface QuantDeps {
 }
 
 export async function fetchQuantBundle(symbol: string, deps: QuantDeps = {}): Promise<QuantBundle> {
-  const _getKline = deps.getKline ?? getKline;
+  const _getKline =
+    deps.getKline ??
+    (async (req) => {
+      const result = await getKlineDetailed(req);
+      return Object.assign(result.points, { metadata: result.metadata });
+    });
   const _getQuote = deps.getQuote ?? getQuote;
   const _fetchFundamentals = deps.fetchFundamentals ?? fetchFundamentals;
   const _fetchFundFlow = deps.fetchFundFlow ?? fetchFundFlow;
@@ -72,6 +77,20 @@ export async function fetchQuantBundle(symbol: string, deps: QuantDeps = {}): Pr
 
   return {
     symbol,
+    provenance: {
+      kline: (kline as import('../../shared/types').KlineSeries).metadata,
+      quoteAt: quote?.timestamp,
+      quoteSource: quote?.source,
+      fundamentals: fundamentalsRaw.provenance,
+      missing: [
+        !kline.length ? 'kline' : '',
+        Object.values(fundamentalsRaw).some((v) => typeof v === 'number' && Number.isFinite(v))
+          ? ''
+          : 'fundamentals',
+        !quote ? 'quote' : '',
+      ].filter(Boolean),
+      version: 'quant-v1',
+    },
     technical: technicalResult.composite,
     fundamental: fundamentalResult.composite,
     composite,

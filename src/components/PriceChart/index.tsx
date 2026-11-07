@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import ChartCanvas from './ChartCanvas';
 import SubChart from './SubChart';
 import QuoteHeader from './QuoteHeader';
@@ -9,8 +9,7 @@ import { detectMarket } from '../../lib/market-hours';
 import { sma } from '../../lib/indicators';
 import { DEFAULT_CONFIG, rangeToPeriod, maPeriodsForMarket, type ChartConfig } from './types';
 import { useRealtimeQuote } from '../../hooks/useRealtimeQuote';
-import { useLanguage } from '../../hooks/useLanguage';
-import { formatServiceError } from '../../lib/service-errors';
+import { useSymbolFetch } from '../../hooks/useSymbolFetch';
 import type { KlinePoint, PriceLevel, TradeRecord } from '../../../shared/types';
 
 interface Props {
@@ -22,66 +21,56 @@ interface Props {
 
 const PriceChart: React.FC<Props> = ({ symbol, levels, backtestTrades, equityCurve }) => {
   const [config, setConfig] = useState<ChartConfig>(DEFAULT_CONFIG);
-  const [data, setData] = useState<KlinePoint[]>([]);
-  const [compareData, setCompareData] = useState<KlinePoint[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [crosshair, setCrosshair] = useState<KlinePoint | null>(null);
 
   const market = useMemo(() => detectMarket(symbol), [symbol]);
   const quote = useRealtimeQuote(symbol);
-  const { t } = useLanguage();
 
-  // 拉 K 线（symbol / range / adjust 任一变化都重拉）
-  useEffect(() => {
-    setError(null);
-    fetchKline({
-      symbol,
-      period: rangeToPeriod(config.range),
-      range: config.range,
-      adjust: config.adjust,
-    })
-      .then(setData)
-      .catch((e) => setError(formatServiceError(e, t, 'kline_load_error')));
-  }, [symbol, config.range, config.adjust, t]);
-
-  // 拉取比较基准的 K 线（symbol/range 变化时同步重拉）
-  useEffect(() => {
-    if (!config.compareSymbol) {
-      setCompareData([]);
-      return;
-    }
-    fetchKline({
-      symbol: config.compareSymbol,
-      period: rangeToPeriod(config.range),
-      range: config.range,
-      adjust: 'qfq',
-    })
-      .then(setCompareData)
-      .catch(() => setCompareData([]));
-  }, [config.compareSymbol, config.range]);
-
-  // 用实时报价 update 最后一根 K 线（同一交易日时合并）
-  useEffect(() => {
-    if (!quote || data.length === 0) return;
-    const last = data[data.length - 1];
-    const lastDate = new Date(last.time * 1000).toDateString();
-    const quoteDate = new Date(quote.timestamp * 1000).toDateString();
-    if (lastDate !== quoteDate) return;
-    setData((prev) => {
-      const merged = [...prev];
-      const i = merged.length - 1;
-      merged[i] = {
-        time: merged[i].time,
-        open: merged[i].open,
-        high: Math.max(merged[i].high, quote.price),
-        low: Math.min(merged[i].low, quote.price),
-        close: quote.price,
-        volume: quote.volume || merged[i].volume,
-        amount: quote.amount || merged[i].amount,
-      };
-      return merged;
-    });
-  }, [quote]);
+  const primary = useSymbolFetch<import('../../../shared/types').KlineSeries>(
+    `${symbol}:${config.range}:${config.adjust}`,
+    () =>
+      fetchKline({
+        symbol,
+        period: rangeToPeriod(config.range),
+        range: config.range,
+        adjust: config.adjust,
+      }),
+    'kline_load_error',
+  );
+  const comparison = useSymbolFetch<import('../../../shared/types').KlineSeries>(
+    config.compareSymbol ? `${config.compareSymbol}:${config.range}` : '',
+    () =>
+      fetchKline({
+        symbol: config.compareSymbol ?? '',
+        period: rangeToPeriod(config.range),
+        range: config.range,
+        adjust: 'qfq',
+      }),
+    'kline_load_error',
+  );
+  const error = primary.error;
+  const compareData = comparison.data ?? [];
+  // 行情更新只派生尾根，不修改原始历史或丢失来源元信息。
+  const data = useMemo(() => {
+    const original = primary.data ?? [];
+    const last = original[original.length - 1];
+    if (
+      !quote ||
+      !last ||
+      new Date(last.time * 1000).toDateString() !== new Date(quote.timestamp * 1000).toDateString()
+    )
+      return original;
+    const merged = [...original];
+    merged[merged.length - 1] = {
+      ...last,
+      high: Math.max(last.high, quote.price),
+      low: Math.min(last.low, quote.price),
+      close: quote.price,
+      volume: quote.volume || last.volume,
+      amount: quote.amount || last.amount,
+    };
+    return Object.assign(merged, { metadata: primary.data?.metadata });
+  }, [primary.data, quote]);
 
   // 十字光标对应的 MA 值（按当前 hover 的 K 线索引取出对应均线值）
   const crosshairMA = useMemo(() => {
@@ -130,6 +119,13 @@ const PriceChart: React.FC<Props> = ({ symbol, levels, backtestTrades, equityCur
         />
       </div>
       <SubChart data={data} indicator={config.subIndicator} market={market} />
+      {data.metadata && (
+        <p className="text-[10px] text-gray-500 mt-2">
+          {data.metadata.source} · {new Date(data.metadata.fetchedAt).toLocaleString()} ·{' '}
+          {data.metadata.actualAdjust}
+          {data.metadata.degraded ? ' · ⚠' : ''}
+        </p>
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { startTask, taskEvent, endTask } from './task-store';
+import { invoke, isTauri, Channel } from '@tauri-apps/api/core';
 import {
   StockSearchResult,
   KlineRequest,
@@ -93,24 +94,44 @@ async function devBridgeInvoke<T>(
   args: string[],
   opts: CallOptions,
   fallback: DevFallback<T>,
+  requestId: string,
 ): Promise<T> {
+  let response: Response;
   try {
-    const resp = await fetch('http://localhost:3001/invoke', {
+    response = await fetch('http://localhost:3001/invoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ args, ...opts }),
+      body: JSON.stringify({ args, ...opts, requestId }),
     });
-    return parseServiceResponse<T>(await resp.text());
   } catch {
-    // 只警告一次，避免 10s 轮询刷屏；让开发者知道当前看的是 mock
     if (!bridgeWarnLogged) {
-      console.warn(
-        '[dev] sidecar bridge 不在线 (http://localhost:3001)，返回 mock 数据。启动 `bun scripts/sidecar-bridge.ts` 可拉真实数据。',
-      );
+      console.warn('[dev] sidecar bridge offline; using development fixtures');
       bridgeWarnLogged = true;
     }
     return fallback(await import('./dev-mocks'));
   }
+  if (!response.headers.get('content-type')?.includes('application/x-ndjson'))
+    return parseServiceResponse<T>(await response.text());
+  const reader = response.body!.getReader(),
+    decoder = new TextDecoder();
+  let buffer = '',
+    result: string | undefined;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (!line) continue;
+      const event = JSON.parse(line);
+      if (event.kind === 'progress') taskEvent(requestId, event.data);
+      if (event.kind === 'result') result = event.raw;
+    }
+  }
+  if (result === undefined)
+    throw new ServiceError('ERR_BAD_RESPONSE', 'Stream ended without a result');
+  return parseServiceResponse<T>(result);
 }
 
 /**
@@ -142,11 +163,33 @@ async function callSidecar<T>(
   opts: CallOptions = {},
 ): Promise<T> {
   const args = buildActionArgs(action, values);
+  const tracked = new Set<string>([
+    SIDECAR_ACTIONS.deepAnalysis.flag,
+    SIDECAR_ACTIONS.analyzeOnly.flag,
+    SIDECAR_ACTIONS.chat.flag,
+    SIDECAR_ACTIONS.screen.flag,
+  ]).has(action.flag);
+  const requestId = crypto.randomUUID();
+  if (tracked)
+    startTask(
+      requestId,
+      `${values.actionParam === PAYLOAD_SLOT ? '' : (values.actionParam ?? '')} ${action.flag}`,
+    );
   try {
-    // DEV 守卫让生产构建静态判死整条桥接分支，dev-mocks 因此不进包（见文件顶部说明）
-    if (import.meta.env.DEV && !isTauri()) return await devBridgeInvoke<T>(args, opts, devFallback);
-    return parseServiceResponse<T>(await invoke<string>('invoke_sidecar', { args, ...opts }));
+    let result: T;
+    if (import.meta.env.DEV && !isTauri())
+      result = await devBridgeInvoke<T>(args, opts, devFallback, requestId);
+    else {
+      const channel = new Channel<import('../../shared/types').TaskEvent>();
+      channel.onmessage = (event) => taskEvent(requestId, event);
+      result = parseServiceResponse<T>(
+        await invoke<string>('invoke_sidecar', { args, ...opts, requestId, onEvent: channel }),
+      );
+    }
+    if (tracked) endTask(requestId, 'done');
+    return result;
   } catch (error) {
+    if (tracked) endTask(requestId, 'error');
     throw toServiceError(error);
   }
 }
@@ -300,12 +343,17 @@ export async function indexReports(symbol: string): Promise<void> {
 }
 
 /** 拉取 K 线 */
-export async function fetchKline(req: KlineRequest): Promise<KlinePoint[]> {
-  return callSidecar<KlinePoint[]>(
+export async function fetchKline(
+  req: KlineRequest,
+): Promise<import('../../shared/types').KlineSeries> {
+  const result = await callSidecar<KlinePoint[] | import('../../shared/types').KlineResponse>(
     SIDECAR_ACTIONS.kline,
     { actionParam: JSON.stringify(req) },
     (m) => m.MOCK_KLINE,
   );
+  return Array.isArray(result)
+    ? result
+    : Object.assign(result.points, { metadata: result.metadata });
 }
 
 /** 拉取实时报价 */
@@ -349,10 +397,13 @@ export async function fetchRealtimeQuotes(symbols: string[]): Promise<BatchQuote
 }
 
 /** 运行量化回测 */
-export async function runBacktest(symbol: string): Promise<BacktestResult> {
+export async function runBacktest(
+  symbol: string,
+  options: Omit<import('../../shared/types').BacktestRequest, 'symbol'> = {},
+): Promise<BacktestResult> {
   return callSidecar<BacktestResult>(
     SIDECAR_ACTIONS.backtest,
-    { actionParam: symbol },
+    { actionParam: JSON.stringify({ symbol, ...options }) },
     (m) => m.MOCK_BACKTEST,
   );
 }
@@ -368,4 +419,46 @@ export async function screenStocks(query: string): Promise<ScreenResponse> {
     { configStr: CONFIG_SLOT, actionParam: query },
     (m) => m.MOCK_SCREEN,
   );
+}
+
+/** SEC 公开披露文件与结构化财务数据。 */
+export function fetchSecReports(
+  symbol: string,
+): Promise<import('../../shared/types').ResearchDocument[]> {
+  return callSidecar(SIDECAR_ACTIONS.secReports, { actionParam: symbol }, () => []);
+}
+
+/** 终止对应 Sidecar 进程，付费请求的连接随进程关闭。 */
+export async function cancelTask(requestId: string): Promise<void> {
+  if (import.meta.env.DEV && !isTauri())
+    await fetch('http://localhost:3001/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId }),
+    });
+  else await invoke('cancel_sidecar', { requestId });
+  endTask(requestId, 'cancelled');
+}
+
+export function prepareScreen(
+  query: string,
+): Promise<{ query: import('../../shared/types').ScreenQuery }> {
+  return callSidecar(
+    SIDECAR_ACTIONS.screen,
+    { configStr: CONFIG_SLOT, actionParam: JSON.stringify({ parseOnly: true, nlQuery: query }) },
+    () => {
+      throw new Error('Connect the sidecar bridge to parse screening queries');
+    },
+  );
+}
+
+export function fetchAnnouncements(
+  symbol: string,
+): Promise<import('../../shared/types').ResearchDocument[]> {
+  return callSidecar(SIDECAR_ACTIONS.announcements, { actionParam: symbol }, () => []);
+}
+export function fetchReportPdf(url: string): Promise<{ base64: string }> {
+  return callSidecar(SIDECAR_ACTIONS.reportPdf, { actionParam: url }, () => {
+    throw new Error('Report download requires the sidecar');
+  });
 }

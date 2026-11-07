@@ -52,8 +52,8 @@ export function createMarketDataHandlers({ out, deps, requireSymbol }: HandlerCo
       try {
         const req = JSON.parse(reqJson);
         if (!requireSymbol(req?.symbol)) return;
-        const { getKline } = await import('../kline');
-        const points = await getKline(req);
+        const { getKlineDetailed } = await import('../kline');
+        const points = await getKlineDetailed(req);
         out(successEnvelope(points));
       } catch (error) {
         out(errorEnvelopeFromUnknown('ERR_KLINE', error));
@@ -184,11 +184,26 @@ export function createMarketDataHandlers({ out, deps, requireSymbol }: HandlerCo
       }
     },
 
-    async handleBacktest(symbol: string) {
-      if (!requireSymbol(symbol)) return;
+    async handleBacktest(input: string) {
       try {
+        const req: import('../../shared/types').BacktestRequest = input.startsWith('{')
+          ? JSON.parse(input)
+          : { symbol: input };
+        const { symbol } = req;
+        if (!requireSymbol(symbol)) return;
+        if (req.range && !['1y', '5y', 'all'].includes(req.range)) throw new Error('Invalid range');
+        for (const value of [req.startDate, req.endDate])
+          if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('Invalid date');
+        if (req.startDate && req.endDate && req.startDate > req.endDate)
+          throw new Error('Invalid date interval');
         const { getKline } = await import('../kline');
-        const kline = await getKline({ symbol, period: '1d', range: '1y' });
+        let kline = await getKline({ symbol, period: '1d', range: req.range ?? '1y' });
+        if (req.endDate)
+          kline = kline.filter((b) => b.time <= Date.parse(req.endDate!) / 1000 + 86399);
+        if (req.startDate) {
+          const start = kline.findIndex((b) => b.time >= Date.parse(req.startDate!) / 1000);
+          kline = start < 0 ? [] : kline.slice(Math.max(0, start - 61));
+        }
         const { runBacktest, MIN_BACKTEST_BARS } = await import('../backtest/engine');
         if (kline.length < MIN_BACKTEST_BARS) {
           out(
@@ -202,6 +217,7 @@ export function createMarketDataHandlers({ out, deps, requireSymbol }: HandlerCo
         const { DEFAULT_BACKTEST_PARAMS } = await import('../backtest/types');
         const result = runBacktest(kline, {
           ...DEFAULT_BACKTEST_PARAMS,
+          ...Object.fromEntries(Object.entries(req).filter(([, value]) => value !== undefined)),
           symbol,
           period: kline.length,
         });

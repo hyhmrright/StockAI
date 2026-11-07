@@ -51,15 +51,17 @@ export async function saveAnalysisRecord(params: SaveAnalysisParams): Promise<nu
 
   const db = await getDb();
   const result = await db.execute(
-    `INSERT INTO analysis_records (symbol, analyzed_at, type, result_json, stock_info_json, news_json)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
+    `INSERT OR IGNORE INTO analysis_records (symbol, analyzed_at, type, result_json, stock_info_json, news_json, analysis_key, metadata_json)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       params.symbol,
-      Date.now(),
+      params.analyzedAt ?? Date.now(),
       params.analysisType,
       params.resultJson,
       params.stockInfoJson ?? null,
       params.newsJson ?? null,
+      params.analysisId ?? null,
+      params.metadataJson ?? null,
     ],
   );
   return result.lastInsertId ?? 0;
@@ -115,20 +117,23 @@ export async function saveMasterSignals(
   symbol: string,
   signals: MasterSignal[],
   priceAt?: number,
+  analysisId?: string,
+  modelFingerprint?: string,
+  analyzedAt?: number,
 ): Promise<void> {
   if (!isTauri() || signals.length === 0) return;
 
   const db = await getDb();
-  const recordedAt = Date.now();
+  const recordedAt = analyzedAt ?? Date.now();
 
   // 单条多行 INSERT，而非逐条 await：一次深度分析的 13 条 signal 是一个整体，
   // 中途失败留下半份记录会直接歪掉命中率与动态权重的口径（这张表就是那两项的数据基础）。
   // 单语句天然原子，顺带把 13 次 IPC 往返压成 1 次。
-  const columns = 6;
+  const columns = 8;
   const rows = signals
     .map((_, i) => {
       const base = i * columns;
-      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`;
+      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8})`;
     })
     .join(', ');
   const values = signals.flatMap((s) => [
@@ -138,16 +143,20 @@ export async function saveMasterSignals(
     s.confidence,
     priceAt ?? null,
     recordedAt,
+    analysisId ?? null,
+    modelFingerprint ?? null,
   ]);
 
   await db.execute(
-    `INSERT INTO master_signals (master_id, symbol, signal, confidence, price_at, recorded_at)
+    `INSERT OR IGNORE INTO master_signals (master_id, symbol, signal, confidence, price_at, recorded_at, analysis_key, model_fingerprint)
      VALUES ${rows}`,
     values,
   );
 }
 
 interface RawSignalRow {
+  model_fingerprint?: string;
+  analysis_key?: string;
   id: number;
   master_id: string;
   symbol: string;
@@ -163,7 +172,7 @@ export async function getAllMasterSignals(): Promise<MasterSignalRecord[]> {
 
   const db = await getDb();
   const rows = await db.select<RawSignalRow[]>(
-    `SELECT id, master_id, symbol, signal, confidence, price_at, recorded_at
+    `SELECT id, master_id, symbol, signal, confidence, price_at, recorded_at, model_fingerprint, analysis_key
      FROM master_signals ORDER BY recorded_at ASC`,
   );
   return rows.map((r) => ({
@@ -174,6 +183,8 @@ export async function getAllMasterSignals(): Promise<MasterSignalRecord[]> {
     confidence: r.confidence,
     priceAt: r.price_at,
     recordedAt: r.recorded_at,
+    ...(r.model_fingerprint ? { modelFingerprint: r.model_fingerprint } : {}),
+    ...(r.analysis_key ? { analysisId: r.analysis_key } : {}),
   }));
 }
 

@@ -19,6 +19,9 @@ export interface AnalysisRecord extends AnalysisRecordSummary {
 
 /** 保存分析记录的参数 */
 export interface SaveAnalysisParams {
+  analysisId?: string;
+  analyzedAt?: number;
+  metadataJson?: string;
   symbol: string;
   analysisType: AnalysisType;
   resultJson: string;

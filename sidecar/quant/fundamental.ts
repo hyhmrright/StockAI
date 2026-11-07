@@ -292,7 +292,17 @@ export async function fetchFundamentals(
 ): Promise<FinancialMetrics> {
   if (market === 'A股') {
     try {
-      return await fetchEastmoneyFundamentals(symbol);
+      const result = await fetchEastmoneyFundamentals(symbol);
+      return {
+        ...result,
+        provenance: {
+          ...result.provenance,
+          source: '东方财富 F10',
+          fetchedAt: Date.now(),
+          degraded: false,
+          warnings: [],
+        },
+      };
     } catch (err) {
       logger.warn(`基本面数据抓取失败 (${symbol}): ${toErrorMessage(err)}`);
       return {};
@@ -300,12 +310,23 @@ export async function fetchFundamentals(
   }
 
   try {
-    return await fetchYahooFundamentals(symbol);
+    return {
+      ...(await fetchYahooFundamentals(symbol)),
+      provenance: { source: 'Yahoo Finance', fetchedAt: Date.now(), degraded: false, warnings: [] },
+    };
   } catch (err) {
     logger.warn(`Yahoo 基本面失败，回退东财美股 F10 (${symbol}): ${toErrorMessage(err)}`);
   }
   try {
-    return await fetchEastmoneyUsFundamentals(symbol, deps);
+    return {
+      ...(await fetchEastmoneyUsFundamentals(symbol, deps)),
+      provenance: {
+        source: '东方财富 USF10',
+        fetchedAt: Date.now(),
+        degraded: true,
+        warnings: ['fallback'],
+      },
+    };
   } catch (err) {
     logger.warn(`基本面数据抓取失败 (${symbol}): ${toErrorMessage(err)}`);
     return {};
@@ -315,14 +336,26 @@ export async function fetchFundamentals(
 async function fetchEastmoneyFundamentals(code: string): Promise<FinancialMetrics> {
   const cleaned = code.replace(/\D/g, '');
   if (!/^\d{6}$/.test(cleaned)) throw new Error(`无效的 A 股代码: ${code}`);
-  const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=REPORT_TYPE,ROEJQ,XSJLL,XSMLL,ZCFZL,LD,TOTALOPERATEREVETZ,PARENTNETPROFITTZ,MGJYXJJE&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
+  const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_FINANCE_MAINFINADATA&columns=REPORT_DATE,REPORT_TYPE,ROEJQ,XSJLL,XSMLL,ZCFZL,LD,TOTALOPERATEREVETZ,PARENTNETPROFITTZ,MGJYXJJE&filter=(SECURITY_CODE="${cleaned}")&pageSize=1&sortColumns=REPORT_DATE&sortTypes=-1`;
 
   const resp = await fetchWithPolicy(url, {
     headers: { Referer: 'https://emweb.securities.eastmoney.com' },
   });
   if (!resp.ok) throw new Error(`东财财务 HTTP ${resp.status}`);
   const json = await resp.json();
-  return parseEastmoneyFinancials(json);
+  const reportDate = (
+    json as { result?: { data?: { REPORT_DATE?: string }[] } }
+  ).result?.data?.[0]?.REPORT_DATE?.slice(0, 10);
+  return {
+    ...parseEastmoneyFinancials(json),
+    provenance: {
+      reportDate,
+      source: '东方财富 F10',
+      fetchedAt: Date.now(),
+      degraded: false,
+      warnings: [],
+    },
+  };
 }
 
 async function fetchYahooFundamentals(symbol: string): Promise<FinancialMetrics> {

@@ -1,3 +1,4 @@
+import { useCaptureResearch } from '../hooks/useCaptureResearch';
 import React, { useEffect, useMemo, useState } from 'react';
 import PriceChart from './PriceChart';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -37,6 +38,13 @@ const Dashboard: React.FC = () => {
   const suite = useAnalysisSuite(currentSymbol);
   const { step, stockInfo, news, dataError, quant } = suite;
   const { t } = useLanguage();
+  useCaptureResearch({
+    symbol: currentSymbol,
+    capturedAt: Date.now(),
+    quant: step === 'ready' ? (quant ?? undefined) : undefined,
+    news,
+    deep: suite.deep.result ?? undefined,
+  });
 
   // 追问上下文：从已抓新闻/量化/已有分析精简，作为对话事实底座（不重复抓取）
   const chatContext = useMemo<ChatContext>(
@@ -63,7 +71,7 @@ const Dashboard: React.FC = () => {
   }, [currentSymbol]);
 
   // 分析结果自动持久化（AI/深度/量化存历史 + 落账大师 signal）
-  usePersistAnalysisResults({
+  const persistence = usePersistAnalysisResults({
     symbol: currentSymbol,
     stockInfo,
     news,
@@ -81,11 +89,17 @@ const Dashboard: React.FC = () => {
       <SearchHeader
         onSearch={setCurrentSymbol}
         loading={busy}
+        onOpenResearch={() => modal.open('research')}
         onOpenSettings={() => modal.open('settings')}
         onOpenScreener={() => modal.open('screener')}
         onOpenPortfolio={() => modal.open('portfolio')}
         stepLabel={stepLabel}
       />
+      {persistence.failed && (
+        <button className="text-xs text-amber-400 p-2" onClick={persistence.retry}>
+          {t('research_save_failed')}
+        </button>
+      )}
       <IndexBar onOpenOverview={() => modal.open('overview')} />
 
       {/* 小屏纵向排列并整体滚动；lg 以上横向排列各区域独立滚动 */}
@@ -149,6 +163,7 @@ const Dashboard: React.FC = () => {
       </main>
 
       <DashboardModals
+        symbol={currentSymbol}
         active={modal.active}
         onOpen={modal.open}
         onClose={modal.close}

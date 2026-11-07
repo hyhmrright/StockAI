@@ -8,6 +8,32 @@ import type { HandlerContext } from './context';
 /** 对话式追问及其前置的财报 RAG 索引预热。 */
 export function createConversationHandlers({ out, deps, requireSymbol }: HandlerContext) {
   return {
+    async handleAnnouncements(symbol: string) {
+      if (!requireSymbol(symbol)) return;
+      try {
+        const { fetchAnnouncements } = await import('../rag/cninfo');
+        out(successEnvelope(await fetchAnnouncements(symbol)));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_INDEX_REPORTS', error));
+      }
+    },
+    async handleReportPdf(url: string) {
+      try {
+        const { downloadReportPdf } = await import('../rag/cninfo');
+        out(successEnvelope(await downloadReportPdf(url)));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_INDEX_REPORTS', error));
+      }
+    },
+    async handleSecReports(symbol: string) {
+      if (!requireSymbol(symbol)) return;
+      try {
+        const { fetchSecDocuments } = await import('../rag/sec');
+        out(successEnvelope(await fetchSecDocuments(symbol)));
+      } catch (error) {
+        out(errorEnvelopeFromUnknown('ERR_INDEX_REPORTS', error));
+      }
+    },
     /**
      * #11 财报 RAG 预热：提前建索引，把交易所互动平台抓取挪出 chat 首答关键路径（前端 fire-and-forget）。
      * 返回 { indexed, docCount }。ensureReportIndex 已吞掉网络异常返回 null，此处仅兜底信封。
@@ -41,7 +67,10 @@ export function createConversationHandlers({ out, deps, requireSymbol }: Handler
             deps._retrieveReportChunks ?? (await import('../rag')).retrieveReportChunks;
           const chunks = await retrieve(payload.symbol, payload.question);
           if (chunks.length) {
-            payload.context = { ...payload.context, reportChunks: chunks };
+            payload.context = {
+              ...payload.context,
+              reportChunks: [...(payload.context.reportChunks ?? []), ...chunks].slice(0, 10),
+            };
           }
         } catch (err) {
           logger.warn(`财报 RAG 检索失败，退化为无 report 上下文: ${toErrorMessage(err)}`);

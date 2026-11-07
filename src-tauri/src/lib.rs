@@ -66,6 +66,24 @@ impl Drop for TempFileGuard {
  */
 struct SidecarManager;
 
+// None 表示取消请求已先于 spawn 到达；避免用户点击取消后仍启动付费任务。
+#[derive(Default)]
+struct RunningJobs(
+    std::sync::Mutex<
+        std::collections::HashMap<String, Option<tauri_plugin_shell::process::CommandChild>>,
+    >,
+);
+
+#[tauri::command]
+fn cancel_sidecar(app_handle: tauri::AppHandle, request_id: String) -> Result<(), String> {
+    let state = app_handle.state::<RunningJobs>();
+    let mut jobs = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(Some(child)) = jobs.insert(request_id, None) {
+        child.kill().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 impl SidecarManager {
     /// 取最后一行完整 JSON——Sidecar 协议保证每次运行只写一行 JSON 到 stdout。
     fn last_json_line(buffer: &str) -> Option<String> {
@@ -90,7 +108,12 @@ impl SidecarManager {
         Some(dir)
     }
 
-    async fn run(app_handle: &tauri::AppHandle, args: Vec<String>) -> Result<String, String> {
+    async fn run(
+        app_handle: &tauri::AppHandle,
+        args: Vec<String>,
+        request_id: String,
+        on_event: Option<tauri::ipc::Channel<serde_json::Value>>,
+    ) -> Result<String, String> {
         let mut sidecar_command = app_handle
             .shell()
             .sidecar("stockai-backend")
@@ -105,6 +128,16 @@ impl SidecarManager {
             .spawn()
             .map_err(|e| coded(ERR_SIDECAR_SPAWN, format!("spawn failed: {}", e)))?;
 
+        {
+            let state = app_handle.state::<RunningJobs>();
+            let mut jobs = state.0.lock().map_err(|e| e.to_string())?;
+            if jobs.contains_key(&request_id) {
+                jobs.remove(&request_id);
+                let _ = child.kill();
+                return Err("ERR_SIDECAR: cancelled".into());
+            }
+            jobs.insert(request_id.clone(), Some(child));
+        }
         let mut stdout_buffer = String::new();
         let mut stderr_buffer = String::new();
         let mut exit_code = None;
@@ -134,6 +167,15 @@ impl SidecarManager {
                 }
                 tauri_plugin_shell::process::CommandEvent::Stderr(line) => {
                     let s = String::from_utf8_lossy(&line);
+                    for line in s.lines() {
+                        if let Some(raw) = line.strip_prefix("STOCKAI_EVENT:") {
+                            if let (Some(channel), Ok(value)) =
+                                (&on_event, serde_json::from_str::<serde_json::Value>(raw))
+                            {
+                                let _ = channel.send(value);
+                            }
+                        }
+                    }
                     stderr_buffer.push_str(&s);
                     eprintln!("Sidecar Stderr: {}", s);
                 }
@@ -144,13 +186,22 @@ impl SidecarManager {
             }
         }
 
+        let child = app_handle
+            .state::<RunningJobs>()
+            .0
+            .lock()
+            .map_err(|e| e.to_string())?
+            .remove(&request_id)
+            .flatten();
         if abandoned {
             eprintln!(
                 "Sidecar 已输出结果但 {:?} 内未退出，强制回收进程",
                 POST_JSON_GRACE
             );
             // kill 失败无所谓：结果已经拿到，回收不掉最多留一个孤儿进程，不该因此让调用失败
-            let _ = child.kill();
+            if let Some(child) = child {
+                let _ = child.kill();
+            }
         } else {
             drop(child);
         }
@@ -261,6 +312,8 @@ async fn invoke_sidecar(
     args: Vec<String>,
     payload: Option<serde_json::Value>,
     config_override: Option<serde_json::Value>,
+    request_id: Option<String>,
+    on_event: tauri::ipc::Channel<serde_json::Value>,
 ) -> Result<String, String> {
     // guards 必须活到 Sidecar 跑完：drop 时才删临时文件
     let mut guards: Vec<TempFileGuard> = Vec::new();
@@ -287,7 +340,13 @@ async fn invoke_sidecar(
         }
     }
 
-    SidecarManager::run(&app_handle, resolved).await
+    SidecarManager::run(
+        &app_handle,
+        resolved,
+        request_id.unwrap_or_else(|| format!("internal-{:?}", std::time::SystemTime::now())),
+        Some(on_event),
+    )
+    .await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -317,9 +376,21 @@ pub fn run() {
             sql: include_str!("../migrations/004_create_positions.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "create research workspace",
+            sql: include_str!("../migrations/005_research_workspace.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 6,
+            description: "stable analysis identity",
+            sql: include_str!("../migrations/006_analysis_identity.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
-    let mut builder = tauri::Builder::default();
+    let mut builder = tauri::Builder::default().manage(RunningJobs::default());
 
     // 自动更新器仅桌面端可用，移动端不编译该插件
     #[cfg(desktop)]
@@ -339,7 +410,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![invoke_sidecar])
+        .invoke_handler(tauri::generate_handler![invoke_sidecar, cancel_sidecar])
         .run(tauri::generate_context!())
         .expect("运行 tauri 应用程序时出错");
 }

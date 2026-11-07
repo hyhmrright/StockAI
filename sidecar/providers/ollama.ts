@@ -5,7 +5,7 @@ import { resolveLanguage } from '../ai';
 import { PROVIDER_PROFILES } from '../config';
 import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from '../prompts';
 import { toErrorMessage, withTimeout, parseJsonFromAi } from '../utils';
-import { logger } from '../log';
+import { logger, emitTaskEvent } from '../log';
 
 /**
  * Ollama 本地提供者实现
@@ -48,6 +48,13 @@ export class OllamaProvider implements AIProvider {
         'Ollama 服务连接超时，请检查服务是否已启动并在运行。',
       );
 
+      emitTaskEvent({
+        type: 'usage',
+        provider: this.kind,
+        model: this.model,
+        inputTokens: response.prompt_eval_count,
+        outputTokens: response.eval_count,
+      });
       return parseJsonFromAi<AIAnalysisResult>(response.message.content);
     } catch (error) {
       logger.error(`Ollama 分析出错: ${toErrorMessage(error)}`);

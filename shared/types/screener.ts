@@ -66,6 +66,8 @@ export interface ScreenMatch {
 
 /** --screen 完整响应（query 回显供「AI 理解为…」透明展示） */
 export interface ScreenResponse {
+  nextOffset?: number;
+  coverage?: { total: number; attempted: number; failed: number; complete: boolean };
   query: ScreenQuery;
   matches: ScreenMatch[];
   scannedCoarse: number; // 粗筛通过的候选数

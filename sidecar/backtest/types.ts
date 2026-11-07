@@ -1,6 +1,9 @@
 export type { BacktestResult, TradeRecord } from '../../shared/types';
 
 export interface BacktestConfig {
+  execution?: 'nextOpen' | 'close';
+  slippage?: number;
+  lotSize?: number;
   symbol: string;
   period: number; // 评分回看天数（如 252）
   buyThreshold: number; // 合成分高于此值 → 买入

@@ -1,3 +1,4 @@
+import { checkResearchWorkspace } from './e2e-research';
 import type { Page } from 'playwright-core';
 import { BrowserManager } from '../sidecar/browser-manager';
 
@@ -132,6 +133,7 @@ async function runChecks(page: Page, baseUrl: string, pageErrors: string[]): Pro
   }
   console.log(`✅ K 线实体覆盖 ${rows} 条像素行`);
 
+  await checkResearchWorkspace(page);
   console.log('阶段 4: 检查启动期未捕获错误...');
   if (pageErrors.length > 0) {
     throw new Error(`启动过程中有 ${pageErrors.length} 条未捕获错误:\n${pageErrors.join('\n')}`);

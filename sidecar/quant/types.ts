@@ -23,6 +23,7 @@ export interface FundamentalResult {
 }
 
 export interface FinancialMetrics {
+  provenance?: import('../../shared/types').DataProvenance;
   roe?: number;
   grossMargin?: number;
   netMargin?: number;

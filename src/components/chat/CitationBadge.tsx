@@ -26,6 +26,8 @@ function citationLabel(c: ChatCitation, t: TFn): string {
 // 前端展示需本地化，故只取序号重新拼本地化文案，不直接渲染原字符串
 export function reportPositionLabel(position: string | undefined, t: TFn): string | null {
   if (!position) return null;
+  if (!position.startsWith('问答'))
+    return /^[A-Za-z]/.test(position) ? position.slice(0, 120) : null;
   const m = /(\d+)/.exec(position);
   return m ? t('chat_citation_report_position', { n: m[1] }) : null;
 }

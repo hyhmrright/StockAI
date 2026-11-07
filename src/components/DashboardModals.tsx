@@ -1,3 +1,4 @@
+import ResearchModal from './Research/ResearchModal';
 import React, { useState } from 'react';
 import { SettingsModal } from './SettingsModal';
 import OnboardingGuide from './OnboardingGuide';
@@ -8,6 +9,7 @@ import { useSettings } from '../hooks/useSettings';
 import type { ModalName } from '../hooks/useModalRouter';
 
 interface Props {
+  symbol: string;
   active: ModalName | null;
   onOpen: (name: ModalName) => void;
   onClose: () => void;
@@ -25,7 +27,7 @@ interface Props {
  *  - 内部持有表单态、需要跨开合保留的（设置 / 选股）走 `isOpen` 常驻挂载
  *  - 一打开就拉数据的（持仓 / 市场概览）条件挂载，不开就完全不跑
  */
-const DashboardModals: React.FC<Props> = ({ active, onOpen, onClose, onSelect }) => {
+const DashboardModals: React.FC<Props> = ({ symbol, active, onOpen, onClose, onSelect }) => {
   const { needsSetup } = useSettings();
   // 引导只在本次运行内可关：不落盘「已看过」，因为真正的退出条件是保存一次配置——
   // 保存后 needsSetup 会经 useSettings 单例回落，引导自行消失。
@@ -39,6 +41,7 @@ const DashboardModals: React.FC<Props> = ({ active, onOpen, onClose, onSelect })
 
   return (
     <>
+      {active === 'research' && <ResearchModal symbol={symbol} onClose={onClose} />}
       <SettingsModal isOpen={active === 'settings'} onClose={onClose} />
 
       {/* 选股模态选中结果行后自己会调 onClose，故这里传裸 onSelect 而非 selectAndClose */}

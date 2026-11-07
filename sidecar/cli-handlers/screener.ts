@@ -20,7 +20,28 @@ export function createScreenerHandlers({ out }: HandlerContext) {
       try {
         const { createChatProvider } = await import('../agents/chat-adapter');
         const chat = createChatProvider(config.roles.quick);
-        const result = await nlScreen.runScreen({ nlQuery, chat, language: config.language });
+        let request: {
+          query?: import('../../shared/types').ScreenQuery;
+          offset?: number;
+          parseOnly?: boolean;
+          nlQuery?: string;
+        } = {};
+        if (nlQuery.trim().startsWith('{')) request = JSON.parse(nlQuery);
+        if (request.parseOnly) {
+          out(
+            successEnvelope({
+              query: await nlScreen.parseScreenQuery(request.nlQuery ?? '', chat, config.language),
+            }),
+          );
+          return;
+        }
+        const result = await nlScreen.runScreen({
+          nlQuery,
+          chat,
+          language: config.language,
+          query: request.query,
+          offset: request.offset,
+        });
         out(successEnvelope(result));
       } catch (error) {
         if (error instanceof nlScreen.ScreenParseError) {

@@ -1,3 +1,5 @@
+import { readWorkspace } from '../lib/research-store';
+import { retrieveLocalDocuments } from '../lib/research-documents';
 import { useCallback } from 'react';
 import type { ChatMessage, ChatContext, ChatPayload, ChatResponse } from '../../shared/types';
 import { chat as ipcChat } from '../lib/ipc';
@@ -40,7 +42,14 @@ export function useChat(
 
       await store.run(symbol, async () => {
         // history 传不含本次问题的历史；question 单独传，由 sidecar 拼成 user 末条
-        const { reply, citations } = await runner({ symbol, question: q, history: prev, context });
+        const workspace = await readWorkspace();
+        const reportChunks = retrieveLocalDocuments(workspace.documents, symbol, q);
+        const { reply, citations } = await runner({
+          symbol,
+          question: q,
+          history: prev,
+          context: { ...context, reportChunks: [...(context.reportChunks ?? []), ...reportChunks] },
+        });
         // citations 随消息持久化，多轮历史里角标不丢失
         const botMsg: ChatMessage = { role: 'assistant', content: reply, citations };
         return [...prev, userMsg, botMsg];

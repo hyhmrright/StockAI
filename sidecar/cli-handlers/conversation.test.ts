@@ -49,8 +49,8 @@ describe('handleChat · 财报 RAG 集成', () => {
     await handlers.handleChat(structuredClone(payload), chatConfig);
 
     expect(retrieve).toHaveBeenCalledWith('000001', '营收为何下滑');
-    // 注入后 system prompt 含 [投资者互动问答] 段（section header 带方括号，与 guide 内的措辞区分）
-    expect(seenSystem).toContain('[投资者互动问答]');
+    // 注入后 system prompt 含 [证据材料（财报原文 / 投资者互动问答）] 段（section header 带方括号，与 guide 内的措辞区分）
+    expect(seenSystem).toContain('[证据材料（财报原文 / 投资者互动问答）]');
     expect(seenSystem).toContain('营收为何下滑');
     const arg = mockOut.mock.calls[0][0] as { data: { reply: string; citations: unknown[] } };
     expect(arg.data.reply).toBe('营收下滑主因需求疲软[[cite:0]]。');

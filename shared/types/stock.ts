@@ -120,6 +120,7 @@ export interface KlineRequest {
  * 实时报价
  */
 export interface RealtimeQuote {
+  source?: string;
   symbol: string;
   name: string; // 显示名（A 股中文名 / 美股英文短名）
   price: number;
@@ -157,4 +158,20 @@ export interface RealtimeQuote {
 export interface BatchQuoteResult {
   quotes: Record<string, RealtimeQuote>;
   failed: string[];
+}
+
+export interface DataProvenance {
+  reportDate?: string;
+  source: string;
+  fetchedAt: number;
+  dataAt?: number;
+  requestedAdjust?: AdjustMode;
+  actualAdjust?: AdjustMode | 'provider';
+  degraded: boolean;
+  warnings: string[];
+}
+export type KlineSeries = KlinePoint[] & { metadata?: DataProvenance };
+export interface KlineResponse {
+  points: KlinePoint[];
+  metadata: DataProvenance;
 }

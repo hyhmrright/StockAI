@@ -56,7 +56,7 @@ export function useAnalysisSuite(symbol: string): AnalysisSuite {
     PROVIDER_PROFILES[settings.activeProvider].model;
 
   // 深度分析缓存指纹：provider/model/大师/语言任一变化即失效，避免显示陈旧结果
-  const deepFingerprint = `${settings.activeProvider}:${modelLabel}:${settings.selectedMasters.join(',')}:${settings.language}`;
+  const deepFingerprint = `${settings.activeProvider}:${modelLabel}:${settings.selectedMasters.join(',')}:${settings.language}:${JSON.stringify(settings.roleModels)}`;
 
   const ai = useAIAnalysis(symbol);
   const deep = useDeepAnalysis(symbol, deepFingerprint);

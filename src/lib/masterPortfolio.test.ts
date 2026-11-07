@@ -1,195 +1,53 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  computeMasterPortfolio,
-  deriveMasterWeights,
-  loadMasterPortfolio,
-} from './masterPortfolio';
-import type { MasterSignalRecord } from '../../shared/types';
-
-// 测试构造助手：默认值齐全，按需覆写
-function sig(over: Partial<MasterSignalRecord>): MasterSignalRecord {
-  return {
-    id: 1,
-    masterId: 'warren-buffett',
-    symbol: 'AAPL',
-    signal: 'bullish',
-    confidence: 80,
-    priceAt: 100,
-    recordedAt: 1_000,
-    ...over,
-  };
-}
-
-describe('computeMasterPortfolio', () => {
-  it('空输入返回空聚合', () => {
-    const r = computeMasterPortfolio([], {}, 9_999);
-    expect(r.totalSignals).toBe(0);
-    expect(r.resolvedSignals).toBe(0);
-    expect(r.leaderboard).toEqual([]);
-    expect(r.navCurves).toEqual({});
-    expect(r.firstSignalAt).toBeNull();
-    expect(r.asOf).toBe(9_999);
-  });
-
-  it('看涨且涨 → 命中，收益为正向涨幅', () => {
-    const r = computeMasterPortfolio([sig({ priceAt: 100 })], { AAPL: 110 }, 2_000);
-    const e = r.leaderboard[0];
-    expect(e.resolved).toBe(1);
-    expect(e.hits).toBe(1);
-    expect(e.hitRate).toBe(1);
-    expect(e.avgReturn).toBeCloseTo(0.1, 6);
-    expect(r.resolvedSignals).toBe(1);
-  });
-
-  it('看跌且跌 → 命中（方向调整后收益为正）', () => {
-    const r = computeMasterPortfolio(
-      [sig({ signal: 'bearish', priceAt: 100 })],
-      { AAPL: 90 },
-      2_000,
-    );
-    const e = r.leaderboard[0];
-    expect(e.hits).toBe(1);
-    expect(e.hitRate).toBe(1);
-    expect(e.avgReturn).toBeCloseTo(0.1, 6);
-  });
-
-  it('看涨却跌 → 未命中，方向调整收益为负', () => {
-    const r = computeMasterPortfolio([sig({ priceAt: 100 })], { AAPL: 90 }, 2_000);
-    const e = r.leaderboard[0];
-    expect(e.resolved).toBe(1);
-    expect(e.hits).toBe(0);
-    expect(e.hitRate).toBe(0);
-    expect(e.avgReturn).toBeCloseTo(-0.1, 6);
-  });
-
-  it('中性 signal 计入 total/pending 但不裁决', () => {
-    const r = computeMasterPortfolio([sig({ signal: 'neutral' })], { AAPL: 110 }, 2_000);
-    const e = r.leaderboard[0];
-    expect(e.total).toBe(1);
-    expect(e.pending).toBe(1);
-    expect(e.resolved).toBe(0);
-    expect(e.hitRate).toBeNull();
-    expect(e.avgReturn).toBeNull();
-    expect(r.resolvedSignals).toBe(0);
-  });
-
-  it('缺入场价或缺现价 → 待定，不纳入统计', () => {
-    const noEntry = computeMasterPortfolio([sig({ priceAt: null })], { AAPL: 110 }, 2_000);
-    expect(noEntry.leaderboard[0].resolved).toBe(0);
-    expect(noEntry.leaderboard[0].pending).toBe(1);
-
-    const noQuote = computeMasterPortfolio([sig({ priceAt: 100 })], {}, 2_000);
-    expect(noQuote.leaderboard[0].resolved).toBe(0);
-    expect(noQuote.leaderboard[0].pending).toBe(1);
-  });
-
-  it('净值曲线按时间顺序等额全仓复利', () => {
-    const signals = [
-      sig({ id: 1, symbol: 'AAPL', priceAt: 100, recordedAt: 1_000 }), // +10%
-      sig({ id: 2, symbol: 'MSFT', priceAt: 200, recordedAt: 2_000 }), // +10%
-    ];
-    const r = computeMasterPortfolio(signals, { AAPL: 110, MSFT: 220 }, 3_000);
-    const curve = r.navCurves['warren-buffett'];
-    expect(curve).toHaveLength(2);
-    expect(curve[0]).toEqual({ time: 1_000, value: 1.1 });
-    expect(curve[1].time).toBe(2_000);
-    expect(curve[1].value).toBeCloseTo(1.21, 6); // 1.1 * 1.1
-  });
-
-  it('榜单按命中率降序，null 命中率（全待定）垫底', () => {
-    const signals = [
-      sig({ id: 1, masterId: 'a', symbol: 'AAPL', signal: 'bullish', priceAt: 100 }), // 命中
-      sig({ id: 2, masterId: 'b', symbol: 'AAPL', signal: 'bearish', priceAt: 100 }), // 未命中
-      sig({ id: 3, masterId: 'c', symbol: 'AAPL', signal: 'neutral', priceAt: 100 }), // 全待定
-    ];
-    const r = computeMasterPortfolio(signals, { AAPL: 110 }, 3_000);
-    expect(r.leaderboard.map((e) => e.masterId)).toEqual(['a', 'b', 'c']);
-    expect(r.leaderboard[0].hitRate).toBe(1);
-    expect(r.leaderboard[1].hitRate).toBe(0);
-    expect(r.leaderboard[2].hitRate).toBeNull();
-  });
-
-  it('firstSignalAt 取最早落账时间', () => {
-    const signals = [sig({ id: 1, recordedAt: 5_000 }), sig({ id: 2, recordedAt: 1_500 })];
-    const r = computeMasterPortfolio(signals, { AAPL: 110 }, 9_000);
-    expect(r.firstSignalAt).toBe(1_500);
-  });
+import { loadMasterEvaluation, deriveMasterWeights } from './masterPortfolio';
+import type { MasterSignalRecord, KlinePoint } from '../../shared/types';
+const signal = (p: Partial<MasterSignalRecord> = {}): MasterSignalRecord => ({
+  id: 1,
+  masterId: 'a',
+  symbol: 'A',
+  signal: 'bullish',
+  confidence: 80,
+  recordedAt: 1000,
+  priceAt: 100,
+  ...p,
 });
-
-describe('deriveMasterWeights', () => {
-  it('过滤 hitRate===null（resolved===0 的大师），映射 resolved→sampleSize、hits→hits', () => {
-    const signals = [
-      sig({ id: 1, masterId: 'a', symbol: 'AAPL', signal: 'bullish', priceAt: 100 }), // 命中
-      sig({ id: 2, masterId: 'b', symbol: 'AAPL', signal: 'neutral', priceAt: 100 }), // 全待定 → hitRate null
-      sig({ id: 3, masterId: 'c', symbol: 'AAPL', signal: 'bullish', priceAt: 100 }), // 命中
-      sig({ id: 4, masterId: 'c', symbol: 'AAPL', signal: 'bearish', priceAt: 100 }), // 涨了 → 看跌未命中
-    ];
-    const data = computeMasterPortfolio(signals, { AAPL: 110 }, 3_000);
-    const weights = deriveMasterWeights(data);
-
-    // b 因 hitRate===null 被过滤，仅剩 a / c
-    expect(weights.map((w) => w.masterId).sort()).toEqual(['a', 'c']);
-    const a = weights.find((w) => w.masterId === 'a');
-    expect(a).toEqual({ masterId: 'a', sampleSize: 1, hits: 1 });
-    const c = weights.find((w) => w.masterId === 'c');
-    expect(c).toEqual({ masterId: 'c', sampleSize: 2, hits: 1 });
-    // 契约红线：不透传 hitRate（由 sidecar 自算）
-    expect(a).not.toHaveProperty('hitRate');
+const history: Record<string, KlinePoint[]> = {
+  A: Array.from({ length: 21 }, (_, i) => ({
+    time: 2 + i,
+    open: 100,
+    close: 100 + i,
+    high: 120,
+    low: 99,
+    volume: 100,
+  })),
+};
+describe('master evaluation pipeline', () => {
+  it('empty histories do not make network requests', async () => {
+    const fetch = vi.fn();
+    expect((await loadMasterEvaluation(async () => [], fetch)).totalSignals).toBe(0);
+    expect(fetch).not.toHaveBeenCalled();
   });
-
-  it('空组合（无信号）派生空数组', () => {
-    const data = computeMasterPortfolio([], {}, 1_000);
-    expect(deriveMasterWeights(data)).toEqual([]);
-  });
-
-  it('全部大师样本不足（无现价 → 全待定）时派生空数组', () => {
-    const signals = [sig({ masterId: 'a', priceAt: 100 })];
-    const data = computeMasterPortfolio(signals, {}, 1_000); // 无现价 → resolved=0 → hitRate null
-    expect(deriveMasterWeights(data)).toEqual([]);
-  });
-});
-
-describe('loadMasterPortfolio', () => {
-  const threeSignals = () =>
-    vi.fn(async () => [
-      sig({ id: 1, symbol: 'AAPL', priceAt: 100 }),
-      sig({ id: 2, symbol: 'AAPL', priceAt: 100 }), // 同 symbol 去重
-      sig({ id: 3, symbol: 'MSFT', priceAt: 200 }),
-    ]);
-
-  it('去重后一次批量取价，缺价的 symbol 静默判「待定」', async () => {
-    // 只返回 AAPL：MSFT 缺价 → 其信号判「待定」
-    const loadPrices = vi.fn(async () => ({ AAPL: 110 }));
-
-    const data = await loadMasterPortfolio(threeSignals(), loadPrices);
-
-    // 关键断言：一次批量、而非按 symbol 数逐只调用（逐只 = 按标的数放大 sidecar 进程）
-    expect(loadPrices).toHaveBeenCalledTimes(1);
-    expect(loadPrices).toHaveBeenCalledWith(['AAPL', 'MSFT']);
-    expect(data.totalSignals).toBe(3);
-    expect(data.resolvedSignals).toBe(2); // 两条 AAPL 已裁决；MSFT 待定
-  });
-
-  it('整批取价失败时不抛，全部信号退为「待定」', async () => {
-    const loadPrices = vi.fn(async () => {
-      throw new Error('quote failed');
-    });
-
-    const data = await loadMasterPortfolio(threeSignals(), loadPrices);
-
-    expect(data.totalSignals).toBe(3);
-    expect(data.resolvedSignals).toBe(0);
-  });
-
-  it('没有信号时不发起取价请求', async () => {
-    const loadPrices = vi.fn(async () => ({}));
-
-    const data = await loadMasterPortfolio(
-      vi.fn(async () => []),
-      loadPrices,
+  it('derives weights only from mature directional samples', async () => {
+    const result = await loadMasterEvaluation(
+      async () => [signal(), signal({ id: 2, masterId: 'b', signal: 'neutral' })],
+      async () => history,
     );
-
-    expect(loadPrices).not.toHaveBeenCalled();
-    expect(data.totalSignals).toBe(0);
+    expect(deriveMasterWeights(result)).toEqual([{ masterId: 'a', sampleSize: 1, hits: 1 }]);
+    expect(result.leaderboard[1].pending).toBe(1);
+  });
+  it('filters model versions before loading prices and measuring performance', async () => {
+    const signals = [signal({ modelFingerprint: 'v1' }), signal({ id: 2, modelFingerprint: 'v2' })],
+      fetch = vi.fn(async () => history);
+    const result = await loadMasterEvaluation(async () => signals, fetch, 20, 'v2');
+    expect(result.totalSignals).toBe(1);
+    expect(fetch).toHaveBeenCalledWith([signals[1]]);
+  });
+  it('missing symbols remain pending rather than silently losing samples', async () => {
+    const result = await loadMasterEvaluation(
+      async () => [signal()],
+      async () => ({}),
+    );
+    expect(result.leaderboard[0].pending).toBe(1);
+    expect(deriveMasterWeights(result)).toEqual([]);
   });
 });

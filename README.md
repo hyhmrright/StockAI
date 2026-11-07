@@ -14,6 +14,14 @@
 
 > **Bring your own model.** OpenAI, Anthropic, DeepSeek, GLM, or a fully local Ollama. This project hosts nothing and proxies nothing.
 
+## Research workspace (development branch)
+
+The research workspace adds investment theses, snapshot comparisons, an event inbox, transaction ledgers and cashflow-aware performance, peer comparisons, portfolio concentration/correlation, source documents, task progress/usage, and credential-free backups.
+
+PDF/TXT imports preserve page boundaries for chat citations. A-share periodic reports can be fetched from CNINFO; SEC 10-K/10-Q and XBRL retrieval depends on SEC network access. Scanned PDFs require OCR before import. Backups merge existing data and can be retried; restoration spans SQLite and the settings store and is not a cross-storage atomic transaction. Existing manually maintained holdings remain separate from the transaction ledger.
+
+Master signals use fixed 5/20/60-session evaluation; simulated portfolios are separate and split by market. Technical backtests default to next-open execution with configurable fees, slippage, dates and lot sizes. Natural-language screening has an editable confirmation step, resumable batches, coverage disclosure and global result ranking.
+
 ## 🌟 Features
 
 ### 🧠 AI analysis, in three depths
