@@ -54,6 +54,34 @@ function computeMaxDrawdown(equityCurve: { time: number; value: number }[]): num
 }
 
 export function runBacktest(kline: KlinePoint[], config: BacktestConfig): BacktestResult {
+  if (
+    !Number.isFinite(config.initialCapital) ||
+    config.initialCapital <= 0 ||
+    !Number.isFinite(config.transactionCost) ||
+    config.transactionCost < 0 ||
+    config.transactionCost >= 1 ||
+    !Number.isFinite(config.slippage ?? 0) ||
+    (config.slippage ?? 0) < 0 ||
+    (config.slippage ?? 0) >= 1 ||
+    !Number.isInteger(config.lotSize ?? 1) ||
+    (config.lotSize ?? 1) < 1
+  )
+    throw new Error('无效回测参数');
+  if (
+    ![config.buyThreshold, config.sellThreshold].every(Number.isFinite) ||
+    (config.execution && !['nextOpen', 'close'].includes(config.execution))
+  )
+    throw new Error('无效策略参数');
+  if (
+    kline.some(
+      (b) =>
+        ![b.time, b.open, b.close, b.high, b.low, b.volume].every(Number.isFinite) ||
+        b.open <= 0 ||
+        b.close <= 0 ||
+        b.volume < 0,
+    )
+  )
+    throw new Error('无效 K 线');
   const sorted = [...kline].sort((a, b) => a.time - b.time);
   const { symbol, buyThreshold, sellThreshold, initialCapital, transactionCost } = config;
 
@@ -81,41 +109,67 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   const equityCurve: { time: number; value: number }[] = [];
   let cash = initialCapital;
   let shares = 0;
+  let entryCash = 0;
+  let pendingScore: number | null = null;
+  let wins = 0;
+  let closed = 0;
   let position: 'none' | 'long' = 'none';
+
+  // 初始资金点纳入回撤；信号在收盘形成，下一根开盘才可成交。
+  equityCurve.push({ time: sorted[MIN_BACKTEST_BARS - 1].time, value: initialCapital });
 
   // 滑动窗口逐 bar 计算技术分，生成买卖信号
   for (let i = MIN_BACKTEST_BARS; i < sorted.length; i++) {
     const window = sorted.slice(Math.max(0, i - 250), i + 1);
     const { composite } = analyzeTechnical(window);
-    const score = toScore(composite.signal, composite.confidence);
+    const currentScore = toScore(composite.signal, composite.confidence);
+    const score = config.execution === 'close' ? currentScore : pendingScore;
+    pendingScore = currentScore;
     const bar = sorted[i];
+    const fill = config.execution === 'close' ? bar.close : bar.open;
+    const slip = config.slippage ?? 0;
+    const canTrade = bar.volume > 0;
 
-    if (position === 'none' && score >= buyThreshold) {
+    if (
+      canTrade &&
+      score != null &&
+      position === 'none' &&
+      score >= buyThreshold &&
+      i < sorted.length - 1
+    ) {
       // 买入：全仓投入，扣除交易费
-      const investable = cash * (1 - transactionCost);
+      entryCash = cash;
+      const price = fill * (1 + slip);
+      const lot = config.lotSize ?? 1;
+      const units = Math.floor(cash / (price * (1 + transactionCost)) / lot) * lot;
+      const investable = units * price;
       if (investable > 0) {
-        shares = investable / bar.close;
-        cash = 0;
+        shares = units;
+        cash -= investable * (1 + transactionCost);
+        entryCash -= cash;
         position = 'long';
         trades.push({
           type: 'buy',
           date: bar.time,
-          price: bar.close,
+          price,
           shares,
           value: investable,
           score: r2(score),
         });
       }
-    } else if (position === 'long' && score <= sellThreshold) {
+    } else if (canTrade && score != null && position === 'long' && score <= sellThreshold) {
       // 卖出：清仓，扣除交易费
-      const proceeds = shares * bar.close * (1 - transactionCost);
-      cash = proceeds;
+      const price = fill * (1 - slip);
+      const proceeds = shares * price * (1 - transactionCost);
+      if (proceeds > entryCash) wins++;
+      closed++;
+      cash += proceeds;
       trades.push({
         type: 'sell',
         date: bar.time,
-        price: bar.close,
+        price,
         shares,
-        value: cash,
+        value: proceeds,
         score: r2(score),
       });
       shares = 0;
@@ -128,11 +182,13 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   // 以最后收盘价强制平仓，并记录卖出交易
   if (position === 'long') {
     const lastBar = sorted[sorted.length - 1];
-    const proceeds = shares * lastBar.close * (1 - transactionCost);
+    const proceeds = shares * lastBar.close * (1 - (config.slippage ?? 0)) * (1 - transactionCost);
+    if (proceeds > entryCash) wins++;
+    closed++;
     trades.push({
       type: 'sell',
       date: lastBar.time,
-      price: lastBar.close,
+      price: lastBar.close * (1 - (config.slippage ?? 0)),
       shares,
       value: proceeds,
       score: 50,
@@ -149,16 +205,7 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
   const years = (sorted.length - MIN_BACKTEST_BARS) / TRADING_DAYS_PER_YEAR;
   const annualizedReturn = years > 0 ? (cash / initialCapital) ** (1 / years) - 1 : 0;
 
-  // 胜率：按买卖配对，比的是**扣费后真正落袋的金额**而不是两端价格。
-  // 策略严格 买→卖→买 交替，故第 i 笔卖对应第 i 笔买。
-  // 比价格会把「涨了 0.1%、但一买一卖两道费共 0.2%」的亏损单算成盈利单——
-  // 默认费率 0.001，凡毛涨幅低于约 0.2% 的单子都会被记成胜，胜率虚高。
-  // buy.value 是真正换成股票的钱（已扣买入费），sell.value 是卖出到手的钱（已扣卖出费），
-  // 两者相比即该轮实际盈亏。
-  const buyTrades = trades.filter((t) => t.type === 'buy');
-  const sellTrades = trades.filter((t) => t.type === 'sell');
-  const wins = sellTrades.filter((s, i) => buyTrades[i] && s.value > buyTrades[i].value).length;
-  const winRate = sellTrades.length > 0 ? wins / sellTrades.length : 0;
+  const winRate = closed > 0 ? wins / closed : 0;
 
   const returns = dailyReturns(equityCurve);
 
@@ -176,5 +223,11 @@ export function runBacktest(kline: KlinePoint[], config: BacktestConfig): Backte
     ),
     trades,
     equityCurve,
+    assumptions: {
+      execution: config.execution ?? 'nextOpen',
+      transactionCost,
+      slippage: config.slippage ?? 0,
+      lotSize: config.lotSize ?? 1,
+    },
   };
 }

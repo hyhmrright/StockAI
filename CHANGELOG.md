@@ -4,6 +4,27 @@ All notable changes to StockAI will be documented in this file.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-07
+
+### Added
+
+- Research workspace: persistent investment theses, snapshot changes, event inbox, transaction CSV import/export, realized P/L, cashflow-aware TWR, peer comparisons, concentration/correlation, report documents, and backup/merge restore without credentials.
+- Page-aware local PDF/TXT evidence, CNINFO periodic filing discovery/download, SEC filing/XBRL adapters, and document-backed chat citations.
+- Incremental master results, actual token usage, configurable cost estimates, and process-level task cancellation over desktop IPC and the development bridge.
+- Fixed-horizon master evaluation (5/20/60 sessions), model-version filtering, benchmark-relative returns, and separate long-only simulations by market.
+
+### Fixed
+
+- Backtests execute close-derived signals at the next open by default, include both trading fees in win classification, retain the initial capital point, and expose date/range/cost/slippage/lot settings.
+- Natural-language screening rejects unsupported conditions, supports confirmation/editing and continuation batches, preserves snapshot timestamps, and reports incomplete coverage.
+- Analysis identity and SQLite uniqueness make persistence retries idempotent. Failed writes are visible and retryable. Quote-source/adjustment metadata accompanies historical prices.
+- Shared symbol fetches hide old-symbol data immediately; chart requests use the shared race guard and retain provenance through realtime updates.
+
+### Validation notes
+
+- SEC can return HTTP 403 on restricted networks; the adapter surfaces this failure and local document imports remain available.
+- Transaction-derived accounts and legacy manual holdings are deliberately separate. Backup merges are idempotent but are not atomic across SQLite and the settings store.
+
 ## [0.17.2] - 2026-10-24
 
 ### Changed

@@ -83,22 +83,23 @@ describe('validateScreenQuery', () => {
     expect(() => validateScreenQuery({ board: 'main' })).toThrow(ScreenParseError);
   });
 
-  test('非法 op / value 非数 / 未知 field 逐条丢弃', () => {
-    const q = validateScreenQuery({
-      conditions: [
-        { field: 'pe', op: 'lt', value: 20 }, // 合法保留
-        { field: 'pe', op: 'between', value: 5 }, // 非法 op → 丢
-        { field: 'pb', op: 'lt', value: 'x' }, // value 非数 → 丢
-        { field: 'gdp', op: 'gt', value: 1 }, // 未知 field → 丢
-      ],
-    });
-    expect(q.conditions).toEqual([{ field: 'pe', op: 'lt', value: 20 }]);
+  test('非法条件拒绝执行，不能静默扩大筛选范围', () => {
+    expect(() =>
+      validateScreenQuery({
+        conditions: [
+          { field: 'pe', op: 'lt', value: 20 }, // 合法保留
+          { field: 'pe', op: 'between', value: 5 }, // 非法 op → 丢
+          { field: 'pb', op: 'lt', value: 'x' }, // value 非数 → 丢
+          { field: 'gdp', op: 'gt', value: 1 }, // 未知 field → 丢
+        ],
+      }),
+    ).toThrow(ScreenParseError);
   });
 
-  test('全部条件被丢弃 → ScreenNoConditionsError', () => {
+  test('未知条件抛 ScreenParseError', () => {
     expect(() =>
       validateScreenQuery({ conditions: [{ field: 'bad', op: 'gt', value: 1 }] }),
-    ).toThrow(ScreenNoConditionsError);
+    ).toThrow(ScreenParseError);
   });
 
   test('LLM 返回空 conditions → ScreenNoConditionsError', () => {

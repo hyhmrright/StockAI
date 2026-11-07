@@ -11,6 +11,12 @@ export interface TradeRecord {
 
 /** 回测结果 */
 export interface BacktestResult {
+  assumptions?: {
+    execution: 'nextOpen' | 'close';
+    transactionCost: number;
+    slippage: number;
+    lotSize: number;
+  };
   symbol: string;
   totalReturn: number;
   annualizedReturn: number;
@@ -21,4 +27,18 @@ export interface BacktestResult {
   buyAndHoldReturn: number;
   trades: TradeRecord[];
   equityCurve: Array<{ time: number; value: number }>;
+}
+
+export interface BacktestRequest {
+  symbol: string;
+  range?: '1y' | '5y' | 'all';
+  startDate?: string;
+  endDate?: string;
+  buyThreshold?: number;
+  sellThreshold?: number;
+  initialCapital?: number;
+  transactionCost?: number;
+  slippage?: number;
+  lotSize?: number;
+  execution?: 'nextOpen' | 'close';
 }

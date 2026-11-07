@@ -52,7 +52,9 @@ jobs:
         run: bun install
 
       - name: Frontend E2E smoke
-        run: bun run test:e2e
+        run: |
+          bun run test:e2e
+          bun scripts/task-smoke.ts
 
   test-and-build:
     strategy:

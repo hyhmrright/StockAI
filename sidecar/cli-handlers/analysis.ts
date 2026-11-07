@@ -147,7 +147,9 @@ export function createAnalysisHandlers({ out, deps }: HandlerContext) {
           // 大师跑在 brain provider 上，按其决定并发上限
           concurrency: concurrencyForProvider(brain.provider),
           // 缓存指纹含 brain+quick 两者：任一角色换模型即 miss，避免复用旧 sentiment/大师结果
-          cacheFingerprint: `${brain.provider}:${brain.model}|${quick.provider}:${quick.model}`,
+          cacheFingerprint: (
+            await import('../../shared/analysis-version')
+          ).analysisModelFingerprint(brain, quick),
           // 大师历史命中率摘要（前端算好经参数注入）；解析失败已在 parseWeights 静默降级
           masterWeights: parseWeights(weightsJson),
         });

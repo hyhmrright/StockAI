@@ -116,6 +116,14 @@ export interface PriceLevel {
 
 /** 量化分析数据包（技术面 + 基本面 + 估值 + 风险，不含情绪——情绪由 LLM 综合研判） */
 export interface QuantBundle {
+  provenance?: {
+    kline?: import('./stock').DataProvenance;
+    fundamentals?: import('./stock').DataProvenance;
+    quoteSource?: string;
+    quoteAt?: number;
+    missing: string[];
+    version: string;
+  };
   symbol: string;
   technical: AnalystSignal;
   fundamental: AnalystSignal;

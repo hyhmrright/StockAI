@@ -44,7 +44,7 @@ describe('db', () => {
       expect(id).toBe(42);
       expect(mockExecute).toHaveBeenCalledTimes(1);
       const [sql, params] = mockExecute.mock.calls[0];
-      expect(sql).toContain('INSERT INTO analysis_records');
+      expect(sql).toContain('INSERT OR IGNORE INTO analysis_records');
       expect(params[0]).toBe('AAPL');
       expect(params[2]).toBe('ai');
       expect(params[3]).toBe('{"rating":75}');
@@ -141,12 +141,14 @@ describe('db', () => {
       expect(mockExecute).toHaveBeenCalledTimes(1);
 
       const [sql, params] = mockExecute.mock.calls[0];
-      expect(sql).toContain('INSERT INTO master_signals');
-      expect(sql).toContain('($1, $2, $3, $4, $5, $6), ($7, $8, $9, $10, $11, $12)');
-      expect(params).toHaveLength(18);
+      expect(sql).toContain('INSERT OR IGNORE INTO master_signals');
+      expect(sql).toContain(
+        '($1, $2, $3, $4, $5, $6, $7, $8), ($9, $10, $11, $12, $13, $14, $15, $16)',
+      );
+      expect(params).toHaveLength(24);
       expect(params.slice(0, 6)).toEqual(['a', 'AAPL', 'bullish', 80, 100, expect.any(Number)]);
       // 同一批共用一个 recordedAt，净值曲线才能按落账时刻正确排序
-      expect(params[5]).toBe(params[11]);
+      expect(params[5]).toBe(params[13]);
     });
 
     it('缺 priceAt 时落 null（后续可回查 K 线补价）', async () => {

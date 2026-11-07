@@ -14,6 +14,7 @@ import { StockSearchResult } from '../../shared/types';
 interface SearchHeaderProps {
   onSearch: (symbol: string) => void;
   loading: boolean;
+  onOpenResearch?: () => void;
   onOpenSettings: () => void;
   onOpenScreener: () => void;
   onOpenPortfolio: () => void;
@@ -27,6 +28,7 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
   onSearch,
   loading,
   onOpenSettings,
+  onOpenResearch,
   onOpenScreener,
   onOpenPortfolio,
   stepLabel,
@@ -154,6 +156,9 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
 
       {/* 右侧入口：智能选股 + 系统设置 */}
       <div className="flex items-center gap-1">
+        <button className="p-2 text-xs text-emerald-400 whitespace-nowrap" onClick={onOpenResearch}>
+          {t('workbench')}
+        </button>
         {/* 我的持仓入口 */}
         <button
           onClick={onOpenPortfolio}

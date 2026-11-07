@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { saveAnalysisRecord, saveMasterSignals } from '../lib/db';
-import type { StockInfo, StockNews, DeepAnalysisResult, QuantBundle } from '../../shared/types';
+import type {
+  StockInfo,
+  StockNews,
+  DeepAnalysisResult,
+  QuantBundle,
+  SaveAnalysisParams,
+} from '../../shared/types';
 import type { AIAnalysisRecord } from './useAIAnalysis';
-
+import { useSettings } from './useSettings';
 interface PersistParams {
   symbol: string;
   stockInfo: StockInfo | null | undefined;
@@ -11,13 +17,7 @@ interface PersistParams {
   deepAnalysis: DeepAnalysisResult | null;
   quant: QuantBundle | null;
 }
-
-/**
- * 分析结果自动持久化：AI / 深度 / 量化分析完成时 fire-and-forget 存入历史库，
- * 深度分析额外落账各大师 signal + 当时价（供虚拟大师组合前向跟踪）。
- * 用 savedKeys 按结果指纹去重，避免重复落账同一结果。
- * 从 Dashboard 抽出以收敛组件行数（infoJson 随 stockInfo 变化而更新，故各 effect 依赖 infoJson 即可拿到新鲜 price）。
- */
+/** 唯一 ID 在 SQLite 侧保证幂等，失败可安全重试，不把失败标记成已保存。 */
 export function usePersistAnalysisResults({
   symbol,
   stockInfo,
@@ -25,53 +25,99 @@ export function usePersistAnalysisResults({
   record,
   deepAnalysis,
   quant,
-}: PersistParams): void {
-  const savedKeys = useRef<Record<string, string>>({});
-  const infoJson = useMemo(() => (stockInfo ? JSON.stringify(stockInfo) : undefined), [stockInfo]);
-  const newsJsonStr = useMemo(() => (news.length > 0 ? JSON.stringify(news) : undefined), [news]);
-
+}: PersistParams) {
+  const saved = useRef(new Set<string>()),
+    pending = useRef(new Set<string>());
+  const [failed, setFailed] = useState(false),
+    [retry, setRetry] = useState(0);
+  const { settings } = useSettings();
   useEffect(() => {
-    if (!record) return;
-    const key = String(record.analyzedAt);
-    if (savedKeys.current.ai === key) return;
-    savedKeys.current.ai = key;
-    saveAnalysisRecord({
+    const meta = JSON.stringify({
+      provider: settings.activeProvider,
+      model: settings.providerConfigs[settings.activeProvider]?.model,
+      language: settings.language,
+      selectedMasters: settings.selectedMasters,
+      provenance: quant?.provenance,
+      scoreVersion: 'quant-v1',
+    });
+    const base = {
       symbol,
-      analysisType: 'ai',
-      resultJson: JSON.stringify(record.result),
-      stockInfoJson: infoJson,
-      newsJson: newsJsonStr,
-    }).catch((e) => console.error('保存 AI 分析历史失败:', e));
-  }, [record, symbol, infoJson, newsJsonStr]);
-
-  useEffect(() => {
-    if (!deepAnalysis) return;
-    const key = `${symbol}:${deepAnalysis.synthesis.confidence}:${deepAnalysis.synthesis.signal}`;
-    if (savedKeys.current.deep === key) return;
-    savedKeys.current.deep = key;
-    saveAnalysisRecord({
-      symbol,
-      analysisType: 'deep',
-      resultJson: JSON.stringify(deepAnalysis),
-      stockInfoJson: infoJson,
-      newsJson: newsJsonStr,
-    }).catch((e) => console.error('保存深度分析历史失败:', e));
-    // 落账各大师 signal + 当时价，供虚拟大师组合前向跟踪（命中率/净值统计用）；入场价缺失会判「待定」
-    saveMasterSignals(symbol, deepAnalysis.masterSignals, stockInfo?.price).catch((e) =>
-      console.error('保存大师 signal 失败:', e),
-    );
-  }, [deepAnalysis, symbol, infoJson, newsJsonStr, stockInfo]);
-
-  useEffect(() => {
-    if (!quant) return;
-    const key = `${quant.symbol}:${quant.fetchedAt}`;
-    if (savedKeys.current.quant === key) return;
-    savedKeys.current.quant = key;
-    saveAnalysisRecord({
-      symbol,
-      analysisType: 'quant',
-      resultJson: JSON.stringify(quant),
-      stockInfoJson: infoJson,
-    }).catch((e) => console.error('保存量化分析历史失败:', e));
-  }, [quant, symbol, infoJson]);
+      stockInfoJson: stockInfo ? JSON.stringify(stockInfo) : undefined,
+      newsJson: JSON.stringify(news),
+      metadataJson: meta,
+    };
+    const jobs: { key: string; params: SaveAnalysisParams; signals?: DeepAnalysisResult }[] = [];
+    if (record)
+      jobs.push({
+        key: `ai:${symbol}:${record.analyzedAt}`,
+        params: {
+          ...base,
+          analysisType: 'ai',
+          analyzedAt: record.analyzedAt,
+          resultJson: JSON.stringify(record.result),
+        },
+      });
+    if (deepAnalysis)
+      jobs.push({
+        key: `deep:${symbol}:${deepAnalysis.analysisId ?? JSON.stringify(deepAnalysis)}`,
+        params: {
+          ...base,
+          analysisType: 'deep',
+          analyzedAt: deepAnalysis.analyzedAt,
+          resultJson: JSON.stringify(deepAnalysis),
+        },
+        signals: deepAnalysis,
+      });
+    if (quant)
+      jobs.push({
+        key: `quant:${quant.symbol}:${quant.fetchedAt}`,
+        params: {
+          ...base,
+          analysisType: 'quant',
+          analyzedAt: quant.fetchedAt,
+          resultJson: JSON.stringify(quant),
+        },
+      });
+    for (const job of jobs) {
+      if (saved.current.has(job.key) || pending.current.has(job.key)) continue;
+      pending.current.add(job.key);
+      void (async () => {
+        try {
+          for (let attempt = 0; ; attempt++) {
+            try {
+              await saveAnalysisRecord({ ...job.params, analysisId: job.key });
+              if (job.signals)
+                await saveMasterSignals(
+                  symbol,
+                  job.signals.masterSignals,
+                  stockInfo?.price,
+                  job.key,
+                  job.signals.modelFingerprint,
+                  job.signals.analyzedAt,
+                );
+              break;
+            } catch (e) {
+              if (attempt >= 2) throw e;
+              await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+            }
+          }
+          saved.current.add(job.key);
+          if (saved.current.size > 1000) saved.current.delete(saved.current.values().next().value!);
+          setFailed(false);
+        } catch (e) {
+          console.error('保存分析失败', e);
+          setFailed(true);
+        } finally {
+          pending.current.delete(job.key);
+        }
+      })();
+    }
+  }, [symbol, stockInfo, news, record, deepAnalysis, quant, retry, settings]);
+  return {
+    failed,
+    retry: () => {
+      setFailed(false);
+      setRetry((n) => n + 1);
+    },
+  };
 }

@@ -104,3 +104,8 @@ export const logger = {
     logToFile(`ERROR: ${msg}`);
   },
 };
+
+/** 任务事件只走 stderr；stdout 仍严格只有一个最终 JSON 信封。 */
+export function emitTaskEvent(event: import('../shared/types').TaskEvent): void {
+  process.stderr.write(`STOCKAI_EVENT:${JSON.stringify(event)}\n`);
+}

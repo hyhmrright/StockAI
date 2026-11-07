@@ -65,6 +65,7 @@ Sidecar **完全不碰这个库**——它是 spawn-per-call 的无状态进程�
 |----|------|--------------|
 | `analysis_records` | 每次 AI / 深度分析 / 选股的结果存档 | `src/lib/db.ts` |
 | `master_signals` | 各大师的历史 signal，供虚拟组合命中率与动态权重 | `src/lib/db.ts` |
+| `workspace_records` | Research workspace JSON documents (notes, ledger, evidence, snapshots, events, pricing) | `src/lib/research-store.ts` |
 | `positions` | **用户真实持仓**（一只标的一行，加权平均成本） | `src/lib/positions-db.ts` |
 
 连接是单例（`db.ts` 的 `getDb`），其他领域模块必须复用它——各自 `Database.load`
@@ -221,3 +222,13 @@ handler 按领域分文件，各组是一个 `createXxxHandlers(ctx)` 工厂，�
 | `useBollOverlay` / `useChartOverlays` / `usePriceLines` | 各叠加层：BOLL 三轨、AI 价位线 + 回测买卖点/净值、昨收/现价水平线 |
 
 `QuoteHeader` / `Toolbar` / `SubChart` / `CrosshairTooltip` 拆分页面区块，`index.tsx` 编排并通过 `useRealtimeQuote`（仅交易时段轮询）合并 K 线尾根与实时价。
+
+
+## Research workspace and task transport
+
+- `src/components/Research/` contains bounded tabs; pure ledger, performance, evidence retrieval, comparison and master evaluation live in `src/lib/`.
+- `workspace_records` is owned by the frontend and shares the SQLite connection. Sidecar does not read the history database. Frontend writes are serialized; backups exclude model configuration and merge with stable IDs.
+- Migrations 005/006 add workspace storage and analysis identity/metadata. Repeated writes use unique analysis keys; master signals include model fingerprints.
+- Sidecar stdout remains exactly one final JSON envelope. `STOCKAI_EVENT:` records on stderr carry master results and API-reported usage; Rust forwards them through a Tauri Channel. `cancel_sidecar(requestId)` terminates the matching child process. The development HTTP bridge forwards equivalent events via NDJSON.
+- Report adapters use the shared HTTP policy. CNINFO PDFs are downloaded only from the official static host, then parsed in a lazy-loaded PDF.js worker in the frontend. Local evidence is passed in chat payloads, never read from the UI database by Sidecar.
+- Shared screening field resolution (`shared/screen-values.ts`) is used for both backend filtering and frontend global pagination ranking.

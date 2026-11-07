@@ -26,7 +26,7 @@ import { extractSinaJson } from '../parsers/sina-envelope';
 // 全市场快照按 24h 缓存；当前仅一个 key（无 filter，筛选在下游 #14），maxEntries 保守即可
 const SNAPSHOT_CACHE_OPTS: CacheOptions = {
   dir: path.join(tmpdir(), 'stockai-market-snapshot-cache'),
-  ttlMs: 24 * 3600_000,
+  ttlMs: 5 * 60_000,
   maxEntries: 4,
 };
 

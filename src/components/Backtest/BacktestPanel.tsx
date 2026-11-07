@@ -1,3 +1,5 @@
+import BacktestOptions, { type Options } from './BacktestOptions';
+import { downloadText } from '../../lib/download';
 import React, { useState, useCallback, useEffect } from 'react';
 import { runBacktest } from '../../lib/ipc';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -37,6 +39,7 @@ function MetricCard({ label, value, valueClass = 'text-white' }: MetricCardProps
 }
 
 const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol, result, onResult }) => {
+  const [options, setOptions] = useState<Options>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { t } = useLanguage();
@@ -51,13 +54,13 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol, result, onResult 
     setLoading(true);
     setError(null);
     try {
-      onResult(await runBacktest(symbol));
+      onResult(await runBacktest(symbol, options));
     } catch (err) {
       setError(formatServiceError(err, t, 'err_backtest'));
     } finally {
       setLoading(false);
     }
-  }, [symbol, onResult, t]);
+  }, [symbol, onResult, t, options]);
 
   return (
     <div className="mb-6">
@@ -65,6 +68,7 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol, result, onResult 
         {t('backtest_title')}
       </h2>
 
+      <BacktestOptions value={options} onChange={setOptions} />
       {!result && (
         <button
           onClick={handleRun}
@@ -89,6 +93,16 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ symbol, result, onResult 
             </button>
           </div>
 
+          <p className="text-xs text-gray-400">
+            {t('research_next_open')} · {result.assumptions?.transactionCost ?? '—'} /{' '}
+            {result.assumptions?.slippage ?? '—'}
+          </p>
+          <button
+            className="text-xs text-emerald-400"
+            onClick={() => downloadText(`backtest-${symbol}.json`, JSON.stringify(result, null, 2))}
+          >
+            {t('research_export')}
+          </button>
           <div className="grid grid-cols-2 gap-3">
             <MetricCard
               label={t('backtest_strategy_return')}

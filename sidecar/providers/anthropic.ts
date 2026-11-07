@@ -5,7 +5,7 @@ import { resolveLanguage } from '../ai';
 import { PROVIDER_PROFILES } from '../config';
 import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from '../prompts';
 import { toErrorMessage, withTimeout, parseJsonFromAi } from '../utils';
-import { logger } from '../log';
+import { logger, emitTaskEvent } from '../log';
 
 /**
  * Anthropic Claude 提供者实现
@@ -43,6 +43,13 @@ export class AnthropicProvider implements AIProvider {
         'Anthropic 请求超时',
       );
 
+      emitTaskEvent({
+        type: 'usage',
+        provider: this.kind,
+        model: this.model,
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+      });
       if (!response.content?.length) {
         throw new Error('Anthropic 返回了空的 content 列表，无法提取分析结果');
       }

@@ -7,11 +7,11 @@ export type CitationSourceType = 'news' | 'quant' | 'analysis' | 'report';
  * 由 sidecar 在 handleChat 内注入 ChatContext（前端不填），驱动 report 类型溯源角标。
  */
 export interface ReportChunk {
-  text: string; // chunk 正文（问答段，「问：…\n答：…」），已截断到长度上限
-  docTitle: string; // 固定为「投资者互动问答」
+  text: string; // 原文片段，保留报告期、单位和页码
+  docTitle: string; // 材料标题（财报、公告或互动问答）
   docDate: string; // 回答发布日期 YYYY-MM-DD
   url?: string; // 来源页面链接（供 badge「查看原文」复用）
-  position?: string; // 片段位置，如「问答 #7」
+  position?: string; // 片段位置，如「问答 #7」或「p.3 · 1」
 }
 
 /**

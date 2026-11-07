@@ -16,7 +16,7 @@ import { FUND_FLOW_CONSUMER_IDS } from './agents/masters/factory';
 import { computeFactors, FACTOR_HISTORY_PERIODS, VALUE_FACTOR_CONSUMER_IDS } from './quant/factors';
 import { fetchFinancialHistory } from './quant/fundamental-history';
 import { toErrorMessage, runWithConcurrency } from './utils';
-import { logger } from './log';
+import { logger, emitTaskEvent } from './log';
 
 const DEFAULT_CONCURRENCY = 4;
 
@@ -123,6 +123,7 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
     const hit = readCache<DeepAnalysisResult>(key, cache);
     if (hit) {
       logger.info(`深度分析缓存命中，跳过 ${masters.length} 次大师 LLM 调用: ${symbol}`);
+      emitTaskEvent({ type: 'phase', phase: 'cache-hit' });
       return hit;
     }
   }
@@ -142,7 +143,11 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
 
   const ctx: MasterAnalysisContext = { symbol, quant, news, chat, language, factors };
 
-  const masterTasks = masters.map((m: MasterAgent) => () => m.analyze(ctx));
+  const masterTasks = masters.map((m: MasterAgent) => async () => {
+    const signal = await m.analyze(ctx);
+    emitTaskEvent({ type: 'master', master: signal });
+    return signal;
+  });
   const [masterResults, sentimentResult] = await Promise.all([
     runWithConcurrency<MasterSignal>(masterTasks, concurrency),
     analyzeSentiment(news, sentimentChat ?? chat, language),
@@ -157,6 +162,9 @@ export async function runDeepAnalysis(opts: DeepAnalysisOptions): Promise<DeepAn
     language,
     masterWeights,
   );
+  result.analysisId = crypto.randomUUID();
+  result.analyzedAt = Date.now();
+  result.modelFingerprint = cacheFingerprint;
   if (key) writeCache(key, result, cache);
   return result;
 }

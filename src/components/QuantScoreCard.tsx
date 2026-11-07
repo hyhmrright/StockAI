@@ -181,6 +181,14 @@ const QuantScoreCard: React.FC<QuantScoreCardProps> = ({ quant, loading, error }
           )}
         </div>
       )}
+      {quant.provenance && (
+        <p className="mt-2 text-[10px] text-gray-500">
+          {t('research_source_date')}: {new Date(quant.fetchedAt).toLocaleString()} ·{' '}
+          {quant.provenance.fundamentals?.source ?? '—'} ·{' '}
+          {quant.provenance.fundamentals?.reportDate ?? '—'} · {quant.provenance.quoteSource ?? '—'}
+          {quant.provenance.missing.length > 0 ? ' · ⚠ ' + quant.provenance.missing.join(', ') : ''}
+        </p>
+      )}
     </div>
   );
 };

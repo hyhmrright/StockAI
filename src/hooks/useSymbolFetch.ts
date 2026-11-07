@@ -32,6 +32,7 @@ export function useSymbolFetch<T>(
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const latestRequestId = useRef(0);
+  const dataSymbol = useRef('');
   const [trigger, setTrigger] = useState(0);
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
@@ -50,11 +51,13 @@ export function useSymbolFetch<T>(
       .current(symbol)
       .then((value) => {
         if (requestId !== latestRequestId.current) return;
+        dataSymbol.current = symbol;
         setData(value);
         setStep('ready');
       })
       .catch((err) => {
         if (requestId !== latestRequestId.current) return;
+        dataSymbol.current = symbol;
         setError(formatServiceError(err, tRef.current, errorFallbackKey));
         setStep('error');
         // 失败时清空旧数据，避免与新 symbol 的错误信息错配
@@ -66,5 +69,10 @@ export function useSymbolFetch<T>(
     setTrigger((t) => t + 1);
   }
 
-  return { step, data, error, refetch };
+  return {
+    step: dataSymbol.current === symbol ? step : symbol ? 'fetching' : 'idle',
+    data: dataSymbol.current === symbol ? data : null,
+    error: dataSymbol.current === symbol ? error : null,
+    refetch,
+  };
 }

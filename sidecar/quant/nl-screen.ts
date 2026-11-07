@@ -1,3 +1,5 @@
+import { COARSE_FIELD_SET, FINE_FIELD_SET, resolveFieldValue } from '../../shared/screen-values';
+export { resolveFieldValue } from '../../shared/screen-values';
 import type {
   Language,
   MarketSnapshot,
@@ -51,38 +53,9 @@ export class ScreenNoConditionsError extends Error {
 }
 
 // ── 字段分层 & 枚举集合 ───────────────────────────────────────────────────
-const COARSE_FIELD_SET = new Set<ScreenField>([
-  'price',
-  'changePercent',
-  'pe',
-  'pb',
-  'marketCap',
-  'turnoverRate',
-]);
-const FINE_FIELD_SET = new Set<ScreenField>([
-  'roe',
-  'netMargin',
-  'grossMargin',
-  'debtToAsset',
-  'currentRatio',
-  'revenueGrowth',
-  'netIncomeGrowth',
-  'compositeScore',
-]);
 const ALL_FIELD_SET = new Set<string>([...COARSE_FIELD_SET, ...FINE_FIELD_SET]);
 const COMPARATOR_SET = new Set<string>(['gt', 'gte', 'lt', 'lte', 'eq']);
 const BOARD_SET = new Set<string>(['main', 'star', 'chinext', 'bj', 'all']);
-
-/** fine 字段 → QuantBundle.fundamental.checks 的 key（映射表单一真源，见蓝图 §4） */
-const FINE_CHECK_KEY: Partial<Record<ScreenField, string>> = {
-  roe: 'roe',
-  netMargin: 'net_margin',
-  grossMargin: 'gross_margin',
-  debtToAsset: 'debt_to_asset',
-  currentRatio: 'current_ratio',
-  revenueGrowth: 'revenue_growth',
-  netIncomeGrowth: 'net_income_growth',
-};
 
 /** 默认排序：无 fine 条件时按市值降序（精拉前唯一稳定可得的规模键） */
 const DEFAULT_COARSE_SORT: NonNullable<ScreenQuery['sortBy']> = {
@@ -127,47 +100,6 @@ export function boardOf(symbol: string): ScreenBoard {
 }
 
 // ── 字段取值（resolveFieldValue 的单一真源）─────────────────────────────────
-/** coarse 字段从快照直接读（显式 switch，避免 keyof 索引越界） */
-function coarseValue(field: ScreenField, entry: MarketSnapshotEntry): number | undefined {
-  switch (field) {
-    case 'price':
-      return entry.price;
-    case 'changePercent':
-      return entry.changePercent;
-    case 'pe':
-      return entry.pe;
-    case 'pb':
-      return entry.pb;
-    case 'marketCap':
-      return entry.marketCap;
-    case 'turnoverRate':
-      return entry.turnoverRate;
-    default:
-      return undefined;
-  }
-}
-
-/**
- * 解析某字段的数值：coarse 从 snapshot，fine 从 quant（缺 quant/缺值一律 undefined）。
- * 缺值返回 undefined，交由 cmp 判「不通过」（保守：数据缺失不纳入命中）。
- */
-export function resolveFieldValue(
-  field: ScreenField,
-  entry: MarketSnapshotEntry,
-  quant?: QuantBundle,
-): number | undefined {
-  if (isCoarseField(field)) return coarseValue(field, entry);
-  if (!quant) return undefined;
-  if (field === 'compositeScore') {
-    const score = quant.composite?.score;
-    return typeof score === 'number' && Number.isFinite(score) ? score : undefined;
-  }
-  const key = FINE_CHECK_KEY[field];
-  if (!key) return undefined;
-  const actual = quant.fundamental?.checks?.find((c) => c.key === key)?.actual;
-  return typeof actual === 'number' && Number.isFinite(actual) ? actual : undefined;
-}
-
 /** 数值比较；actual 缺失（undefined）一律判不通过 */
 export function cmp(actual: number | undefined, op: ScreenComparator, value: number): boolean {
   if (actual === undefined) return false;
@@ -239,7 +171,8 @@ export function validateScreenQuery(raw: unknown): ScreenQuery {
   const conditions: ScreenCondition[] = [];
   for (const item of obj.conditions) {
     const c = toCondition(item);
-    if (c) conditions.push(c);
+    if (!c) throw new ScreenParseError('包含不支持的筛选条件，请修改后重试');
+    conditions.push(c);
   }
   if (conditions.length === 0) {
     throw new ScreenNoConditionsError('未能识别出可用的筛选条件');
@@ -298,6 +231,8 @@ function sortByValue<T>(
 // ── 两阶段筛选主流程 ─────────────────────────────────────────────────────
 export interface RunScreenParams {
   nlQuery: string;
+  query?: ScreenQuery;
+  offset?: number;
   chat: ChatProvider;
   language?: Language;
   /** 测试注入：替换真实快照/精拉/抖动，避开网络 */
@@ -313,7 +248,10 @@ export async function runScreen(params: RunScreenParams): Promise<ScreenResponse
   const _sleep = params._sleep ?? sleep;
 
   // ① 解析（失败向上抛 ScreenParseError / ScreenNoConditionsError）
-  const query = await parseScreenQuery(nlQuery, chat, language);
+  const query = params.query
+    ? validateScreenQuery(params.query)
+    : await parseScreenQuery(nlQuery, chat, language);
+  const offset = Math.max(0, Math.floor(params.offset ?? 0));
 
   // ② 快照
   const snapshot = await _fetchSnapshot();
@@ -331,7 +269,7 @@ export async function runScreen(params: RunScreenParams): Promise<ScreenResponse
   const scannedCoarse = candidates.length;
 
   // ⑥ 无 fine 条件：纯粗筛快路径
-  if (fineConds.length === 0) {
+  if (fineConds.length === 0 && !(query.sortBy && isFineField(query.sortBy.field))) {
     // sortBy 若指向 fine 字段（此时无法精拉）则退回市值降序
     const sort =
       query.sortBy && isCoarseField(query.sortBy.field) ? query.sortBy : DEFAULT_COARSE_SORT;
@@ -339,7 +277,14 @@ export async function runScreen(params: RunScreenParams): Promise<ScreenResponse
     const matches: ScreenMatch[] = sorted
       .slice(0, query.limit)
       .map((e) => ({ symbol: e.symbol, name: e.name, snapshot: e }));
-    return { query, matches, scannedCoarse, refinedCount: 0, fetchedAt: Date.now() };
+    return {
+      query,
+      matches,
+      scannedCoarse,
+      refinedCount: 0,
+      fetchedAt: snapshot.fetchedAt,
+      coverage: { total: entries.length, attempted: candidates.length, failed: 0, complete: true },
+    };
   }
 
   // ⑦ 有 fine 条件：候选按精拉前可得的排序键取前 CANDIDATE_CAP 只
@@ -349,7 +294,7 @@ export async function runScreen(params: RunScreenParams): Promise<ScreenResponse
     candidates,
     (e) => resolveFieldValue(preSort.field, e),
     preSort.order,
-  ).slice(0, CANDIDATE_CAP);
+  ).slice(offset, offset + CANDIDATE_CAP);
 
   // 并发精拉（SCREEN_CONCURRENCY 一批）+ 抖动；单只失败/超时 → skip（不中断整体）
   const refined: ScreenMatch[] = [];
@@ -401,6 +346,13 @@ export async function runScreen(params: RunScreenParams): Promise<ScreenResponse
     matches: sorted.slice(0, query.limit),
     scannedCoarse,
     refinedCount,
-    fetchedAt: Date.now(),
+    fetchedAt: snapshot.fetchedAt,
+    nextOffset: offset + pool.length < candidates.length ? offset + pool.length : undefined,
+    coverage: {
+      total: entries.length,
+      attempted: pool.length,
+      failed: pool.length - refinedCount,
+      complete: offset + pool.length >= candidates.length && pool.length === refinedCount,
+    },
   };
 }

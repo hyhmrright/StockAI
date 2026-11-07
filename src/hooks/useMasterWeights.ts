@@ -1,11 +1,13 @@
+import { analysisModelFingerprint } from '../../shared/analysis-version';
+import { PROVIDER_PROFILES, useSettings } from './useSettings';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MasterWeightInput } from '../../shared/types';
 import { getAllMasterSignals } from '../lib/db';
-import { fetchRealtimeQuotes } from '../lib/ipc';
+import { loadMasterHistory } from '../lib/master-history';
 import {
   deriveMasterWeights,
-  loadMasterPortfolio,
-  type PriceFetcher,
+  loadMasterEvaluation,
+  type HistoryFetcher,
   type SignalsFetcher,
 } from '../lib/masterPortfolio';
 
@@ -14,12 +16,6 @@ export interface UseMasterWeightsResult {
   refetch: () => void;
 }
 
-/** 一次进程拉完整组；symbol 数没有上限，逐只取价会按标的数放大 sidecar 进程数 */
-const defaultPriceFetcher: PriceFetcher = async (symbols) => {
-  const { quotes } = await fetchRealtimeQuotes(symbols);
-  return Object.fromEntries(Object.entries(quotes).map(([sym, q]) => [sym, q.price]));
-};
-
 /**
  * 大师动态权重「命中率生产者」：全局（非按 symbol）加载战绩 → 派生权重快照。
  *
@@ -27,22 +23,33 @@ const defaultPriceFetcher: PriceFetcher = async (symbols) => {
  * sidecar 侧对空数组按默认权重 1.0 处理，绝不抛错阻塞正常分析流程。分析触发时若权重还没算好，
  * 消费方传 `[]` 即可（退化默认权重），不阻塞/延迟分析。
  *
- * 取数流水线复用 masterPortfolio.ts 的 loadMasterPortfolio，不在此重复「拉信号→拉现价→聚合」。
+ * 取数流水线复用 masterPortfolio.ts 的 loadMasterEvaluation，不在此重复「信号→历史→到期评价」。
  * 新分析落账后调 refetch 刷新权重快照。
  */
 export function useMasterWeights(
   loadSignals: SignalsFetcher = getAllMasterSignals,
-  loadPrice: PriceFetcher = defaultPriceFetcher,
+  loadHistory: HistoryFetcher = loadMasterHistory,
 ): UseMasterWeightsResult {
+  const { settings } = useSettings();
+  const fallback = {
+    provider: settings.activeProvider,
+    model:
+      settings.providerConfigs[settings.activeProvider]?.model ??
+      PROVIDER_PROFILES[settings.activeProvider].model,
+  };
+  const modelFingerprint = analysisModelFingerprint(
+    settings.roleModels.brain ?? fallback,
+    settings.roleModels.quick ?? fallback,
+  );
   const [weights, setWeights] = useState<MasterWeightInput[]>([]);
   const [trigger, setTrigger] = useState(0);
   const latestRequestId = useRef(0);
-  const fns = useRef({ loadSignals, loadPrice });
-  fns.current = { loadSignals, loadPrice };
+  const fns = useRef({ loadSignals, loadHistory });
+  fns.current = { loadSignals, loadHistory };
 
   useEffect(() => {
     const requestId = ++latestRequestId.current;
-    loadMasterPortfolio(fns.current.loadSignals, fns.current.loadPrice)
+    loadMasterEvaluation(fns.current.loadSignals, fns.current.loadHistory, 20, modelFingerprint)
       .then((data) => {
         if (requestId !== latestRequestId.current) return;
         setWeights(deriveMasterWeights(data));
@@ -52,7 +59,7 @@ export function useMasterWeights(
         if (requestId !== latestRequestId.current) return;
         setWeights([]);
       });
-  }, [trigger]);
+  }, [trigger, modelFingerprint]);
 
   const refetch = useCallback(() => setTrigger((t) => t + 1), []);
 

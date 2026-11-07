@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 
 /** Dashboard 的全屏浮层清单 */
-export type ModalName = 'settings' | 'screener' | 'portfolio' | 'overview';
+export type ModalName = 'settings' | 'screener' | 'portfolio' | 'overview' | 'research';
 
 export interface ModalRouter {
   /** 当前打开的浮层；null = 都没开 */

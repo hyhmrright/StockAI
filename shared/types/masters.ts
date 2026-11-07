@@ -40,6 +40,9 @@ export interface SentimentSignal {
 
 /** 深度分析综合结果 */
 export interface DeepAnalysisResult {
+  analysisId?: string;
+  analyzedAt?: number;
+  modelFingerprint?: string;
   masterSignals: MasterSignal[];
   sentiment: SentimentSignal;
   synthesis: {
@@ -52,6 +55,8 @@ export interface DeepAnalysisResult {
 
 /** 落账后的单条大师 signal（master_signals 表一行；虚拟组合前向跟踪原始记录） */
 export interface MasterSignalRecord {
+  modelFingerprint?: string;
+  analysisId?: string;
   id: number;
   masterId: string;
   symbol: string;
@@ -69,6 +74,7 @@ export interface MasterLeaderboardEntry {
   pending: number; // 待定 signal 数（中性 / 缺价，未纳入统计）
   hits: number; // 方向兑现次数
   hitRate: number | null; // hits / resolved；resolved 为 0 时为 null
+  avgExcessReturn?: number | null;
   avgReturn: number | null; // 已裁决 signal 的方向调整收益均值；resolved 为 0 时为 null
 }
 

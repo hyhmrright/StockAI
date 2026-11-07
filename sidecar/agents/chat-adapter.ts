@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import type { ChatProvider } from './types';
 import { PROVIDER_PROFILES } from '../../shared/constants';
 import type { ResolvedRole } from '../configResolver';
-import { logger } from '../log';
+import { logger, emitTaskEvent } from '../log';
 
 interface CompletionDep {
   createCompletion: (opts: {
@@ -51,6 +51,14 @@ function createOpenAIClient(config: ResolvedRole): CompletionDep {
         },
         { timeout: profile.timeout },
       );
+      if (response.usage)
+        emitTaskEvent({
+          type: 'usage',
+          provider: config.provider,
+          model: config.model,
+          inputTokens: response.usage.prompt_tokens,
+          outputTokens: response.usage.completion_tokens,
+        });
       if (!response.choices?.length) throw new Error('LLM 返回空 choices');
       return { choices: [{ message: { content: response.choices[0].message.content || '{}' } }] };
     },

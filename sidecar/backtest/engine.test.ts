@@ -170,3 +170,60 @@ describe('runBacktest 的费后口径', () => {
     expect(Math.abs(last.value - implied)).toBeLessThan(initialCapital * 1e-4);
   });
 });
+
+describe('真实成交与完整费用', () => {
+  test('两道费用后实际亏损的微涨交易不能算赢', () => {
+    const bars = Array.from({ length: 64 }, (_, i) => ({
+      time: 1700000000 + i * 86400,
+      open: 100,
+      close: i === 63 ? 100.15 : 100,
+      high: 101,
+      low: 99,
+      volume: 1000,
+    }));
+    const r = runBacktest(bars, {
+      symbol: 'T',
+      period: 64,
+      buyThreshold: 0,
+      sellThreshold: -1,
+      initialCapital: 10000,
+      transactionCost: 0.001,
+    });
+    expect(r.totalReturn).toBeLessThan(0);
+    expect(r.winRate).toBe(0);
+    expect(r.trades[0].date).toBe(bars[61].time);
+  });
+  test('当日完整行情不能用于当日收盘成交，跳空按下一日开盘填单', () => {
+    const bars = Array.from({ length: 64 }, (_, i) => ({
+      time: 1700000000 + i * 86400,
+      open: i === 61 ? 120 : 100,
+      close: 100,
+      high: 120,
+      low: 99,
+      volume: 1000,
+    }));
+    const r = runBacktest(bars, {
+      symbol: 'T',
+      period: 64,
+      buyThreshold: 0,
+      sellThreshold: -1,
+      initialCapital: 10000,
+      transactionCost: 0,
+    });
+    expect(r.trades[0].price).toBe(120);
+    expect(r.equityCurve[0].value).toBe(10000);
+    expect(r.maxDrawdown).toBeLessThan(0);
+  });
+  test('非法资金、费用和交易单位拒绝执行', () => {
+    expect(() =>
+      runBacktest([], {
+        symbol: 'T',
+        period: 0,
+        buyThreshold: 60,
+        sellThreshold: 40,
+        initialCapital: 0,
+        transactionCost: 0.001,
+      }),
+    ).toThrow();
+  });
+});

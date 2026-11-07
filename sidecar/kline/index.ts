@@ -116,16 +116,44 @@ export async function getKline(
   req: KlineRequest,
   deps: KlineSourceDeps = {},
 ): Promise<KlinePoint[]> {
+  return (await getKlineDetailed(req, deps)).points;
+}
+
+/** 数据源、实际复权与降级状态随数据返回，不能仅凭请求参数推断。 */
+export async function getKlineDetailed(
+  req: KlineRequest,
+  deps: KlineSourceDeps = {},
+): Promise<import('../../shared/types').KlineResponse> {
   const n = normalize(req);
-  return withFallback(KLINE_SOURCES[n.market], 'K 线', (s) =>
-    s.supportsPeriod?.(n.period) === false ? undefined : s.fetch(n, deps),
-  );
+  let attempt = 0;
+  return withFallback(KLINE_SOURCES[n.market], 'K 线', (source) => {
+    if (source.supportsPeriod?.(n.period) === false) return undefined;
+    const fallback = attempt++ > 0;
+    return source.fetch(n, deps).then((points) => {
+      const actualAdjust =
+        source.name === '新浪' ? 'none' : source.name === 'Yahoo' ? 'provider' : n.adjust;
+      return {
+        points,
+        metadata: {
+          source: source.name,
+          fetchedAt: Date.now(),
+          dataAt: points[points.length - 1]?.time,
+          requestedAdjust: n.adjust,
+          actualAdjust,
+          degraded: fallback || (actualAdjust === 'none' && n.adjust !== 'none'),
+          warnings: actualAdjust === 'none' && n.adjust !== 'none' ? ['unadjusted-fallback'] : [],
+        },
+      };
+    });
+  });
 }
 
 /** 拉取实时报价 — 按 QUOTE_SOURCES 的市场优先级顺序回退 */
 export async function getQuote(symbol: string, deps: KlineSourceDeps = {}): Promise<RealtimeQuote> {
   const market = detectMarket(symbol);
-  return withFallback(QUOTE_SOURCES[market], '报价', (s) => s.fetch(symbol, deps));
+  return withFallback(QUOTE_SOURCES[market], '报价', (s) =>
+    s.fetch(symbol, deps).then((quote) => ({ ...quote, source: s.name })),
+  );
 }
 
 /** 批量报价对上游的并发上限：既压住 spawn 一次要打的连接数，也避免被数据源限流 */

@@ -1,72 +1,78 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { useMasterWeights } from './useMasterWeights';
-import type { MasterSignalRecord } from '../../shared/types';
-
-// 测试构造助手：默认值齐全，按需覆写
-function sig(over: Partial<MasterSignalRecord>): MasterSignalRecord {
-  return {
+import { analysisModelFingerprint } from '../../shared/analysis-version';
+import { DEFAULT_SETTINGS, PROVIDER_PROFILES } from './useSettings';
+import type { MasterSignalRecord, KlinePoint } from '../../shared/types';
+const provider = DEFAULT_SETTINGS.activeProvider;
+const choice = {
+  provider,
+  model: DEFAULT_SETTINGS.providerConfigs[provider]?.model ?? PROVIDER_PROFILES[provider].model,
+};
+const modelFingerprint = analysisModelFingerprint(choice, choice);
+const signals: MasterSignalRecord[] = [
+  {
     id: 1,
-    masterId: 'warren-buffett',
-    symbol: 'AAPL',
+    masterId: 'm',
+    symbol: 'A',
     signal: 'bullish',
     confidence: 80,
     priceAt: 100,
-    recordedAt: 1_000,
-    ...over,
-  };
-}
-
-describe('useMasterWeights', () => {
-  it('空历史 → 空数组（best-effort 退化默认权重）', async () => {
-    const loadSignals = vi.fn(async () => []);
-    const loadPrices = vi.fn(async (syms: string[]) =>
-      Object.fromEntries(syms.map((sym) => [sym, 100])),
-    );
-    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrices));
-
-    await waitFor(() => expect(loadSignals).toHaveBeenCalled());
+    recordedAt: 1000,
+    modelFingerprint,
+  },
+];
+const history: Record<string, KlinePoint[]> = {
+  A: Array.from({ length: 21 }, (_, i) => ({
+    time: 2 + i,
+    open: 100,
+    close: 100 + i,
+    high: 120,
+    low: 99,
+    volume: 100,
+  })),
+};
+describe('fixed-horizon master weights', () => {
+  it('empty history falls back without requesting prices', async () => {
+    const load = vi.fn(async () => []),
+      prices = vi.fn(async () => ({}));
+    const { result } = renderHook(() => useMasterWeights(load, prices));
+    await waitFor(() => expect(load).toHaveBeenCalled());
     expect(result.current.weights).toEqual([]);
-    // 空历史无需回查任何现价
-    expect(loadPrices).not.toHaveBeenCalled();
+    expect(prices).not.toHaveBeenCalled();
   });
-
-  it('有战绩 → 派生权重快照（过滤掉全待定的大师）', async () => {
-    const loadSignals = vi.fn(async () => [
-      sig({ id: 1, masterId: 'a', signal: 'bullish', priceAt: 100 }), // 命中
-      sig({ id: 2, masterId: 'b', signal: 'neutral', priceAt: 100 }), // 全待定 → 过滤
-    ]);
-    const loadPrices = vi.fn(async (syms: string[]) =>
-      Object.fromEntries(syms.map((sym) => [sym, 110])),
+  it('uses completed 20-day outcomes and matching model versions', async () => {
+    const { result } = renderHook(() =>
+      useMasterWeights(
+        async () => signals,
+        async () => history,
+      ),
     );
-    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrices));
-
-    await waitFor(() => expect(result.current.weights.length).toBe(1));
-    expect(result.current.weights[0]).toEqual({ masterId: 'a', sampleSize: 1, hits: 1 });
+    await waitFor(() =>
+      expect(result.current.weights).toEqual([{ masterId: 'm', sampleSize: 1, hits: 1 }]),
+    );
   });
-
-  it('取数失败 → 静默降级为空数组，不抛错阻塞', async () => {
-    const loadSignals = vi.fn(async () => {
-      throw new Error('db 读取失败');
+  it('immature signals do not affect weights', async () => {
+    const load = vi.fn(async () => signals);
+    const { result } = renderHook(() =>
+      useMasterWeights(load, async () => ({ A: history.A.slice(0, 10) })),
+    );
+    await waitFor(() => expect(load).toHaveBeenCalled());
+    expect(result.current.weights).toEqual([]);
+  });
+  it('can refresh safely after new signals have been persisted', async () => {
+    const load = vi.fn(async () => signals);
+    const { result } = renderHook(() => useMasterWeights(load, async () => history));
+    await waitFor(() => expect(result.current.weights).toHaveLength(1));
+    act(() => result.current.refetch());
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  });
+  it('storage errors degrade to default weights', async () => {
+    const load = vi.fn(async () => {
+      throw new Error('db unavailable');
     });
-    const loadPrices = vi.fn(async (syms: string[]) =>
-      Object.fromEntries(syms.map((sym) => [sym, 100])),
-    );
-    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrices));
-
-    await waitFor(() => expect(loadSignals).toHaveBeenCalled());
+    const { result } = renderHook(() => useMasterWeights(load, async () => history));
+    await waitFor(() => expect(load).toHaveBeenCalled());
     expect(result.current.weights).toEqual([]);
-  });
-
-  it('refetch 重新拉取权重快照', async () => {
-    const loadSignals = vi.fn(async () => [sig({ masterId: 'a', priceAt: 100 })]);
-    const loadPrices = vi.fn(async (syms: string[]) =>
-      Object.fromEntries(syms.map((sym) => [sym, 110])),
-    );
-    const { result } = renderHook(() => useMasterWeights(loadSignals, loadPrices));
-
-    await waitFor(() => expect(result.current.weights.length).toBe(1));
-    result.current.refetch();
-    await waitFor(() => expect(loadSignals).toHaveBeenCalledTimes(2));
   });
 });

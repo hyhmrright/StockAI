@@ -1,4 +1,3 @@
-import { spawnSync } from 'child_process';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { writeFileSync, unlinkSync } from 'fs';
@@ -43,8 +42,10 @@ function writeTemp(label: string, value: unknown, mode?: number): string {
   return path;
 }
 
+const jobs = new Map<string, ReturnType<typeof Bun.spawn>>();
 const server = Bun.serve({
-  port: 3001,
+  idleTimeout: 0,
+  port: Number(process.env.STOCKAI_BRIDGE_PORT ?? 3001),
   hostname: '127.0.0.1',
   async fetch(req) {
     const url = new URL(req.url);
@@ -59,6 +60,13 @@ const server = Bun.serve({
       });
     }
 
+    if (url.pathname === '/cancel' && req.method === 'POST') {
+      const { requestId } = await req.json();
+      jobs.get(requestId)?.kill();
+      return new Response('{}', {
+        headers: { 'Access-Control-Allow-Origin': CORS_ORIGIN, 'Content-Type': 'application/json' },
+      });
+    }
     if (url.pathname !== '/invoke' || req.method !== 'POST') {
       return new Response('Not Found', { status: 404 });
     }
@@ -67,7 +75,12 @@ const server = Bun.serve({
       'Access-Control-Allow-Origin': CORS_ORIGIN,
       'Content-Type': 'application/json',
     };
-    const { args = [], payload, configOverride } = await req.json();
+    const {
+      args = [],
+      payload,
+      configOverride,
+      requestId = crypto.randomUUID(),
+    } = await req.json();
     console.log(`[Bridge] argv: ${JSON.stringify(args)}`);
 
     // 哨兵替换：与 Rust 侧逐字对应
@@ -86,26 +99,80 @@ const server = Bun.serve({
       return arg;
     });
 
-    try {
-      // 跑源码而非二进制，避免旧二进制不识别新 action
-      const result = spawnSync('bun', [SIDECAR_ENTRY, ...resolved], {
-        encoding: 'utf-8',
-        env: { ...process.env },
-      });
-      if (result.stderr) console.error(`[Bridge] Sidecar Stderr: ${result.stderr}`);
-      const fallback = JSON.stringify(
-        errorEnvelope('ERR_BRIDGE', result.error?.message || 'no stdout'),
-      );
-      return new Response(result.stdout || fallback, { headers: corsHeaders });
-    } finally {
-      for (const path of tempPaths) {
+    // NDJSON 只用于开发 HTTP；Sidecar stdout 仍是单个最终 JSON。
+    const child = Bun.spawn(['bun', SIDECAR_ENTRY, ...resolved], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { ...process.env },
+    });
+    jobs.set(requestId, child);
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        const send = (value: unknown) => {
+          try {
+            controller.enqueue(encoder.encode(JSON.stringify(value) + '\n'));
+          } catch {
+            child.kill();
+          }
+        };
+        send({ kind: 'progress', data: { type: 'phase', phase: 'started' } });
+        const stderr = (async () => {
+          const reader = child.stderr.getReader(),
+            decoder = new TextDecoder();
+          let buffer = '';
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+            for (const line of lines)
+              if (line.startsWith('STOCKAI_EVENT:')) {
+                try {
+                  send({ kind: 'progress', data: JSON.parse(line.slice('STOCKAI_EVENT:'.length)) });
+                } catch {
+                  /* 非法事件不能污染结果 */
+                }
+              }
+          }
+        })();
         try {
-          unlinkSync(path);
+          const stdout = await new Response(child.stdout).text();
+          await child.exited;
+          await stderr;
+          send({
+            kind: 'result',
+            raw: stdout || JSON.stringify(errorEnvelope('ERR_BRIDGE', 'no stdout')),
+          });
         } catch {
-          /* ignore */
+          send({
+            kind: 'result',
+            raw: JSON.stringify(errorEnvelope('ERR_BRIDGE', 'process failed')),
+          });
+        } finally {
+          jobs.delete(requestId);
+          for (const path of tempPaths) {
+            try {
+              unlinkSync(path);
+            } catch {
+              /* 已清理 */
+            }
+          }
+          try {
+            controller.close();
+          } catch {
+            /* 请求已断开 */
+          }
         }
-      }
-    }
+      },
+      cancel() {
+        child.kill();
+      },
+    });
+    return new Response(stream, {
+      headers: { ...corsHeaders, 'Content-Type': 'application/x-ndjson' },
+    });
   },
 });
 

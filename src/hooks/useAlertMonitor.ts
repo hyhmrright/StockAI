@@ -1,3 +1,4 @@
+import { recordPriceEvent } from '../lib/record-price-event';
 import { useEffect, useRef } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import type { PriceAlert } from './usePriceAlerts';
@@ -47,6 +48,7 @@ export function useAlertMonitor(
       if (alert.upperLimit != null && quote.price >= alert.upperLimit) {
         if (!fired.upper) {
           fired.upper = true;
+          recordPriceEvent(quote, 'upper', alert.upperLimit);
           sendNotification(
             t('alert_notify_title'),
             t('alert_notify_above', {
@@ -63,6 +65,7 @@ export function useAlertMonitor(
       if (alert.lowerLimit != null && quote.price <= alert.lowerLimit) {
         if (!fired.lower) {
           fired.lower = true;
+          recordPriceEvent(quote, 'lower', alert.lowerLimit);
           sendNotification(
             t('alert_notify_title'),
             t('alert_notify_below', {

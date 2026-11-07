@@ -5,7 +5,7 @@ import { resolveLanguage } from '../ai';
 import { PROVIDER_PROFILES } from '../config';
 import { buildAnalysisPrompt, buildEnhancedPrompt, getSystemPrompt } from '../prompts';
 import { toErrorMessage, parseJsonFromAi } from '../utils';
-import { logger } from '../log';
+import { logger, emitTaskEvent } from '../log';
 
 /**
  * OpenAI 提供者实现
@@ -48,6 +48,14 @@ export class OpenAIProvider implements AIProvider {
         { timeout: PROVIDER_PROFILES.openai.timeout },
       );
 
+      if (response.usage)
+        emitTaskEvent({
+          type: 'usage',
+          provider: this.kind,
+          model: this.model,
+          inputTokens: response.usage.prompt_tokens,
+          outputTokens: response.usage.completion_tokens,
+        });
       if (!response.choices?.length) {
         throw new Error('OpenAI 返回了空的 choices 列表，无法提取分析结果');
       }
